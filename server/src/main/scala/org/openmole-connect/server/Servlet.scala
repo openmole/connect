@@ -1,9 +1,10 @@
-package fr.iscpif.app
+package org.openmoleconnect.server
 
 import java.nio.ByteBuffer
 
 import org.scalatra._
 
+import org.openmoleconnect.shared._
 import scala.concurrent.ExecutionContext.Implicits.global
 import boopickle.Default._
 
@@ -34,17 +35,29 @@ class Servlet extends ScalatraServlet {
         tags.script(tags.`type` := "text/javascript", tags.src := "js/deps.js"),
         tags.script(tags.`type` := "text/javascript", tags.src := "js/demo.js")
       ),
-      tags.body(tags.onload := "run();")
+      tags.body(tags.onload := "connection();")
     )
   }
 
+  post("/connection") {
+    response.setHeader("Access-Control-Allow-Origin", "*")
+    response.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, UPDATE, OPTIONS")
+    response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With")
+
+
+    println("CONNECTION")
+    val password = params.getOrElse("password", "")
+
+
+  }
+
+
   post(s"/$basePath/*") {
-    println("PAT " + basePath)
     val req = Await.result({
       val is = request.getInputStream
       val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
       val bb = ByteBuffer.wrap(bytes)
-      AutowireServer.route[shared.Api](ApiImpl)(
+      AutowireServer.route[Api](ApiImpl)(
         autowire.Core.Request(
           basePath.split("/").toSeq ++ multiParams("splat").head.split("/"),
           Unpickle[Map[String, ByteBuffer]].fromBytes(bb)

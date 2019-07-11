@@ -1,7 +1,7 @@
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
-val Organization = "fr.iscpif"
-val Name = "ScalaWUI"
+val Organization = "openmole"
+val Name = "openmole-connect"
 val Version = "0.1.0-SNAPSHOT"
 val ScalaVersion = "2.12.8"
 val scalatraVersion = "2.6.5"
@@ -35,7 +35,6 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
     "com.lihaoyi" %%% "scalarx" % rxVersion,
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
-    "fr.iscpif.scaladget" %%% "svg" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion
