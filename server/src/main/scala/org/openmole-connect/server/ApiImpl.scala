@@ -1,6 +1,6 @@
 package org.openmoleconnect.server
 
-import org.openmoleconnect.shared._
+import shared._
 
 object ApiImpl extends Api {
 

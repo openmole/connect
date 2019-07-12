@@ -10,11 +10,13 @@ import scalatags.JsDom.all._
 import scalatags.JsDom.tags
 
 import scala.concurrent.Future
-
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import boopickle.Default._
+
+import scala.collection.mutable
+import shared.Data._
 
 
 /*
@@ -40,22 +42,31 @@ object Connection {
   def connect() = {
     lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
 
-    val passwordInput = inputTag("")(
-      placeholder := "Password",
-      `type` := "password",
+    val loginInput = inputTag("")(
+      placeholder := "Login",
       width := "130px",
       marginBottom := 15,
-      name := "password",
+      name := "login",
       autofocus := true
+    ).render
+
+    val passwordInput = inputTag("")(
+      placeholder := "Password",
+      name := "password",
+      `type` := "password",
+      width := "130px",
+      marginBottom := 15
     ).render
 
     def cleanInputs = {
       passwordInput.value = ""
+      loginInput.value = ""
     }
 
     val connectionForm: HTMLFormElement = form(
       method := "post",
-      action := "/connection",
+      action := connectionRoute,
+      loginInput,
       passwordInput,
       connectButton
     ).render

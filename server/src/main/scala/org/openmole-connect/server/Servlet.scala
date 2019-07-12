@@ -4,7 +4,8 @@ import java.nio.ByteBuffer
 
 import org.scalatra._
 
-import org.openmoleconnect.shared._
+import shared._
+import shared.Data._
 import scala.concurrent.ExecutionContext.Implicits.global
 import boopickle.Default._
 
@@ -25,7 +26,11 @@ class Servlet extends ScalatraServlet {
   val basePath = "shared"
 
   get("/") {
-    contentType = "text/html"
+   redirect(connectionRoute)
+  }
+
+  get(connectionRoute){
+     contentType = "text/html"
 
     tags.html(
       tags.head(
@@ -39,14 +44,16 @@ class Servlet extends ScalatraServlet {
     )
   }
 
-  post("/connection") {
+  post(connectionRoute) {
     response.setHeader("Access-Control-Allow-Origin", "*")
     response.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, UPDATE, OPTIONS")
     response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With")
 
 
-    println("CONNECTION")
+    val login = params.getOrElse("login", "")
     val password = params.getOrElse("password", "")
+    
+    println(s"CONNECTION with $login and $password")
 
 
   }
