@@ -13,13 +13,16 @@ val boopickleVersion = "1.3.1"
 val rxVersion = "0.4.0"
 val scaladgetVersion = "1.2.7"
 val scalajsDomVersion = "0.9.7"
+val roshttpVersion = "2.2.4"
+
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
-  "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+  "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
+  Resolver.bintrayRepo("hmil", "maven")
 )
 
-lazy val shared = project.in(file("shared")) settings(
+lazy val shared = project.in(file("shared")) settings (
   scalaVersion := ScalaVersion
-) enablePlugins (ScalaJSPlugin)
+  ) enablePlugins (ScalaJSPlugin)
 
 
 lazy val go = taskKey[Unit]("go")
@@ -37,7 +40,8 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
-    "org.json4s" %% "json4s-jackson" % json4sVersion
+    "org.json4s" %% "json4s-jackson" % json4sVersion,
+    "fr.hmil" %%% "roshttp" % roshttpVersion
   )
 ) dependsOn (shared)
 
@@ -65,15 +69,15 @@ lazy val bootstrap = project.in(file("target/bootstrap")) settings(
   scalaVersion := ScalaVersion,
   go := {
 
-      val jsBuild = (fullOptJS in client in Compile).value.data
-      val demoTarget = (target in server in Compile).value
+    val jsBuild = (fullOptJS in client in Compile).value.data
+    val demoTarget = (target in server in Compile).value
 
-      val demoResource = (resourceDirectory in client in Compile).value
-      val dependencyJS = (dependencyFile in client in Compile).value
-      val depsCSS = (cssFile in client in Compile).value
+    val demoResource = (resourceDirectory in client in Compile).value
+    val dependencyJS = (dependencyFile in client in Compile).value
+    val depsCSS = (cssFile in client in Compile).value
 
-      IO.copyFile(jsBuild, demoTarget / "webapp/js/demo.js")
-      IO.copyFile(dependencyJS, demoTarget / "webapp/js/deps.js")
-      IO.copyDirectory(depsCSS, demoTarget / "webapp/css")
-      IO.copyDirectory(demoResource, demoTarget)
+    IO.copyFile(jsBuild, demoTarget / "webapp/js/demo.js")
+    IO.copyFile(dependencyJS, demoTarget / "webapp/js/deps.js")
+    IO.copyDirectory(depsCSS, demoTarget / "webapp/css")
+    IO.copyDirectory(demoResource, demoTarget)
   }) dependsOn(client, server)

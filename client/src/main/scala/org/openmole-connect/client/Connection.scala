@@ -1,22 +1,26 @@
 package org.openmoleconnect.client
 
-import java.nio.ByteBuffer
+//import java.nio.ByteBuffer
 
-import boopickle.Default.{Pickle, Pickler, Unpickle}
+//import boopickle.Default.{Pickle, Pickler, Unpickle}
 import org.scalajs.dom
 import scaladget.bootstrapnative.bsn._
-import org.scalajs.dom.raw.HTMLFormElement
+import org.scalajs.dom.raw.{Event, HTMLFormElement}
 import scalatags.JsDom.all._
 import scalatags.JsDom.tags
 
 import scala.concurrent.Future
 import scala.scalajs.js.annotation.JSExportTopLevel
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
-import boopickle.Default._
+//import scala.concurrent.ExecutionContext.Implicits.global
+//import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
+//import boopickle.Default._
+
+import fr.hmil.roshttp.HttpRequest
+import monix.execution.Scheduler.Implicits.global
+import scala.util.{Failure, Success}
+import fr.hmil.roshttp.response.SimpleHttpResponse
 
 import scala.collection.mutable
-import shared.Data._
 
 
 /*
@@ -40,19 +44,34 @@ object Connection {
 
   @JSExportTopLevel("connection")
   def connect() = {
-    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
 
-    val loginInput = inputTag("")(
+    def request = () => {
+      val login = loginInput.value
+      val password = passwordInput.value
+
+      val httpRequest = HttpRequest("http://keycloakrequest")
+
+      httpRequest.send().onComplete({
+        case res: Success[SimpleHttpResponse] =>
+          println(res.get.body)
+
+          // Redirection
+          dom.document.location.href = "https://iscpif.fr/"
+        case e: Failure[SimpleHttpResponse] => println("Houston, we got a problem!")
+      })
+    }
+
+    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit", onclick := request).render
+
+    lazy val loginInput = inputTag("")(
       placeholder := "Login",
       width := "130px",
       marginBottom := 15,
-      name := "login",
       autofocus := true
     ).render
 
-    val passwordInput = inputTag("")(
+    lazy val passwordInput = inputTag("")(
       placeholder := "Password",
-      name := "password",
       `type` := "password",
       width := "130px",
       marginBottom := 15
@@ -65,10 +84,14 @@ object Connection {
 
     val connectionForm: HTMLFormElement = form(
       method := "post",
-      action := connectionRoute,
+      action := "#",
       loginInput,
       passwordInput,
-      connectButton
+      connectButton,
+      onsubmit := { (e: Event) =>
+        e.preventDefault()
+        request
+      }
     ).render
 
     val render = {
@@ -76,7 +99,7 @@ object Connection {
         div(css.connectionTabOverlay)(
           div(
             img(src := "img/logo.svg", css.openmoleLogo),
-            div( marginLeft := 300)(
+            div(marginLeft := 300)(
               connectionForm
             )
           )
@@ -90,19 +113,19 @@ object Connection {
 }
 
 
-object Post extends autowire.Client[ByteBuffer, Pickler, Pickler] {
-
-  override def doCall(req: Request): Future[ByteBuffer] = {
-    dom.ext.Ajax.post(
-      url = req.path.mkString("/"),
-      data = Pickle.intoBytes(req.args),
-      responseType = "arraybuffer",
-      headers = Map("Content-Type" -> "application/octet-stream")
-    ).map(r => TypedArrayBuffer.wrap(r.response.asInstanceOf[ArrayBuffer]))
-  }
-
-  override def read[Result: Pickler](p: ByteBuffer) = Unpickle[Result].fromBytes(p)
-
-  override def write[Result: Pickler](r: Result) = Pickle.intoBytes(r)
-
-}
+//object Post extends autowire.Client[ByteBuffer, Pickler, Pickler] {
+//
+//  override def doCall(req: Request): Future[ByteBuffer] = {
+//    dom.ext.Ajax.post(
+//      url = req.path.mkString("/"),
+//      data = Pickle.intoBytes(req.args),
+//      responseType = "arraybuffer",
+//      headers = Map("Content-Type" -> "application/octet-stream")
+//    ).map(r => TypedArrayBuffer.wrap(r.response.asInstanceOf[ArrayBuffer]))
+//  }
+//
+//  override def read[Result: Pickler](p: ByteBuffer) = Unpickle[Result].fromBytes(p)
+//
+//  override def write[Result: Pickler](r: Result) = Pickle.intoBytes(r)
+//
+//}

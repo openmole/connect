@@ -26,11 +26,7 @@ class Servlet extends ScalatraServlet {
   val basePath = "shared"
 
   get("/") {
-   redirect(connectionRoute)
-  }
-
-  get(connectionRoute){
-     contentType = "text/html"
+    contentType = "text/html"
 
     tags.html(
       tags.head(
@@ -42,20 +38,6 @@ class Servlet extends ScalatraServlet {
       ),
       tags.body(tags.onload := "connection();")
     )
-  }
-
-  post(connectionRoute) {
-    response.setHeader("Access-Control-Allow-Origin", "*")
-    response.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, UPDATE, OPTIONS")
-    response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With")
-
-
-    val login = params.getOrElse("login", "")
-    val password = params.getOrElse("password", "")
-    
-    println(s"CONNECTION with $login and $password")
-
-
   }
 
 
