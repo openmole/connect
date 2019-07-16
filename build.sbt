@@ -37,8 +37,7 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
-    "org.json4s" %% "json4s-jackson" % json4sVersion,
-    "fr.hmil" %%% "roshttp" % roshttpVersion
+    "org.json4s" %% "json4s-jackson" % json4sVersion
   )
 ) dependsOn (shared)
 
@@ -51,7 +50,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "ch.qos.logback" % "logback-classic" % "1.1.3" % "runtime",
     "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
     "org.eclipse.jetty" % "jetty-webapp" % jettyVersion,
-    "org.eclipse.jetty" % "jetty-server" % jettyVersion
+    "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+    "fr.hmil" %% "roshttp" % roshttpVersion
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 

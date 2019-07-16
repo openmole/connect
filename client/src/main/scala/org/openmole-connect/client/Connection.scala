@@ -3,7 +3,6 @@ package org.openmoleconnect.client
 //import java.nio.ByteBuffer
 
 //import boopickle.Default.{Pickle, Pickler, Unpickle}
-import fr.hmil.roshttp.body.URLEncodedBody
 import org.scalajs.dom
 import scaladget.bootstrapnative.bsn._
 import org.scalajs.dom.raw.{Event, HTMLFormElement}
@@ -16,10 +15,6 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 //import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 //import boopickle.Default._
 
-import fr.hmil.roshttp.HttpRequest
-import monix.execution.Scheduler.Implicits.global
-import scala.util.{Failure, Success}
-import fr.hmil.roshttp.response.SimpleHttpResponse
 
 import scala.collection.mutable
 
@@ -46,34 +41,7 @@ object Connection {
   @JSExportTopLevel("connection")
   def connect() = {
 
-    def request = () => {
-      val login = loginInput.value
-      val password = passwordInput.value
-
-      val httpRequest = HttpRequest("http://localhost:8180/auth/realms/test-kube/protocol/openid-connect/token")
-
-      val urlEncodedData = URLEncodedBody(
-        "client_id" -> "test-kube",
-        "client_secret" -> "6e824d88-b17e-4534-8ed6-f69ba5f29845",
-        "response_type"-> "code token",
-        "grant_type" -> "password",
-        "username" -> login,
-        "password" -> password,
-        "scope" -> "openid"
-      )
-
-      httpRequest.post(urlEncodedData).onComplete({
-        case res: Success[SimpleHttpResponse] =>
-          println(res.get.body)
-
-          // Redirection
-          dom.document.location.href = "https://iscpif.fr/"
-        case e: Failure[SimpleHttpResponse] => println("Houston, we got a problem!")
-          println(e)
-      })
-    }
-
-    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit", onclick := request).render
+    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
 
     lazy val loginInput = inputTag("")(
       placeholder := "Login",
@@ -96,14 +64,10 @@ object Connection {
 
     val connectionForm: HTMLFormElement = form(
       method := "post",
-      action := "#",
+      action := connectionRoute,
       loginInput,
       passwordInput,
-      connectButton,
-      onsubmit := { (e: Event) =>
-        e.preventDefault()
-        request
-      }
+      connectButton
     ).render
 
     val render = {
