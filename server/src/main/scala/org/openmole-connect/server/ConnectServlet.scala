@@ -20,9 +20,8 @@ object AutowireServer extends autowire.Server[ByteBuffer, Pickler, Pickler] {
   override def write[R: Pickler](r: R) = Pickle.intoBytes(r)
 }
 
-
-class Servlet extends ScalatraServlet {
-
+class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
+  
   val basePath = "shared"
 
   get("/") {
