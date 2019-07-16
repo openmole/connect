@@ -3,6 +3,7 @@ package org.openmoleconnect.client
 //import java.nio.ByteBuffer
 
 //import boopickle.Default.{Pickle, Pickler, Unpickle}
+import fr.hmil.roshttp.body.URLEncodedBody
 import org.scalajs.dom
 import scaladget.bootstrapnative.bsn._
 import org.scalajs.dom.raw.{Event, HTMLFormElement}
@@ -49,15 +50,26 @@ object Connection {
       val login = loginInput.value
       val password = passwordInput.value
 
-      val httpRequest = HttpRequest("http://keycloakrequest")
+      val httpRequest = HttpRequest("http://localhost:8180/auth/realms/test-kube/protocol/openid-connect/token")
 
-      httpRequest.send().onComplete({
+      val urlEncodedData = URLEncodedBody(
+        "client_id" -> "test-kube",
+        "client_secret" -> "6e824d88-b17e-4534-8ed6-f69ba5f29845",
+        "response_type"-> "code token",
+        "grant_type" -> "password",
+        "username" -> login,
+        "password" -> password,
+        "scope" -> "openid"
+      )
+
+      httpRequest.post(urlEncodedData).onComplete({
         case res: Success[SimpleHttpResponse] =>
           println(res.get.body)
 
           // Redirection
           dom.document.location.href = "https://iscpif.fr/"
         case e: Failure[SimpleHttpResponse] => println("Houston, we got a problem!")
+          println(e)
       })
     }
 
