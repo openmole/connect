@@ -2,7 +2,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 val scalatraVersion = "2.6.5"
 val jettyVersion = "9.4.19.v20190610"
-val json4sVersion = "3.6.3"
+val json4sVersion = "3.6.7"
 val scalatagsVersion = "0.7.0"
 val autowireVersion = "0.2.6"
 val boopickleVersion = "1.3.1"
@@ -36,8 +36,7 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "com.lihaoyi" %%% "scalarx" % rxVersion,
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
-    "org.json4s" %% "json4s-jackson" % json4sVersion
+    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion
   )
 ) dependsOn (shared)
 
@@ -51,7 +50,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
     "org.eclipse.jetty" % "jetty-webapp" % jettyVersion,
     "org.eclipse.jetty" % "jetty-server" % jettyVersion,
-    "fr.hmil" %% "roshttp" % roshttpVersion
+    "fr.hmil" %% "roshttp" % roshttpVersion,
+    "org.json4s" %% "json4s-native" % json4sVersion
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 

@@ -14,6 +14,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 //import scala.concurrent.ExecutionContext.Implicits.global
 //import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 //import boopickle.Default._
+import shared.Data._
 
 
 import scala.collection.mutable
@@ -44,6 +45,7 @@ object Connection {
     lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
 
     lazy val loginInput = inputTag("")(
+      name := "login",
       placeholder := "Login",
       width := "130px",
       marginBottom := 15,
@@ -51,6 +53,7 @@ object Connection {
     ).render
 
     lazy val passwordInput = inputTag("")(
+      name := "password",
       placeholder := "Password",
       `type` := "password",
       width := "130px",
