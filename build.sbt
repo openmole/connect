@@ -10,6 +10,7 @@ val rxVersion = "0.4.0"
 val scaladgetVersion = "1.2.7"
 val scalajsDomVersion = "0.9.7"
 val roshttpVersion = "2.2.4"
+val scalaJWTVersion = "3.1.0"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -36,7 +37,8 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "com.lihaoyi" %%% "scalarx" % rxVersion,
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion
+    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
+    "fr.hmil" %%% "roshttp" % roshttpVersion,
   )
 ) dependsOn (shared)
 
@@ -51,7 +53,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.eclipse.jetty" % "jetty-webapp" % jettyVersion,
     "org.eclipse.jetty" % "jetty-server" % jettyVersion,
     "fr.hmil" %% "roshttp" % roshttpVersion,
-    "org.json4s" %% "json4s-native" % json4sVersion
+    "org.json4s" %% "json4s-jackson" % json4sVersion,
+    "com.pauldijou" %% "jwt-core" % scalaJWTVersion
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 

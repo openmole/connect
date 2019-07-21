@@ -3,6 +3,8 @@ package org.openmoleconnect.client
 //import java.nio.ByteBuffer
 
 //import boopickle.Default.{Pickle, Pickler, Unpickle}
+import fr.hmil.roshttp.body.URLEncodedBody
+import fr.hmil.roshttp.util.HeaderMap
 import org.scalajs.dom
 import scaladget.bootstrapnative.bsn._
 import org.scalajs.dom.raw.{Event, HTMLFormElement}
@@ -14,10 +16,14 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 //import scala.concurrent.ExecutionContext.Implicits.global
 //import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 //import boopickle.Default._
-import shared.Data._
 
+import fr.hmil.roshttp.HttpRequest
+import monix.execution.Scheduler.Implicits.global
+import scala.util.{Failure, Success}
+import fr.hmil.roshttp.response.SimpleHttpResponse
 
 import scala.collection.mutable
+import shared.Data._
 
 
 /*
@@ -43,6 +49,8 @@ object Connection {
   def connect() = {
 
     lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
+
+    lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
 
     lazy val loginInput = inputTag("")(
       name := "login",

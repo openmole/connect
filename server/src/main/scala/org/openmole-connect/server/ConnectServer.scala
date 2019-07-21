@@ -11,7 +11,7 @@ import org.scalatra.servlet.ScalatraListener
 object ConnectServer {
   val servletArguments = "servletArguments"
 
-  case class ServletArguments(secret: String, keyCloakServerURL: String, openmoleManagerURL: String)
+  case class ServletArguments(secret: String, openmoleManagerURL: String)
 
 }
 
@@ -22,7 +22,7 @@ class ConnectBootstrap extends LifeCycle {
   }
 }
 
-class ConnectServer(port: Int, secret: String, keyCloakServerURL: String, openmoleManagerURL: String) {
+class ConnectServer(port: Int, secret: String, openmoleManagerURL: String) {
 
 
   def start() = {
@@ -34,7 +34,7 @@ class ConnectServer(port: Int, secret: String, keyCloakServerURL: String, openmo
 
     val startingContext = new WebAppContext()
     startingContext.setResourceBase("application/target/webapp")
-    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, keyCloakServerURL, openmoleManagerURL))
+    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, openmoleManagerURL))
     startingContext.setInitParameter(ScalatraListener.LifeCycleKey, classOf[ConnectBootstrap].getCanonicalName)
     startingContext.setContextPath("/")
     startingContext.addEventListener(new ScalatraListener)

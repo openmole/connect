@@ -11,8 +11,7 @@ object Application extends App {
   object HelpMode extends LaunchMode
 
   case class Config(
-                     keyCloakSecret: String = "",
-                     keyCloakServerURL: String = "",
+                     tokenSecret: String = "",
                      openmoleManagerURL: String = "",
                      port: Option[Int] = None,
                      launchMode: LaunchMode = ServerMode
@@ -21,7 +20,6 @@ object Application extends App {
   def usage =
     """OpenMOLE-connect application options:
       |[--secret secret] specify the keycloak secret
-      |[--keycloak-server url] specify the keycloak-server url
       |[--openmole-manager url] specify the url for openmole-manager application
       |[--port port] specify the port for openmole-manager application
     """
@@ -30,8 +28,7 @@ object Application extends App {
     if (args.isEmpty) c
     else {
       args match {
-        case "--secret" :: tail ⇒ parse(tail.tail, c.copy(keyCloakSecret = tail.head))
-        case "--keycloak-server" :: tail ⇒ parse(tail.tail, c.copy(keyCloakServerURL = tail.head))
+        case "--secret" :: tail ⇒ parse(tail.tail, c.copy(tokenSecret = tail.head))
         case "--openmole-manager" :: tail ⇒ parse(tail.tail, c.copy(openmoleManagerURL = tail.head))
         case "--port" :: tail ⇒ parse(tail.tail, c.copy(port = Some(tail.head.toInt)))
         case "--help" :: tail => c.copy(launchMode = HelpMode)
@@ -48,8 +45,7 @@ object Application extends App {
     case ServerMode =>
       val server = new ConnectServer(
         port = config.port.getOrElse(8080),
-        secret = config.keyCloakSecret,
-        keyCloakServerURL = config.keyCloakServerURL,
+        secret = config.tokenSecret,
         openmoleManagerURL = config.openmoleManagerURL)
       server.start()
   }
