@@ -44,7 +44,7 @@ object JWT {
     TokenAndContext(
     Jwt.encode(
       JwtHeader(algorithm),
-      JwtClaim({s"""{${Json.key.login}:$login}"""}).issuedNow.expiresIn(expirationTime),
+      JwtClaim({s"""{"${Json.key.login}":"$login"}"""}).issuedNow.expiresIn(expirationTime),
       secret
     ),
       expirationTime
