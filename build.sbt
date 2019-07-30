@@ -1,4 +1,8 @@
+import com.typesafe.sbt.packager.docker
+import com.typesafe.sbt.packager.docker.{Cmd, ExecCmd}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
+import scala.collection.mutable
 
 val scalatraVersion = "2.6.5"
 val jettyVersion = "9.4.19.v20190610"
@@ -45,7 +49,19 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
-lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins(JavaServerAppPackaging)
+lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins(JavaServerAppPackaging) settings(
+  dockerCommands := Seq(
+    Cmd("FROM", "gafiatulin/alpine-sbt as simop"),
+    Cmd("RUN", "apk update && apk add bash git sudo nodejs-npm"),
+    Cmd("RUN", "adduser connect -g \"\" -D -h /var/connect/"),
+    Cmd("USER", "connect"),
+    Cmd("RUN", "cd /var/connect && git clone https://gitlab.openmole.org/openmole/openmole-connect && cd openmole-connect && sbt go")
+  ) ++ dockerCommands.value.dropRight(3) ++ Seq(
+    Cmd("COPY", "--from=simop", "--chown=root:root", "/var/connect/openmole-connect/application/target/webapp", "/opt/docker/application/target/webapp"),
+    Cmd("USER", "1001:0"),
+    ExecCmd("ENTRYPOINT", "/opt/docker/bin/application")
+  )
+)
 
 lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSettings) settings (
   go := {
