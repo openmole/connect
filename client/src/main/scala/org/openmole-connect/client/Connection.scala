@@ -3,8 +3,8 @@ package org.openmoleconnect.client
 //import java.nio.ByteBuffer
 
 //import boopickle.Default.{Pickle, Pickler, Unpickle}
-import fr.hmil.roshttp.body.URLEncodedBody
-import fr.hmil.roshttp.util.HeaderMap
+//import fr.hmil.roshttp.body.URLEncodedBody
+//import fr.hmil.roshttp.util.HeaderMap
 import org.scalajs.dom
 import scaladget.bootstrapnative.bsn._
 import org.scalajs.dom.raw.{Event, HTMLFormElement}
@@ -17,10 +17,10 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 //import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 //import boopickle.Default._
 
-import fr.hmil.roshttp.HttpRequest
-import monix.execution.Scheduler.Implicits.global
-import scala.util.{Failure, Success}
-import fr.hmil.roshttp.response.SimpleHttpResponse
+//import fr.hmil.roshttp.HttpRequest
+//import monix.execution.Scheduler.Implicits.global
+//import scala.util.{Failure, Success}
+//import fr.hmil.roshttp.response.SimpleHttpResponse
 
 import scala.collection.mutable
 import shared.Data._
@@ -98,21 +98,3 @@ object Connection {
     dom.document.body.appendChild(render)
   }
 }
-
-
-//object Post extends autowire.Client[ByteBuffer, Pickler, Pickler] {
-//
-//  override def doCall(req: Request): Future[ByteBuffer] = {
-//    dom.ext.Ajax.post(
-//      url = req.path.mkString("/"),
-//      data = Pickle.intoBytes(req.args),
-//      responseType = "arraybuffer",
-//      headers = Map("Content-Type" -> "application/octet-stream")
-//    ).map(r => TypedArrayBuffer.wrap(r.response.asInstanceOf[ArrayBuffer]))
-//  }
-//
-//  override def read[Result: Pickler](p: ByteBuffer) = Unpickle[Result].fromBytes(p)
-//
-//  override def write[Result: Pickler](r: Result) = Pickle.intoBytes(r)
-//
-//}

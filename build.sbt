@@ -4,12 +4,8 @@ val scalatraVersion = "2.6.5"
 val jettyVersion = "9.4.19.v20190610"
 val json4sVersion = "3.6.7"
 val scalatagsVersion = "0.7.0"
-val autowireVersion = "0.2.6"
-val boopickleVersion = "1.3.1"
-val rxVersion = "0.4.0"
 val scaladgetVersion = "1.2.7"
 val scalajsDomVersion = "0.9.7"
-val roshttpVersion = "2.2.4"
 val scalaJWTVersion = "3.1.0"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
@@ -31,28 +27,19 @@ lazy val go = taskKey[Unit]("go")
 lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) settings (defaultSettings) settings(
   skip in packageJSDependencies := false,
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "autowire" % autowireVersion,
-    "io.suzaku" %%% "boopickle" % boopickleVersion,
     "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
-    "com.lihaoyi" %%% "scalarx" % rxVersion,
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
-    "fr.hmil" %%% "roshttp" % roshttpVersion,
+    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion
   )
 ) dependsOn (shared)
 
 lazy val server = project.in(file("server")) settings (defaultSettings) settings (
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %% "autowire" % autowireVersion,
-    "io.suzaku" %% "boopickle" % boopickleVersion,
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
     "org.scalatra" %% "scalatra" % scalatraVersion,
-    "ch.qos.logback" % "logback-classic" % "1.1.3" % "runtime",
-    "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
     "org.eclipse.jetty" % "jetty-webapp" % jettyVersion,
     "org.eclipse.jetty" % "jetty-server" % jettyVersion,
-    "fr.hmil" %% "roshttp" % roshttpVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
     "com.pauldijou" %% "jwt-core" % scalaJWTVersion
   )
@@ -64,7 +51,6 @@ lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSetti
   go := {
 
     val jsBuild = (fullOptJS in client in Compile).value.data
-    //val serverTarget = (target in server in Compile).value
     val appTarget = (target in application in Compile).value
 
 

@@ -3,22 +3,13 @@ package org.openmoleconnect.server
 import java.nio.ByteBuffer
 import org.scalatra._
 import scala.concurrent.ExecutionContext.Implicits.global
-import boopickle.Default._
 import org.openmoleconnect.server
 
 import scalatags.Text.all._
 import scalatags.Text.{all => tags}
 import shared.Data._
 
-object AutowireServer extends autowire.Server[ByteBuffer, Pickler, Pickler] {
-  override def read[R: Pickler](p: ByteBuffer) = Unpickle[R].fromBytes(p)
-
-  override def write[R: Pickler](r: R) = Pickle.intoBytes(r)
-}
-
 class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
-
-  import monix.execution.Scheduler.Implicits.global
 
   val basePath = "shared"
   implicit val secret: JWT.Secret = arguments.secret
