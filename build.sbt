@@ -60,7 +60,8 @@ lazy val application = project.in(file("application")) settings (defaultSettings
     Cmd("COPY", "--from=simop", "--chown=root:root", "/var/connect/openmole-connect/application/target/webapp", "/opt/docker/application/target/webapp"),
     Cmd("USER", "1001:0"),
     ExecCmd("ENTRYPOINT", "/opt/docker/bin/application")
-  )
+  ),
+  packageName in Docker := "openmole-connect"
 )
 
 lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSettings) settings (
