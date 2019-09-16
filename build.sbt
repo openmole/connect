@@ -75,8 +75,8 @@ lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSetti
     val dependencyJS = (dependencyFile in client in Compile).value
     val depsCSS = (cssFile in client in Compile).value
 
-    IO.copyFile(jsBuild, appTarget / "webapp/js/demo.js")
-    IO.copyFile(dependencyJS, appTarget / "webapp/js/deps.js")
+    IO.copyFile(jsBuild, appTarget / "webapp/js/connect.js")
+    IO.copyFile(dependencyJS, appTarget / "webapp/js/connect-deps.js")
     IO.copyDirectory(depsCSS, appTarget / "webapp/css")
     IO.copyDirectory(clientResources, appTarget)
   }) dependsOn(client, server)
