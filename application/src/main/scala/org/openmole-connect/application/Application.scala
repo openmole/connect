@@ -12,7 +12,7 @@ object Application extends App {
 
   case class Config(
                      tokenSecret: String = "",
-                     openmoleManagerURL: String = "",
+                     publicAdress: String = "",
                      port: Option[Int] = None,
                      launchMode: LaunchMode = ServerMode
                    )
@@ -20,7 +20,7 @@ object Application extends App {
   def usage =
     """OpenMOLE-connect application options:
       |[--secret secret] specify the keycloak secret
-      |[--openmole-manager url] specify the url for openmole-manager application
+      |[--public-adress url] public entry point for openmole instances
       |[--port port] specify the port for openmole-manager application
     """
 
@@ -29,7 +29,7 @@ object Application extends App {
     else {
       args match {
         case "--secret" :: tail ⇒ parse(tail.tail, c.copy(tokenSecret = tail.head))
-        case "--openmole-manager" :: tail ⇒ parse(tail.tail, c.copy(openmoleManagerURL = tail.head))
+        case "--public-adress" :: tail ⇒ parse(tail.tail, c.copy(publicAdress = tail.head))
         case "--port" :: tail ⇒ parse(tail.tail, c.copy(port = Some(tail.head.toInt)))
         case "--help" :: tail => c.copy(launchMode = HelpMode)
         case _ => c.copy(launchMode = HelpMode)
@@ -46,7 +46,7 @@ object Application extends App {
       val server = new ConnectServer(
         port = config.port.getOrElse(8080),
         secret = config.tokenSecret,
-        openmoleManagerURL = config.openmoleManagerURL)
+        publicAdress = config.publicAdress)
       server.start()
   }
 

@@ -31,8 +31,6 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   val basePath = "shared"
   implicit val secret: JWT.Secret = arguments.secret
 
-  val proxyHost = "172.17.0.1"
-
   val allowHeaders = Seq(
     ("Access-Control-Allow-Origin", "*"),
     ("Access-Control-Allow-Methods", "POST, GET, PUT, UPDATE, OPTIONS"),
@@ -54,8 +52,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   val forwardRequest = HttpRequest()
     .withProtocol(fr.hmil.roshttp.Protocol.HTTP)
-    .withHost(proxyHost)
-    .withPort(35535)
+    .withURL(arguments.publicAdress)
     .withPath("")
 
   def headers(request: HttpServletRequest) = request.getHeaderNames.map { hn => hn -> request.getHeader(hn) }.toSeq
