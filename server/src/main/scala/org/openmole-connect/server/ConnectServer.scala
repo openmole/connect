@@ -1,5 +1,6 @@
 package org.openmoleconnect.server
 
+import java.net.URI
 import java.util
 
 import javax.servlet.ServletContext
@@ -11,7 +12,7 @@ import org.scalatra.servlet.ScalatraListener
 object ConnectServer {
   val servletArguments = "servletArguments"
 
-  case class ServletArguments(secret: String, openmoleManagerURL: String)
+  case class ServletArguments(secret: String, openmoleManagerURL: String, resourceBase: java.io.File)
 
 }
 
@@ -34,7 +35,7 @@ class ConnectServer(port: Int, secret: String, openmoleManagerURL: String) {
 
     val startingContext = new WebAppContext()
     startingContext.setResourceBase("application/target/webapp")
-    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, openmoleManagerURL))
+    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, openmoleManagerURL, new java.io.File(new URI(startingContext.getResourceBase))))
     startingContext.setInitParameter(ScalatraListener.LifeCycleKey, classOf[ConnectBootstrap].getCanonicalName)
     startingContext.setContextPath("/")
     startingContext.addEventListener(new ScalatraListener)

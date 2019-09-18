@@ -11,6 +11,7 @@ val scalatagsVersion = "0.7.0"
 val scaladgetVersion = "1.2.7"
 val scalajsDomVersion = "0.9.7"
 val scalaJWTVersion = "3.1.0"
+val rosHttpVersion = "2.2.4"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -45,7 +46,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.eclipse.jetty" % "jetty-webapp" % jettyVersion,
     "org.eclipse.jetty" % "jetty-server" % jettyVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
-    "com.pauldijou" %% "jwt-core" % scalaJWTVersion
+    "com.pauldijou" %% "jwt-core" % scalaJWTVersion,
+    "fr.hmil" %% "roshttp" % rosHttpVersion
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
