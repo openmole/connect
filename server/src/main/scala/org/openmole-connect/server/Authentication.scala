@@ -2,10 +2,7 @@ package org.openmoleconnect.server
 
 
 import javax.servlet.http.{Cookie, HttpServletRequest}
-import org.openmoleconnect.server.DB.User
-import org.openmoleconnect.server.JWT.Secret
-
-import scala.util.{Failure, Success}
+import org.openmoleconnect.server.JWT.{Secret, TokenData}
 
 object Authentication {
 
@@ -28,6 +25,12 @@ object Authentication {
         println(authFailure.toString)
         false
       case Some(c: Cookie) => JWT.isTokenValid(c.getValue)
+    }
+  }
+
+  def tokenData(request: HttpServletRequest)(implicit secret: Secret): Option[TokenData] = {
+    cookie(request).flatMap { c =>
+      JWT.tokenData(c.getValue)
     }
   }
 

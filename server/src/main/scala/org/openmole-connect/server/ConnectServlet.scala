@@ -8,12 +8,12 @@ import fr.hmil.roshttp.Method
 import fr.hmil.roshttp.body.{ByteBufferBody, PlainTextBody}
 import fr.hmil.roshttp.response.StreamHttpResponse
 import javax.servlet.http.HttpServletRequest
+import org.openmoleconnect.server.JWT.TokenData
 import org.scalatra._
 
 import scala.concurrent.Await
 import scala.collection.JavaConversions._
 
-//import scala.concurrent.ExecutionContext.Implicits.global
 import org.openmoleconnect.server
 import scalatags.Text.all._
 import scalatags.Text.{all => tags}
@@ -53,7 +53,6 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   val forwardRequest = HttpRequest()
     .withProtocol(fr.hmil.roshttp.Protocol.HTTP)
     .withURL(arguments.publicAdress)
-    .withPath("")
 
   def headers(request: HttpServletRequest) = request.getHeaderNames.map { hn => hn -> request.getHeader(hn) }.toSeq
 
@@ -63,21 +62,16 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   }
 
-  def withConnection(action: HttpServletRequest => ActionResult): Serializable = {
-    val isValid = Authentication.isValid(request)
-
-    isValid match {
-      case false => connectionHtml
-      case true => action(request)
+  def withTokenData(action: TokenData => ActionResult): Serializable = {
+    Authentication.tokenData(request) match {
+      case Some(tokenData: TokenData) => action(tokenData)
+      case None => connectionHtml
     }
   }
 
   def connectionAppRedirection = {
-    val isValid = Authentication.isValid(request)
-
-    isValid match {
-      case false => connectionHtml
-      case true => proxyRequest
+    withTokenData { tokenData =>
+      proxyRequest
     }
   }
 
@@ -91,22 +85,23 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
   // OM instance requests
-  post("/*", Authentication.isValid(request)) {
-    println("post /*")
-    multiParams("splat").headOption match {
-      case Some(path) =>
-        val is = request.getInputStream
-        val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
-        val bb = ByteBuffer.wrap(bytes)
+  post("/*") {
+    withTokenData { tokenData =>
+      multiParams("splat").headOption match {
+        case Some(path) =>
+          val is = request.getInputStream
+          val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
+          val bb = ByteBuffer.wrap(bytes)
 
-        val req = waitForPost(
-          forwardRequest.withPath(s"/$path").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
-        )
+          val req = waitForPost(
+            forwardRequest.withPath(s"/${tokenData.uuid}/$path ").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
+          )
 
-        if (req.statusCode < 400) Ok(req.body)
-        else NotFound()
+          if (req.statusCode < 400) Ok(req.body)
+          else NotFound()
 
-      case None => NotFound()
+        case None => NotFound()
+      }
     }
   }
 
@@ -120,14 +115,21 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
         //Build cookie with JWT token if login/password are valid and redirect to the openmole manager url
         else {
-          if (DB.exists(DB.User(login, password))) {
-            val tokenAndContext = JWT.writeToken(login)
-            response.setHeader(
-              "Set-Cookie",
-              s"${Authentication.openmoleCookieKey}=${tokenAndContext.token};Expires=${tokenAndContext.expiresTime};HttpOnly;SameSite=Strict")
-            redirect("/")
+          DB.uuid(DB.User(login, password)) match {
+            case Some(uuid) =>
+              val tokenAndContext = JWT.writeToken(uuid)
+              response.setHeader(
+                "Set-Cookie",
+                s"${
+                  Authentication.openmoleCookieKey
+                }=${
+                  tokenAndContext.token
+                };Expires=${
+                  tokenAndContext.expiresTime
+                };HttpOnly;SameSite=Strict")
+              redirect("/")
+            case _ => connectionHtml
           }
-          else connectionHtml
         }
       case true =>
         //Already logged
@@ -144,11 +146,13 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       response.setHeader("Content-Disposition", "attachment; filename=" + localPath.getName)
       localPath
     } else {
-      Ok(
-        waitForGet(
-          forwardRequest.withHeader("Content-Type", requestContentType).withPath(path)
-        ).body
-      )
+      withTokenData { tokenData =>
+        Ok(
+          waitForGet(
+            forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid}/$path")
+          ).body
+        )
+      }
     }
   }
 
@@ -179,7 +183,9 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       tags.head(
         tags.meta(tags.httpEquiv := "Content-Type", tags.content := "text/html; charset=UTF-8"),
         tags.link(tags.rel := "stylesheet", tags.`type` := "text/css", href := "css/deps.css"),
-        Seq("connect-deps.js", "connect.js").map { jf => tags.script(tags.`type` := "text/javascript", tags.src := s"js/$jf") }
+        Seq("connect-deps.js", "connect.js").map {
+          jf => tags.script(tags.`type` := "text/javascript", tags.src := s"js/$jf ")
+        }
       ),
       tags.body(tags.onload := "connection();")
     )

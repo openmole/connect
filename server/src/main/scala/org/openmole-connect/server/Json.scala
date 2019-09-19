@@ -9,6 +9,7 @@ object Json {
 
   object key {
     val login = "login"
+    val uuid = "uuid"
   }
 
   def fromJson(json: String, jsonKey: String): String = {

@@ -19,34 +19,57 @@ object JWT {
 
   type Secret = String
   type Token = String
+
   case class TokenAndContext(token: Token, expiresTime: Long)
 
-  case class TokenData(login: Login, issued: Long, expirationTime: Long)
+  case class TokenData(login: Login, uuid: String, issued: Long, expirationTime: Long)
 
   implicit val formats = DefaultFormats
   val algorithm = JwtAlgorithm.HS256
 
-  def user(token: String)(implicit secret: Secret): Option[TokenData] = {
-    Jwt.decode(token, secret, Seq(JwtAlgorithm.HS256)).map{ jwtClaim=>
+  def tokenData(token: String)(implicit secret: Secret): Option[TokenData] = {
+    implicit val clock = Clock.systemUTC()
+
+    Jwt.decode(token, secret, Seq(JwtAlgorithm.HS256)).map { jwtClaim =>
       val login: Login = Json.fromJson(jwtClaim.content, Json.key.login)
-      TokenData(login, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
-    }.toOption
+      val uuid: UUID = Json.fromJson(jwtClaim.content, Json.key.uuid)
+      TokenData(login, uuid, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
+    }.toOption.filter {
+      hasExpired(_)
+    }
+  }
+
+  def hasExpired(token: String)(implicit secret: Secret): Option[JwtClaim] = {
+    Jwt.decode(token, secret, Seq(JwtAlgorithm.HS256)).toOption.filter { claim =>
+      hasExpired(claim.expiration.get)
+    }
+  }
+
+  def hasExpired(time: Long): Boolean = {
+    implicit val clock = Clock.systemUTC()
+    time > JwtTime.nowSeconds
+  }
+
+  def hasExpired(tokenData: TokenData)(implicit secret: Secret): Boolean = {
+    hasExpired(tokenData.expirationTime)
   }
 
   def isTokenValid(token: String)(implicit secret: Secret): Boolean =
     Jwt.isValid(token, secret, Seq(algorithm))
 
-  def writeToken(login: String)(implicit secret: Secret): TokenAndContext = {
+  def writeToken(uuid: String)(implicit secret: Secret): TokenAndContext = {
     implicit val clock = Clock.systemUTC()
 
-    val expires = 300
+    val expires = 300L
     val expirationTime = JwtTime.nowSeconds + expires
     TokenAndContext(
-    Jwt.encode(
-      JwtHeader(algorithm),
-      JwtClaim({s"""{"${Json.key.login}":"$login"}"""}).issuedNow.expiresIn(expirationTime),
-      secret
-    ),
+      Jwt.encode(
+        JwtHeader(algorithm),
+        JwtClaim({
+          s"""{"${Json.key.uuid}":"$uuid"}"""
+        }).issuedNow.expiresIn(expires),
+        secret
+      ),
       expirationTime
     )
 
