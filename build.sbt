@@ -10,7 +10,7 @@ val json4sVersion = "3.6.7"
 val scalatagsVersion = "0.7.0"
 val scaladgetVersion = "1.2.7"
 val scalajsDomVersion = "0.9.7"
-val scalaJWTVersion = "3.1.0"
+val scalaJWTVersion = "4.0.0"
 val rosHttpVersion = "2.2.4"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
