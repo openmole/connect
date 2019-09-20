@@ -71,6 +71,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def connectionAppRedirection = {
     withTokenData { tokenData =>
+      println("UP ??" + K8sService.isServiceUp(tokenData.uuid))
       proxyRequest
     }
   }

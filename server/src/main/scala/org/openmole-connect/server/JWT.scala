@@ -2,7 +2,7 @@ package org.openmoleconnect.server
 
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods._
-import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader, JwtTime}
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtBase64, JwtClaim, JwtHeader, JwtTime}
 import java.time.Clock
 
 import DB._

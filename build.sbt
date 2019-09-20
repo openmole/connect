@@ -12,6 +12,7 @@ val scaladgetVersion = "1.2.7"
 val scalajsDomVersion = "0.9.7"
 val scalaJWTVersion = "4.0.0"
 val rosHttpVersion = "2.2.4"
+val skuberVersion = "2.2.0"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -47,11 +48,12 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.eclipse.jetty" % "jetty-server" % jettyVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
     "com.pauldijou" %% "jwt-core" % scalaJWTVersion,
-    "fr.hmil" %% "roshttp" % rosHttpVersion
+    "fr.hmil" %% "roshttp" % rosHttpVersion,
+    "io.skuber" %% "skuber" % skuberVersion
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
-lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins(JavaServerAppPackaging) settings(
+lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins (JavaServerAppPackaging) settings(
   dockerCommands := Seq(
     Cmd("FROM", "gafiatulin/alpine-sbt as simop"),
     Cmd("RUN", "apk update && apk add bash git sudo nodejs-npm"),
