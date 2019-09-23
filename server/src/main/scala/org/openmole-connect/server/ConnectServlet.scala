@@ -1,28 +1,24 @@
 package org.openmoleconnect.server
 
-import java.net.URI
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 
 import fr.hmil.roshttp.Method
 import fr.hmil.roshttp.body.{ByteBufferBody, PlainTextBody}
-import fr.hmil.roshttp.response.StreamHttpResponse
 import javax.servlet.http.HttpServletRequest
-import org.openmoleconnect.server.JWT.TokenData
+import org.openmoleconnect.server.JWT._
 import org.scalatra._
 
 import scala.concurrent.Await
 import scala.collection.JavaConversions._
-
-import org.openmoleconnect.server
 import scalatags.Text.all._
 import scalatags.Text.{all => tags}
+
 import scala.concurrent.duration._
 import shared.Data._
 
 import fr.hmil.roshttp.HttpRequest
 import monix.execution.Scheduler.Implicits.global
-import scala.util.{Failure, Success}
+
 import fr.hmil.roshttp.response.SimpleHttpResponse
 
 class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
@@ -62,15 +58,31 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   }
 
-  def withTokenData(action: TokenData => ActionResult): Serializable = {
-    Authentication.tokenData(request) match {
+  def withAccesToken(action: TokenData => ActionResult): Serializable = {
+    Authentication.tokenData(request, TokenType.accessToken) match {
+      case Some(tokenData: TokenData) => action(tokenData)
+      case None =>
+        Authentication.isValid(request, TokenType.refreshToken) match {
+          case true =>
+            withRefreshToken { refreshToken =>
+              val tokenData = TokenData.accessToken(refreshToken.login, refreshToken.uuid)
+              buildAndAddCookieToHeader(tokenData)
+              action(tokenData)
+            }
+          case false => connectionHtml
+        }
+    }
+  }
+
+  def withRefreshToken(action: TokenData => ActionResult): Serializable = {
+    Authentication.tokenData(request, TokenType.refreshToken) match {
       case Some(tokenData: TokenData) => action(tokenData)
       case None => connectionHtml
     }
   }
 
   def connectionAppRedirection = {
-    withTokenData { tokenData =>
+    withAccesToken { tokenData =>
       println("UP ??" + K8sService.isServiceUp(tokenData.uuid))
       proxyRequest
     }
@@ -87,7 +99,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   // OM instance requests
   post("/*") {
-    withTokenData { tokenData =>
+    withAccesToken { tokenData =>
       multiParams("splat").headOption match {
         case Some(path) =>
           val is = request.getInputStream
@@ -107,10 +119,11 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
   post(connectionRoute) {
-    Authentication.isValid(request) match {
+    Authentication.isValid(request, TokenType.accessToken) match {
       case false =>
-        // Get login and password from the post request parameters
         val login = params.getOrElse("login", "")
+
+        // Get login and password from the post request parameters
         val password = params.getOrElse("password", "")
         if (login.isEmpty || password.isEmpty) connectionHtml
 
@@ -118,16 +131,8 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         else {
           DB.uuid(DB.User(login, password)) match {
             case Some(uuid) =>
-              val tokenAndContext = JWT.writeToken(uuid)
-              response.setHeader(
-                "Set-Cookie",
-                s"${
-                  Authentication.openmoleCookieKey
-                }=${
-                  tokenAndContext.token
-                };Expires=${
-                  tokenAndContext.expiresTime
-                };HttpOnly;SameSite=Strict")
+              buildAndAddCookieToHeader(TokenData.accessToken(uuid, login))
+              buildAndAddCookieToHeader(TokenData.refreshToken(uuid, login))
               redirect("/")
             case _ => connectionHtml
           }
@@ -139,6 +144,15 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
 
+  private def buildAndAddCookieToHeader(tokenData: TokenData) = {
+
+    val format = new java.text.SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss z", new java.util.Locale("en"))
+
+    response.addHeader(
+      "Set-Cookie",
+      s"${tokenData.tokenType.cookieKey}=${tokenData.toContent};Expires=${format.format(tokenData.expirationTime)};HttpOnly;SameSite=Strict")
+  }
+
   private def getResource(path: String, requestContentType: String) = {
     val localPath = new java.io.File(arguments.resourceBase, request.uri.getPath)
 
@@ -147,7 +161,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       response.setHeader("Content-Disposition", "attachment; filename=" + localPath.getName)
       localPath
     } else {
-      withTokenData { tokenData =>
+      withAccesToken { tokenData =>
         Ok(
           waitForGet(
             forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid}/$path")

@@ -2,25 +2,24 @@ package org.openmoleconnect.server
 
 
 import javax.servlet.http.{Cookie, HttpServletRequest}
-import org.openmoleconnect.server.JWT.{Secret, TokenData}
+import org.openmoleconnect.server.JWT._
 
 object Authentication {
 
-  val openmoleCookieKey = "openmole_cookie"
 
-  def cookie(request: HttpServletRequest) = {
+  def cookie(request: HttpServletRequest, tokenType: TokenType) = {
     if (request.getCookies != null)
-      request.getCookies.find((c: Cookie) => c.getName == openmoleCookieKey)
+      request.getCookies.find((c: Cookie) => c.getName == tokenType.cookieKey)
     else None
   }
 
-  def isValid(request: HttpServletRequest)(implicit secret: Secret): Boolean = {
-    cookie(request) match {
+  def isValid(request: HttpServletRequest, tokenType: TokenType)(implicit secret: Secret): Boolean = {
+    cookie(request, tokenType) match {
       case None =>
         val authFailure = AuthenticationFailure(request.getHeader("User-Agent"),
           request.getRequestURL.toString,
           request.getRemoteAddr)
-        println("Error: openmole_cookie cookie not found")
+        println(s"Error: cookie not found")
         println("More information:")
         println(authFailure.toString)
         false
@@ -28,12 +27,11 @@ object Authentication {
     }
   }
 
-  def tokenData(request: HttpServletRequest)(implicit secret: Secret): Option[TokenData] = {
-    cookie(request).flatMap { c =>
-      JWT.tokenData(c.getValue)
+  def tokenData(request: HttpServletRequest, tokenType: TokenType)(implicit secret: Secret): Option[TokenData] = {
+    cookie(request, tokenType).flatMap { c =>
+      JWT.TokenData.fromTokenContent(c.getValue, tokenType)
     }
   }
-
 }
 
 case class AuthenticationFailure(userAgent: String,
