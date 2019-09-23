@@ -25,5 +25,10 @@ $ sbt application/docker:publishLocal
 
 ### Run the container
 ```sh 
-docker run --name connectApplication -p 7700:8080 openmole-connect:$VERSION
+run --name openmoleApplication -p $PORT:8080 openmole-connect:$VERSION --secret $SECRET --public-adress $PUBLIC_ADRESS
 ```
+
+- *PORT* is the port for the openmole-connect application
+- *VERSION* is the docker image version
+- *SECRET* is the secret string used to signed the JWT tokens
+- *PUBLIC_ADRESSS* is the public url used as proxy to connect the openmole instances
