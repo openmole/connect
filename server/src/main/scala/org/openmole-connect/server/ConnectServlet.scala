@@ -18,13 +18,12 @@ import shared.Data._
 
 import fr.hmil.roshttp.HttpRequest
 import monix.execution.Scheduler.Implicits.global
-
 import fr.hmil.roshttp.response.SimpleHttpResponse
+import org.openmoleconnect.server.DB._
 
 class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
 
 
-  val basePath = "shared"
   implicit val secret: JWT.Secret = arguments.secret
 
   val allowHeaders = Seq(
@@ -52,8 +51,10 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def headers(request: HttpServletRequest) = request.getHeaderNames.map { hn => hn -> request.getHeader(hn) }.toSeq
 
-  def proxyRequest = {
-    val fR = waitForGet(forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*))
+  def proxyRequest(uuid: UUID) = {
+
+    val req = forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*).withPath(s"/${uuid.value}")
+    val fR = waitForGet(req)
     Ok(fR.body, fR.headers)
 
   }
@@ -65,7 +66,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         Authentication.isValid(request, TokenType.refreshToken) match {
           case true =>
             withRefreshToken { refreshToken =>
-              val tokenData = TokenData.accessToken(refreshToken.login, refreshToken.uuid)
+              val tokenData = TokenData.accessToken(refreshToken.uuid, refreshToken.login)
               buildAndAddCookieToHeader(tokenData)
               action(tokenData)
             }
@@ -83,8 +84,8 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def connectionAppRedirection = {
     withAccesToken { tokenData =>
-      println("UP ??" + K8sService.isServiceUp(tokenData.uuid))
-      proxyRequest
+     // println("UP ??" + K8sService.isServiceUp(tokenData.uuid))
+      proxyRequest(tokenData.uuid)
     }
   }
 
@@ -107,7 +108,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
           val bb = ByteBuffer.wrap(bytes)
 
           val req = waitForPost(
-            forwardRequest.withPath(s"/${tokenData.uuid}/$path ").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
+            forwardRequest.withPath(s"/${tokenData.uuid.value}/$path ").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
           )
 
           if (req.statusCode < 400) Ok(req.body)
@@ -129,10 +130,10 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
         //Build cookie with JWT token if login/password are valid and redirect to the openmole manager url
         else {
-          DB.uuid(DB.User(login, password)) match {
+          DB.uuid(DB.User(DB.Login(login), DB.Password(password))) match {
             case Some(uuid) =>
-              buildAndAddCookieToHeader(TokenData.accessToken(uuid, login))
-              buildAndAddCookieToHeader(TokenData.refreshToken(uuid, login))
+              buildAndAddCookieToHeader(TokenData.accessToken(uuid, DB.Login(login)))
+              buildAndAddCookieToHeader(TokenData.refreshToken(uuid, DB.Login(login)))
               redirect("/")
             case _ => connectionHtml
           }
@@ -164,7 +165,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       withAccesToken { tokenData =>
         Ok(
           waitForGet(
-            forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid}/$path")
+            forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid.value}/$path")
           ).body
         )
       }

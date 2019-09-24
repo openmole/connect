@@ -56,7 +56,7 @@ object K8sService {
     Await.result(
       listPods.map { list =>
         list.find {
-          _.name.contains(uuid)
+          _.name.contains(uuid.value)
         }
       }, 1 minute)
   }

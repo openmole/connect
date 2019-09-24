@@ -1,13 +1,15 @@
 package org.openmoleconnect.server
 
 object DB {
-  type Login = String
-  type UUID = String
-  type Password = String
 
-  case class User(login: Login, password: Login, uuid: UUID = "")
+  case class UUID(value: String)
+  case class Login(value: String)
+  case class Password(value: String)
 
-  private val users = Seq(User("foo", "foo", "foo-123-567-foo"), User("bar", "bar", "bar-123-567-bar"))
+
+  case class User(login: Login, password: Password, uuid: UUID = UUID(""))
+
+  private val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
   def uuid(login: Login): Option[UUID] = users.find(_.login == login).map{_.uuid}
 

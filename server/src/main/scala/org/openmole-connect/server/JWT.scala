@@ -33,8 +33,8 @@ object JWT {
   object TokenData {
     def fromTokenContent(content: String, tokenType: TokenType)(implicit secret: Secret) = {
       Jwt.decode(content, secret, Seq(JwtAlgorithm.HS256)).map { jwtClaim =>
-        val login: Login = Json.fromJson(jwtClaim.content, Json.key.login)
-        val uuid: UUID = Json.fromJson(jwtClaim.content, Json.key.uuid)
+        val login: Login = Login(Json.fromJson(jwtClaim.content, Json.key.login))
+        val uuid: UUID = UUID(Json.fromJson(jwtClaim.content, Json.key.uuid))
         TokenData(login, uuid, jwtClaim.issuedAt.get, jwtClaim.expiration.get, tokenType)
       }.toOption.filter {
         hasExpired(_)
@@ -51,7 +51,7 @@ object JWT {
     def toContent(implicit secret: Secret) = {
       implicit val clock = Clock.systemUTC()
 
-      val claims = Seq((Json.key.uuid, uuid), (Json.key.login, login))
+      val claims = Seq((Json.key.uuid, uuid.value), (Json.key.login, login.value))
 
       val expandedClaims = claims.map { case (k, v) =>
         s"""
