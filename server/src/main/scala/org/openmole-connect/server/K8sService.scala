@@ -17,7 +17,8 @@ object K8sService {
                       name: String,
                       status: String,
                       restarts: Int,
-                      createTime: Timestamp
+                      createTime: Timestamp,
+                      podIP: String
                     )
 
 
@@ -29,9 +30,15 @@ object K8sService {
 
     val k8s = k8sInit
 
-    val podList: Future[PodList] = k8s list[PodList]()
+//    val podList: Future[PodList] = k8s list[PodList]()    // list pod in default namespaces
+    // list pods in all namespaces
+    val allPodsMapFut: Future[Map[String, PodList]] = k8s listByNamespace[PodList]()
+    val podList: Future[List[Pod]] = allPodsMapFut map { allPodsMap =>
+      allPodsMap.values.flatMap(_.items).toList
+    }
+
     podList map {
-      _.items.flatMap {
+      _.flatMap {
         pod: Pod =>
           println("POD " + pod.name)
           val name = pod.name
@@ -43,8 +50,9 @@ object K8sService {
             status <- containerStat.state
             restarts <- stat.containerStatuses.headOption
             createTime <- pod.metadata.creationTimestamp
+            podIP <- stat.podIP
           } yield {
-            PodInfo(name, status.toString.slice(0, status.toString.indexOf("(")), restarts.restartCount, createTime)
+            PodInfo(name, status.toString.slice(0, status.toString.indexOf("(")), restarts.restartCount, createTime, podIP)
           })
       }
     }
