@@ -79,4 +79,6 @@ object K8sService {
     //      case false => addService(uuid)
     //    }
   }
+
+  def podIP(uuid:UUID) = pod(uuid).map{_.podIP}
 }

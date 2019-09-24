@@ -45,18 +45,23 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
 
-  val forwardRequest = HttpRequest()
+  val baseForwardRequest = HttpRequest()
     .withProtocol(fr.hmil.roshttp.Protocol.HTTP)
-    .withURL(arguments.publicAdress)
 
   def headers(request: HttpServletRequest) = request.getHeaderNames.map { hn => hn -> request.getHeader(hn) }.toSeq
 
   def proxyRequest(uuid: UUID) = {
+    withForwardRequest(uuid){ forwardRequest=>
+      val req = forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*)
+      val fR = waitForGet(req)
+      Ok(fR.body, fR.headers)
+    }.getOrElse(NotFound())
+  }
 
-    val req = forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*).withPath(s"/${uuid.value}")
-    val fR = waitForGet(req)
-    Ok(fR.body, fR.headers)
-
+  def withForwardRequest(uuid: UUID)(action: HttpRequest=> ActionResult): Option[ActionResult] = {
+    K8sService.podIP(uuid).map { podIP =>
+      action(baseForwardRequest.withURL(podIP))
+    }
   }
 
   def withAccesToken(action: TokenData => ActionResult): Serializable = {
@@ -101,21 +106,23 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   // OM instance requests
   post("/*") {
     withAccesToken { tokenData =>
-      multiParams("splat").headOption match {
-        case Some(path) =>
-          val is = request.getInputStream
-          val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
-          val bb = ByteBuffer.wrap(bytes)
+      withForwardRequest(tokenData.uuid) { forwardRequest =>
+        multiParams("splat").headOption match {
+          case Some(path) =>
+            val is = request.getInputStream
+            val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
+            val bb = ByteBuffer.wrap(bytes)
 
-          val req = waitForPost(
-            forwardRequest.withPath(s"/${tokenData.uuid.value}/$path ").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
-          )
+            val req = waitForPost(
+              forwardRequest.withPath(s"/$path").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
+            )
 
-          if (req.statusCode < 400) Ok(req.body)
-          else NotFound()
+            if (req.statusCode < 400) Ok(req.body)
+            else NotFound()
 
-        case None => NotFound()
-      }
+          case None => NotFound()
+        }
+      }.getOrElse(NotFound())
     }
   }
 
@@ -163,11 +170,13 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       localPath
     } else {
       withAccesToken { tokenData =>
-        Ok(
-          waitForGet(
-            forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid.value}/$path")
-          ).body
-        )
+        withForwardRequest(tokenData.uuid) { forwardRequest =>
+          Ok(
+            waitForGet(
+              forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid.value}/$path")
+            ).body
+          )
+        }.getOrElse(NotFound())
       }
     }
   }
