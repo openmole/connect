@@ -40,7 +40,6 @@ object K8sService {
     podList map {
       _.flatMap {
         pod: Pod =>
-          println("POD " + pod.name)
           val name = pod.name
           val ns = pod.namespace
 

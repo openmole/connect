@@ -60,7 +60,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def withForwardRequest(uuid: UUID)(action: HttpRequest=> ActionResult): Option[ActionResult] = {
     K8sService.podIP(uuid).map { podIP =>
-      action(baseForwardRequest.withURL(podIP))
+      action(baseForwardRequest.withHost(podIP).withPort(80).withPath(""))
     }
   }
 
@@ -89,7 +89,6 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def connectionAppRedirection = {
     withAccesToken { tokenData =>
-      println("UP ??" + K8sService.isServiceUp(tokenData.uuid))
       proxyRequest(tokenData.uuid)
     }
   }
@@ -173,7 +172,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         withForwardRequest(tokenData.uuid) { forwardRequest =>
           Ok(
             waitForGet(
-              forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"/${tokenData.uuid.value}/$path")
+              forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"$path")
             ).body
           )
         }.getOrElse(NotFound())
