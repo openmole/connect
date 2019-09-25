@@ -12,7 +12,7 @@ import org.scalatra.servlet.ScalatraListener
 object ConnectServer {
   val servletArguments = "servletArguments"
 
-  case class ServletArguments(secret: String, publicAdress: String, resourceBase: java.io.File)
+  case class ServletArguments(secret: String, resourceBase: java.io.File)
 
 }
 
@@ -23,19 +23,19 @@ class ConnectBootstrap extends LifeCycle {
   }
 }
 
-class ConnectServer(port: Int, secret: String, publicAdress: String) {
+class ConnectServer(secret: String) {
 
 
   def start() = {
 
     val server = new Server()
     val connector = new ServerConnector(server)
-    connector.setPort(port)
+    connector.setPort(8080)
     server.addConnector(connector)
 
     val startingContext = new WebAppContext()
     startingContext.setResourceBase("application/target/webapp")
-    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, publicAdress, new java.io.File(new URI(startingContext.getResourceBase))))
+    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, new java.io.File(new URI(startingContext.getResourceBase))))
     startingContext.setInitParameter(ScalatraListener.LifeCycleKey, classOf[ConnectBootstrap].getCanonicalName)
     startingContext.setContextPath("/")
     startingContext.addEventListener(new ScalatraListener)
