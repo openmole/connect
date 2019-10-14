@@ -79,5 +79,5 @@ object K8sService {
     //    }
   }
 
-  def podIP(uuid:UUID) = pod(uuid).map{_.podIP}
+  def hostIP(uuid:UUID) = pod(uuid).map{_.podIP}
 }

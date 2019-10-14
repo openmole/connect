@@ -50,18 +50,18 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def headers(request: HttpServletRequest) = request.getHeaderNames.map { hn => hn -> request.getHeader(hn) }.toSeq
 
-  def proxyRequest(uuid: UUID) = {
-    withForwardRequest(uuid){ forwardRequest=>
-      val req = forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*)
-      val fR = waitForGet(req)
-      Ok(fR.body, fR.headers)
-    }.getOrElse(NotFound())
+  def proxyRequest(hostIP: Option[String]) = {
+    hostIP.map { hip =>
+      withForwardRequest(hip) { forwardRequest =>
+        val req = forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*)
+        val fR = waitForGet(req)
+        Ok(fR.body, fR.headers)
+      }
+    }
   }
 
-  def withForwardRequest(uuid: UUID)(action: HttpRequest=> ActionResult): Option[ActionResult] = {
-    K8sService.podIP(uuid).map { podIP =>
-      action(baseForwardRequest.withHost(podIP).withPort(80).withPath(""))
-    }
+  def withForwardRequest(hostIP: String)(action: HttpRequest => ActionResult): ActionResult = {
+    action(baseForwardRequest.withHost(hostIP).withPort(80).withPath(""))
   }
 
   def withAccesToken(action: TokenData => ActionResult): Serializable = {
@@ -71,7 +71,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         Authentication.isValid(request, TokenType.refreshToken) match {
           case true =>
             withRefreshToken { refreshToken =>
-              val tokenData = TokenData.accessToken(refreshToken.uuid, refreshToken.login)
+              val tokenData = TokenData.accessToken(refreshToken.host, refreshToken.login)
               buildAndAddCookieToHeader(tokenData)
               action(tokenData)
             }
@@ -89,7 +89,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def connectionAppRedirection = {
     withAccesToken { tokenData =>
-      proxyRequest(tokenData.uuid)
+      proxyRequest(tokenData.host.hostIP).getOrElse(NotFound())
     }
   }
 
@@ -105,21 +105,23 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   // OM instance requests
   post("/*") {
     withAccesToken { tokenData =>
-      withForwardRequest(tokenData.uuid) { forwardRequest =>
-        multiParams("splat").headOption match {
-          case Some(path) =>
-            val is = request.getInputStream
-            val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
-            val bb = ByteBuffer.wrap(bytes)
+      tokenData.host.hostIP.map { hip =>
+        withForwardRequest(hip) { forwardRequest =>
+          multiParams("splat").headOption match {
+            case Some(path) =>
+              val is = request.getInputStream
+              val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
+              val bb = ByteBuffer.wrap(bytes)
 
-            val req = waitForPost(
-              forwardRequest.withPath(s"/$path").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
-            )
+              val req = waitForPost(
+                forwardRequest.withPath(s"/$path").withHeader("Content-Type", "application/octet-stream").withBody(ByteBufferBody(bb))
+              )
 
-            if (req.statusCode < 400) Ok(req.body)
-            else NotFound()
+              if (req.statusCode < 400) Ok(req.body)
+              else NotFound()
 
-          case None => NotFound()
+            case None => NotFound()
+          }
         }
       }.getOrElse(NotFound())
     }
@@ -138,8 +140,9 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         else {
           DB.uuid(DB.User(DB.Login(login), DB.Password(password))) match {
             case Some(uuid) =>
-              buildAndAddCookieToHeader(TokenData.accessToken(uuid, DB.Login(login)))
-              buildAndAddCookieToHeader(TokenData.refreshToken(uuid, DB.Login(login)))
+              val host = Host(uuid, K8sService.hostIP(uuid))
+              buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Login(login)))
+              buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Login(login)))
               redirect("/")
             case _ => connectionHtml
           }
@@ -169,12 +172,14 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       localPath
     } else {
       withAccesToken { tokenData =>
-        withForwardRequest(tokenData.uuid) { forwardRequest =>
-          Ok(
-            waitForGet(
-              forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"$path")
-            ).body
-          )
+        tokenData.host.hostIP.map { hip =>
+          withForwardRequest(hip) { forwardRequest =>
+            Ok(
+              waitForGet(
+                forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"$path")
+              ).body
+            )
+          }
         }.getOrElse(NotFound())
       }
     }
