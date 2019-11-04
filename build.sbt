@@ -49,7 +49,9 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.json4s" %% "json4s-jackson" % json4sVersion,
     "com.pauldijou" %% "jwt-core" % scalaJWTVersion,
     "fr.hmil" %% "roshttp" % rosHttpVersion,
-    "io.skuber" %% "skuber" % skuberVersion
+    "org.scalaj" %% "scalaj-http" % "2.4.2",
+    "io.skuber" %% "skuber" % skuberVersion,
+    "io.suzaku" %% "boopickle" % "1.2.6"
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
