@@ -1,32 +1,23 @@
 package org.openmoleconnect.server
 
-import java.nio.{ByteBuffer, ByteOrder}
+import java.net.URI
 
-import fr.hmil.roshttp.Method
-import fr.hmil.roshttp.body.{ByteBufferBody, PlainTextBody}
-import javax.servlet.http.HttpServletRequest
 import org.openmoleconnect.server.JWT._
 import org.scalatra._
 
-import scala.concurrent.Await
 import scala.collection.JavaConversions._
 import scalatags.Text.all._
 import scalatags.Text.{all => tags}
 
 import scala.concurrent.duration._
 import shared.Data._
-import boopickle.Default._
-import fr.hmil.roshttp.HttpRequest
 import monix.execution.Scheduler.Implicits.global
-import fr.hmil.roshttp.response.SimpleHttpResponse
-import javax.servlet.ServletInputStream
 import org.apache.commons.io.IOUtils
 import org.apache.http.client.HttpClient
-import org.apache.http.client.methods.HttpPost
+import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.entity.InputStreamEntity
 import org.apache.http.impl.client.HttpClients
-import org.openmoleconnect.server.DB._
 
 
 class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
@@ -34,51 +25,15 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   implicit val secret: JWT.Secret = arguments.secret
 
-  val allowHeaders = Seq(
-    ("Access-Control-Allow-Origin", "*"),
-    ("Access-Control-Allow-Methods", "POST, GET, PUT, UPDATE, OPTIONS"),
-    ("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With")
-  )
+  val httpClient = HttpClients.createDefault()
 
-  def waitForGet(httpRequest: HttpRequest) = {
-    Await.result(
-      httpRequest.get()
-      , 1 minute)
-  }
+  def uriBuilder(hostIP: String, path: String) = new URIBuilder()
+    .setScheme("http")
+    .setHost(hostIP)
+    .setPort(80)
+    .setPath(path)
 
-  def waitForPost(httpRequest: HttpRequest) = {
-    Await.result(
-      httpRequest.withMethod(Method.POST).send(),
-      1 minute)
-  }
-
-  def waitForPost2(httpRequest: HttpRequest) = {
-    Await.result(
-      httpRequest.withMethod(Method.POST).send(),
-      1 minute)
-  }
-
-
-  val baseForwardRequest = HttpRequest()
-    .withProtocol(fr.hmil.roshttp.Protocol.HTTP)
-
-  def headers(request: HttpServletRequest) = request.getHeaderNames.map { hn => hn -> request.getHeader(hn) }.toSeq
-
-  def proxyRequest(hostIP: Option[String]) = {
-    hostIP.map { hip =>
-      println("HIP " + hip)
-      withForwardRequest(hip) { forwardRequest =>
-        val req = forwardRequest.withHeaders((headers(request)): _*).withHeaders(allowHeaders: _*)
-        val fR = waitForGet(req)
-        Ok(fR.body, fR.headers)
-      }
-    }
-  }
-
-  //def withForwardRequest(hostIP: String)(action: HttpRequest => ActionResult): ActionResult = {
-  def withForwardRequest(hostIP: String)(action: HttpRequest => ActionResult): ActionResult = {
-    action(baseForwardRequest.withHost(hostIP).withPort(80).withPath(""))
-  }
+  def uri(hostIP: String, path: String) = uriBuilder(hostIP, path).build()
 
   def withAccesToken(action: TokenData => ActionResult): Serializable = {
     Authentication.tokenData(request, TokenType.accessToken) match {
@@ -105,7 +60,10 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def connectionAppRedirection = {
     withAccesToken { tokenData =>
-      proxyRequest(tokenData.host.hostIP).getOrElse(NotFound())
+      tokenData.host.hostIP.map { hip =>
+        getFromHip(hip)
+        Ok()
+      }.getOrElse(NotFound())
     }
   }
 
@@ -122,40 +80,25 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   post("/*") {
     withAccesToken { tokenData =>
       tokenData.host.hostIP.map { hip =>
-        // withForwardRequest(hip) { forwardRequest =>
-        val forwardRequest = baseForwardRequest.withHost(hip).withPort(80).withPath("")
         multiParams("splat").headOption match {
           case Some(path) =>
             val is = request.getInputStream
 
-            println("request: " + s"http://$hip/$path")
-            val uri = new URIBuilder()
-              .setScheme("http")
-              .setHost(hip)
-              .setPort(80)
-              .setPath(path)
-              .build()
-
-            val httpPost = new HttpPost(uri)
+            val httpPost = new HttpPost(uri(hip, path))
             httpPost.setEntity(new InputStreamEntity(is))
-
 
             val filtred = Seq("Content-Length")
             request.getHeaderNames.filter(n => !filtred.contains(n)).foreach {
               n => httpPost.setHeader(n, request.getHeader(n))
             }
 
-            // Add timeout
-            val client = HttpClients.createDefault()
-
-            val forwardResponse = client.execute(httpPost)
-
+            // TODO: Add timeout
+            val forwardResponse = httpClient.execute(httpPost)
             response.setStatus(forwardResponse.getStatusLine.getStatusCode)
             IOUtils.copy(forwardResponse.getEntity.getContent, response.getOutputStream())
 
             Ok()
           case None => NotFound()
-          //  }
         }
       }.getOrElse(NotFound())
     }
@@ -219,32 +162,38 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     } else {
       withAccesToken { tokenData =>
         tokenData.host.hostIP.map { hip =>
-          withForwardRequest(hip) { forwardRequest =>
-            Ok(
-              waitForGet(
-                forwardRequest.withHeader("Content-Type", requestContentType).withPath(s"$path")
-              ).body
-            )
+
+          val u = uriBuilder(hip, path)
+          request.getParameterNames.foreach {pn=>
+            u.addParameter(pn, request.getParameter(pn))
           }
+
+          getFromURI(u.build(), requestContentType)
+          response
+          Ok()
         }.getOrElse(NotFound())
       }
     }
   }
 
-  get("/js/*.*") {
-    getResource(request.uri.getPath, "application/javascript")
+
+  def getFromURI(uri: URI, requestContentType: String): Int = {
+    val httpGet = new HttpGet(uri)
+
+    httpGet.setHeader("Content-Type", requestContentType)
+    val forwardResponse = httpClient.execute(httpGet)
+
+    response.setStatus(forwardResponse.getStatusLine.getStatusCode)
+    IOUtils.copy(forwardResponse.getEntity.getContent, response.getOutputStream())
   }
 
-  get("/css/*.*") {
-    getResource(request.uri.getPath, "text/css")
+
+  def getFromHip(hip: String): Int = {
+    getFromURI(uri(hip, ""), "html")
   }
 
-  get("/img/*.*") {
-    getResource(request.uri.getPath, request.contentType.getOrElse(""))
-  }
-
-  get("/fonts/*.*") {
-    getResource(request.uri.getPath, request.contentType.getOrElse(""))
+  get("/*") {
+    getResource(request.uri.getPath, request.getContentType)
   }
 
   get("/") {

@@ -13,6 +13,7 @@ val scalajsDomVersion = "0.9.7"
 val scalaJWTVersion = "4.0.0"
 val rosHttpVersion = "2.2.4"
 val skuberVersion = "2.2.0"
+val httpComponentsVersion = "4.5.9"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -48,10 +49,9 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.eclipse.jetty" % "jetty-server" % jettyVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
     "com.pauldijou" %% "jwt-core" % scalaJWTVersion,
-    "fr.hmil" %% "roshttp" % rosHttpVersion,
     "org.scalaj" %% "scalaj-http" % "2.4.2",
     "io.skuber" %% "skuber" % skuberVersion,
-    "io.suzaku" %% "boopickle" % "1.3.1",
+    "io.monix" %% "monix" % "3.0.0",
     "org.apache.httpcomponents" % "httpclient" % "4.5.9",
     "org.apache.httpcomponents" % "httpmime" % "4.5.9",
   )
