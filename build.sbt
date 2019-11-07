@@ -51,7 +51,9 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "fr.hmil" %% "roshttp" % rosHttpVersion,
     "org.scalaj" %% "scalaj-http" % "2.4.2",
     "io.skuber" %% "skuber" % skuberVersion,
-    "io.suzaku" %% "boopickle" % "1.2.6"
+    "io.suzaku" %% "boopickle" % "1.3.1",
+    "org.apache.httpcomponents" % "httpclient" % "4.5.9",
+    "org.apache.httpcomponents" % "httpmime" % "4.5.9",
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
