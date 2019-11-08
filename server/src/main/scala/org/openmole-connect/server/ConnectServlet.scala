@@ -143,13 +143,17 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
 
+  val dateFormat = new java.text.SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss z", new java.util.Locale("en"))
+
+
   private def buildAndAddCookieToHeader(tokenData: TokenData) = {
-
-    val format = new java.text.SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss z", new java.util.Locale("en"))
-
     response.addHeader(
       "Set-Cookie",
-      s"${tokenData.tokenType.cookieKey}=${tokenData.toContent};Expires=${format.format(tokenData.expirationTime)};HttpOnly;SameSite=Strict")
+      s"${tokenData.tokenType.cookieKey}=${tokenData.toContent};Expires=${dateFormat.format(tokenData.expirationTime)};HttpOnly;SameSite=Strict")
+  }
+
+  private def deleteCookie(tokenData: TokenData) = {
+    response.setHeader("Set-Cookie", s"${tokenData.tokenType.cookieKey}=;Expires=${dateFormat.format(0L)}")
   }
 
   private def getResource(path: String, requestContentType: String) = {
@@ -164,7 +168,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         tokenData.host.hostIP.map { hip =>
 
           val u = uriBuilder(hip, path)
-          request.getParameterNames.foreach {pn=>
+          request.getParameterNames.foreach { pn =>
             u.addParameter(pn, request.getParameter(pn))
           }
 
@@ -194,6 +198,17 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   get("/*") {
     getResource(request.uri.getPath, request.getContentType)
+  }
+
+  get("/logout") {
+    withAccesToken { accessTokenData =>
+      withRefreshToken {refreshTokenData =>
+        deleteCookie(refreshTokenData)
+        deleteCookie(accessTokenData)
+        Ok()
+      }
+      Ok()
+    }
   }
 
   get("/") {
