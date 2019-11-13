@@ -197,7 +197,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
   get("/*") {
-    getResource(request.uri.getPath, request.getContentType)
+    getResource(request.uri.getPath, request.contentType.getOrElse("html"))
   }
 
   get("/") {
