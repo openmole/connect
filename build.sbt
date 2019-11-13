@@ -14,6 +14,8 @@ val scalaJWTVersion = "4.0.0"
 val rosHttpVersion = "2.2.4"
 val skuberVersion = "2.2.0"
 val httpComponentsVersion = "4.5.9"
+val slickVersion = "3.3.1"
+val h2Version ="1.4.200"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -52,8 +54,10 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.scalaj" %% "scalaj-http" % "2.4.2",
     "io.skuber" %% "skuber" % skuberVersion,
     "io.monix" %% "monix" % "3.0.0",
-    "org.apache.httpcomponents" % "httpclient" % "4.5.9",
-    "org.apache.httpcomponents" % "httpmime" % "4.5.9",
+    "org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
+    "org.apache.httpcomponents" % "httpmime" % httpComponentsVersion,
+    "com.typesafe.slick" %% "slick" % slickVersion,
+    "com.h2database" % "h2" % h2Version
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
