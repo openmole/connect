@@ -36,12 +36,15 @@ object Application extends App {
   config.launchMode match {
     case HelpMode ⇒ println(usage)
     case ServerMode =>
-
       if (!Settings.location.exists)
         Settings.location.mkdirs()
-      DB.initDB()
+      DB.initDB
       val server = new ConnectServer(secret = config.tokenSecret)
       server.start()
   }
+
+ // DB.addUser(DB.Login("moo"), DB.Password("moo"), "moo@me.com")
+
+  println(DB.users)
 
 }

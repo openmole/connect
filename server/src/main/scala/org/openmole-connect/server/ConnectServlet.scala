@@ -127,7 +127,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
         //Build cookie with JWT token if login/password are valid and redirect to the openmole manager url
         else {
-          DB.uuid(DB.User(DB.Login(login), DB.Password(password))) match {
+          DB.uuid(DB.Login(login), DB.Password(password)) match {
             case Some(uuid) =>
               val host = Host(uuid, K8sService.hostIP(uuid))
               buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Login(login)))
