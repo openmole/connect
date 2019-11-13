@@ -153,7 +153,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
   private def deleteCookie(tokenData: TokenData) = {
-    response.setHeader("Set-Cookie", s"${tokenData.tokenType.cookieKey}=;Expires=${dateFormat.format(0L)}")
+      response.addHeader("Set-Cookie", s"${tokenData.tokenType.cookieKey}=;Expires=${dateFormat.format(0L)}")
   }
 
   private def getResource(path: String, requestContentType: String) = {
@@ -200,21 +200,20 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     getResource(request.uri.getPath, request.getContentType)
   }
 
+  get("/") {
+    connectionAppRedirection
+  }
+
   get("/logout") {
     withAccesToken { accessTokenData =>
       withRefreshToken {refreshTokenData =>
         deleteCookie(refreshTokenData)
         deleteCookie(accessTokenData)
-        Ok()
+        redirect("/")
       }
-      Ok()
+      redirect("/")
     }
   }
-
-  get("/") {
-    connectionAppRedirection
-  }
-
 
   def connectionHtml = {
     contentType = "text/html"
