@@ -52,7 +52,7 @@ object DB {
       }, Duration.Inf
     )
 
- // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
+  // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
   def uuid(email: Email): Option[UUID] = users.find(_.email == email).map {
@@ -70,13 +70,6 @@ object DB {
           actions: _*
         ).transactionally), Duration.Inf)
 
-  def runQuery(query: TableQuery[DB.Users]) =
-    Await.result(
-      db.run(
-        query.result
-      ), Duration.Inf
-    )
-
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
@@ -84,16 +77,21 @@ object DB {
     }
   }
 
-  def exists(email: Email) = {
+  type UserQuery = Query[Users, (UUID, Email, Password, Role), Seq]
+
+  def runQuery(query: UserQuery) =
     Await.result(
       db.run(
-        (for {
-          u <- userTable if (u.email === email)
-        } yield (u)).result
-      ).map {
-        _.length != 0
-      }, Duration.Inf
-    )
+        query.result
+      ), Duration.Inf
+    ).map { case (u, e, p, r) => User(e, p, r, u) }
+
+  def exists(email: Email) = {
+    runQuery(
+      for {
+        u <- userTable if (u.email === email)
+      } yield (u)
+    ).length != 0
   }
 
   def addUser(email: Email, password: Password, role: Role = simpleUser) = {
