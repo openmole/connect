@@ -77,26 +77,8 @@ object DB {
     }
   }
 
-  type UserQuery = Query[Users, (UUID, Email, Password, Role), Seq]
-
-  def runQuery(query: UserQuery) =
-    Await.result(
-      db.run(
-        query.result
-      ), Duration.Inf
-    ).map { case (u, e, p, r) => User(e, p, r, u) }
-
-  def exists(email: Email) = {
-    runQuery(
-      for {
-        u <- userTable if (u.email === email)
-      } yield (u)
-    ).length != 0
-  }
-
   def addUser(email: Email, password: Password, role: Role = simpleUser) = {
-
-    if (!exists(email)) {
+    if (!DBQueries.exists(email)) {
       runTransaction(
         userTable += (UUID(util.UUID.randomUUID().toString), email, password, role)
       )

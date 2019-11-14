@@ -46,7 +46,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
               buildAndAddCookieToHeader(tokenData)
               action(tokenData)
             }
-          case false => connectionHtml
+          case false => Ok(connectionHtml)
         }
     }
   }
@@ -54,16 +54,21 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   def withRefreshToken(action: TokenData => ActionResult): Serializable = {
     Authentication.tokenData(request, TokenType.refreshToken) match {
       case Some(tokenData: TokenData) => action(tokenData)
-      case None => connectionHtml
+      case None => Ok(connectionHtml)
     }
   }
 
   def connectionAppRedirection = {
     withAccesToken { tokenData =>
-      tokenData.host.hostIP.map { hip =>
-        getFromHip(hip)
-        Ok()
-      }.getOrElse(NotFound())
+      if (DBQueries.isAdmin(tokenData.email)) {
+        Ok(adminHtml)
+      }
+      else {
+        tokenData.host.hostIP.map { hip =>
+          getFromHip(hip)
+          Ok()
+        }.getOrElse(NotFound())
+      }
     }
   }
 
@@ -123,7 +128,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
         // Get login and password from the post request parameters
         val password = params.getOrElse("password", "")
-        if (email.isEmpty || password.isEmpty) connectionHtml
+        if (email.isEmpty || password.isEmpty) Ok(connectionHtml)
 
         //Build cookie with JWT token if login/password are valid and redirect to the openmole manager url
         else {
@@ -133,7 +138,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
               buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Email(email)))
               buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Email(email)))
               redirect("/")
-            case _ => connectionHtml
+            case _ => Ok(connectionHtml)
           }
         }
       case true =>
@@ -153,7 +158,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
   private def deleteCookie(tokenData: TokenData) = {
-      response.addHeader("Set-Cookie", s"${tokenData.tokenType.cookieKey}=;Expires=${dateFormat.format(0L)}")
+    response.addHeader("Set-Cookie", s"${tokenData.tokenType.cookieKey}=;Expires=${dateFormat.format(0L)}")
   }
 
   private def getResource(path: String, requestContentType: String) = {
@@ -206,7 +211,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   get("/logout") {
     withAccesToken { accessTokenData =>
-      withRefreshToken {refreshTokenData =>
+      withRefreshToken { refreshTokenData =>
         deleteCookie(refreshTokenData)
         deleteCookie(accessTokenData)
         redirect("/")
@@ -215,17 +220,21 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     }
   }
 
-  def connectionHtml = {
+  def connectionHtml = someHtml("connect", "connection();")
+  def adminHtml = someHtml("admin", "admin();")
+
+
+  def someHtml(jsFileName: String, jsCall: String) = {
     contentType = "text/html"
     tags.html(
       tags.head(
         tags.meta(tags.httpEquiv := "Content-Type", tags.content := "text/html; charset=UTF-8"),
         tags.link(tags.rel := "stylesheet", tags.`type` := "text/css", href := "css/deps.css"),
-        Seq("connect-deps.js", "connect.js").map {
+        Seq(s"${jsFileName}-deps.js", s"${jsFileName}.js").map {
           jf => tags.script(tags.`type` := "text/javascript", tags.src := s"js/$jf ")
         }
       ),
-      tags.body(tags.onload := "connection();")
+      tags.body(tags.onload := jsCall)
     )
   }
 

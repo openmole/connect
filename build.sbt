@@ -15,7 +15,7 @@ val rosHttpVersion = "2.2.4"
 val skuberVersion = "2.2.0"
 val httpComponentsVersion = "4.5.9"
 val slickVersion = "3.3.1"
-val h2Version ="1.4.200"
+val h2Version = "1.4.200"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -34,6 +34,16 @@ lazy val shared = project.in(file("shared")) settings (defaultSettings: _*) enab
 lazy val go = taskKey[Unit]("go")
 
 lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) settings (defaultSettings) settings(
+  skip in packageJSDependencies := false,
+  libraryDependencies ++= Seq(
+    "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
+    "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
+    "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
+    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion
+  )
+) dependsOn (shared)
+
+lazy val adminclient = project.in(file("adminclient")) enablePlugins (ExecNpmPlugin) settings (defaultSettings) settings(
   skip in packageJSDependencies := false,
   libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
@@ -76,19 +86,37 @@ lazy val application = project.in(file("application")) settings (defaultSettings
   packageName in Docker := "openmole-connect"
 )
 
+
+
+
 lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSettings) settings (
   go := {
 
-    val jsBuild = (fullOptJS in client in Compile).value.data
+    def copyToTarget(jsBuild: sbt.File,
+                     appTarget: sbt.File,
+                     clientResources: sbt.File,
+                     dependencyJS: sbt.File,
+                     depsCSS: sbt.File,
+                     targetName: String) = {
+      IO.copyFile(jsBuild, appTarget / s"webapp/js/${targetName}.js")
+      IO.copyFile(dependencyJS, appTarget / "webapp/js/${targetName}-deps.js")
+      IO.copyDirectory(depsCSS, appTarget / "webapp/css")
+      IO.copyDirectory(clientResources, appTarget)
+    }
+
     val appTarget = (target in application in Compile).value
 
-
+    val jsBuild = (fullOptJS in client in Compile).value.data
     val clientResources = (resourceDirectory in client in Compile).value
     val dependencyJS = (dependencyFile in client in Compile).value
     val depsCSS = (cssFile in client in Compile).value
+    copyToTarget(jsBuild, appTarget, clientResources, dependencyJS, depsCSS, "connect")
 
-    IO.copyFile(jsBuild, appTarget / "webapp/js/connect.js")
-    IO.copyFile(dependencyJS, appTarget / "webapp/js/connect-deps.js")
-    IO.copyDirectory(depsCSS, appTarget / "webapp/css")
-    IO.copyDirectory(clientResources, appTarget)
+
+    val jsBuildAdmin = (fullOptJS in adminclient in Compile).value.data
+    val clientResourcesAdmin = (resourceDirectory in adminclient in Compile).value
+    val dependencyJSAdmin = (dependencyFile in adminclient in Compile).value
+    val depsCSSAdmin = (cssFile in adminclient in Compile).value
+    copyToTarget(jsBuildAdmin, appTarget, clientResourcesAdmin, dependencyJSAdmin, depsCSSAdmin, "admin")
+
   }) dependsOn(client, server)
