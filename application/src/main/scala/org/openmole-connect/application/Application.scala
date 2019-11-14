@@ -43,7 +43,7 @@ object Application extends App {
       server.start()
   }
 
- // DB.addUser(DB.Login("moo"), DB.Password("moo"), "moo@me.com")
+  DB.addUser(DB.Login("moo"), DB.Password("moo"), "moo@me.com")
 
   println(DB.users)
 
