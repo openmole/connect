@@ -8,7 +8,7 @@ import org.json4s.jackson.JsonMethods._
 object Json {
 
   object key {
-    val login = "login"
+    val email = "email"
     val uuid = "uuid"
     val hostIP = "hostIP"
   }

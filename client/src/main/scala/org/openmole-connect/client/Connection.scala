@@ -50,11 +50,11 @@ object Connection {
 
     lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
 
-    lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
+    //lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
 
-    lazy val loginInput = inputTag("")(
-      name := "login",
-      placeholder := "Login",
+    lazy val emailInput = inputTag("")(
+      name := "email",
+      placeholder := "Email",
       width := "130px",
       marginBottom := 15,
       autofocus := true
@@ -70,13 +70,13 @@ object Connection {
 
     def cleanInputs = {
       passwordInput.value = ""
-      loginInput.value = ""
+      emailInput.value = ""
     }
 
     val connectionForm: HTMLFormElement = form(
       method := "post",
       action := connectionRoute,
-      loginInput,
+      emailInput,
       passwordInput,
       connectButton
     ).render

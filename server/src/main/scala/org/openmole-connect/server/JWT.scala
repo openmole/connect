@@ -34,7 +34,7 @@ object JWT {
   object TokenData {
     def fromTokenContent(content: String, tokenType: TokenType)(implicit secret: Secret) = {
       Jwt.decode(content, secret, Seq(JwtAlgorithm.HS256)).map { jwtClaim =>
-        val login: Login = Login(Json.fromJson(jwtClaim.content, Json.key.login))
+        val email: Email = Email(Json.fromJson(jwtClaim.content, Json.key.email))
 
         val host = {
           val uuid: UUID = UUID(Json.fromJson(jwtClaim.content, Json.key.uuid))
@@ -46,23 +46,23 @@ object JWT {
           Host(uuid, hip)
         }
 
-        TokenData(login, host, jwtClaim.issuedAt.get, jwtClaim.expiration.get, tokenType)
+        TokenData(email, host, jwtClaim.issuedAt.get, jwtClaim.expiration.get, tokenType)
       }.toOption.filter {
         hasExpired(_)
       }
     }
 
-    def accessToken(host: Host, login: Login) = TokenData(login, host, now, inFiveMinutes, TokenType.accessToken)
+    def accessToken(host: Host, email: Email) = TokenData(email, host, now, inFiveMinutes, TokenType.accessToken)
 
-    def refreshToken(host: Host, login: Login) = TokenData(login, host, now, inOneMonth, TokenType.refreshToken)
+    def refreshToken(host: Host, email: Email) = TokenData(email, host, now, inOneMonth, TokenType.refreshToken)
   }
 
-  case class TokenData(login: Login, host: Host, issued: Long, expirationTime: Long, tokenType: TokenType) {
+  case class TokenData(email: Email, host: Host, issued: Long, expirationTime: Long, tokenType: TokenType) {
 
     def toContent(implicit secret: Secret) = {
       implicit val clock = Clock.systemUTC()
 
-      val claims = Seq((Json.key.uuid, host.uuid.value), (Json.key.hostIP, host.hostIP.getOrElse("")), (Json.key.login, login.value))
+      val claims = Seq((Json.key.uuid, host.uuid.value), (Json.key.hostIP, host.hostIP.getOrElse("")), (Json.key.email, email.value))
 
       val expandedClaims = claims.map { case (k, v) =>
         s"""

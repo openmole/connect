@@ -42,7 +42,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         Authentication.isValid(request, TokenType.refreshToken) match {
           case true =>
             withRefreshToken { refreshToken =>
-              val tokenData = TokenData.accessToken(refreshToken.host, refreshToken.login)
+              val tokenData = TokenData.accessToken(refreshToken.host, refreshToken.email)
               buildAndAddCookieToHeader(tokenData)
               action(tokenData)
             }
@@ -119,19 +119,19 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   post(connectionRoute) {
     Authentication.isValid(request, TokenType.accessToken) match {
       case false =>
-        val login = params.getOrElse("login", "")
+        val email = params.getOrElse("email", "")
 
         // Get login and password from the post request parameters
         val password = params.getOrElse("password", "")
-        if (login.isEmpty || password.isEmpty) connectionHtml
+        if (email.isEmpty || password.isEmpty) connectionHtml
 
         //Build cookie with JWT token if login/password are valid and redirect to the openmole manager url
         else {
-          DB.uuid(DB.Login(login), DB.Password(password)) match {
+          DB.uuid(DB.Email(email), DB.Password(password)) match {
             case Some(uuid) =>
               val host = Host(uuid, K8sService.hostIP(uuid))
-              buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Login(login)))
-              buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Login(login)))
+              buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Email(email)))
+              buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Email(email)))
               redirect("/")
             case _ => connectionHtml
           }

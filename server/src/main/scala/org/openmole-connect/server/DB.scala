@@ -12,7 +12,7 @@ object DB {
 
   case class UUID(value: String) extends MappedTo[String]
 
-  case class Login(value: String) extends MappedTo[String]
+  case class Email(value: String) extends MappedTo[String]
 
   case class Password(value: String) extends MappedTo[String]
 
@@ -21,21 +21,19 @@ object DB {
   val admin = Role("admin")
   val simpleUser = Role("simpleUser")
 
-  case class User(login: Login, password: Password, email: String, role: Role = simpleUser, uuid: UUID = UUID(""))
+  case class User(email: Email, password: Password, role: Role = simpleUser, uuid: UUID = UUID(""))
 
 
-  class Users(tag: Tag) extends Table[(UUID, Login, Password, String, Role)](tag, "USERS") {
+  class Users(tag: Tag) extends Table[(UUID, Email, Password, Role)](tag, "USERS") {
     def uuid = column[UUID]("UUID", O.PrimaryKey)
 
-    def login = column[Login]("LOGIN")
+    def email = column[Email]("EMAIL")
 
     def password = column[Password]("PASSWORD")
 
-    def email = column[String]("EMAIL")
-
     def role = column[Role]("ROLE")
 
-    def * = (uuid, login, password, email, role)
+    def * = (uuid, email, password, role)
   }
 
   val userTable = TableQuery[Users]
@@ -49,7 +47,7 @@ object DB {
     Await.result(
       db.run(userTable.result).map { x =>
         x.map {
-          case (uuid, login, password, email, role) => User(login, password, email, role, uuid)
+          case (uuid, email, password, role) => User(email, password, role, uuid)
         }
       }, Duration.Inf
     )
@@ -57,11 +55,11 @@ object DB {
  // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
-  def uuid(login: Login): Option[UUID] = users.find(_.login == login).map {
+  def uuid(email: Email): Option[UUID] = users.find(_.email == email).map {
     _.uuid
   }
 
-  def uuid(login: Login, password: Password): Option[UUID] = users.find(u => u.login == login && u.password == password).map {
+  def uuid(email: Email, password: Password): Option[UUID] = users.find(u => u.email == email && u.password == password).map {
     _.uuid
   }
 
@@ -82,11 +80,11 @@ object DB {
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
-      DB.addUser(DB.Login("admin"), DB.Password("admin"), "", DB.admin)
+      DB.addUser(DB.Email("admin@admin.com"), DB.Password("admin"), DB.admin)
     }
   }
 
-  def exists(email: String) = {
+  def exists(email: Email) = {
     Await.result(
       db.run(
         (for {
@@ -98,11 +96,11 @@ object DB {
     )
   }
 
-  def addUser(login: Login, password: Password, email: String, role: Role = simpleUser) = {
+  def addUser(email: Email, password: Password, role: Role = simpleUser) = {
 
     if (!exists(email)) {
       runTransaction(
-        userTable += (UUID(util.UUID.randomUUID().toString), login, password, email, role)
+        userTable += (UUID(util.UUID.randomUUID().toString), email, password, role)
       )
     }
   }
