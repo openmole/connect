@@ -7,6 +7,7 @@ import slick.jdbc.H2Profile.api._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
+import shared._
 
 object DBQueries {
   type UserQuery = Query[Users, (UUID, Email, Password, Role), Seq]
@@ -20,7 +21,7 @@ object DBQueries {
 
   def exists(email: Email) = get(email).isDefined
 
-  def isAdmin(email: Email) = get(email).map{_.role} == Some(DB.admin)
+  def isAdmin(email: Email) = get(email).map{_.role} == Some(admin)
 
   def get(email: Email) = {
     runQuery(
@@ -29,5 +30,11 @@ object DBQueries {
       } yield (u)
     ).headOption
   }
+
+  def users = runQuery(
+    for {
+      u <- userTable
+    } yield (u)
+  )
 
 }

@@ -6,6 +6,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.H2Profile.api._
+import shared._
 
 object DB {
 
@@ -23,6 +24,7 @@ object DB {
 
   case class User(email: Email, password: Password, role: Role = simpleUser, uuid: UUID = UUID(""))
 
+  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map{u=> Data.UserData(u.email.value, u.password.value, u.role.value, u.uuid.value)}
 
   class Users(tag: Tag) extends Table[(UUID, Email, Password, Role)](tag, "USERS") {
     def uuid = column[UUID]("UUID", O.PrimaryKey)
@@ -73,14 +75,18 @@ object DB {
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
-      DB.addUser(DB.Email("admin@admin.com"), DB.Password("admin"), DB.admin)
+      DB.addUser(DB.Email("admin@admin.com"), DB.Password("admin"), DB.admin, UUID("foo-123-567-foo"))
     }
   }
 
-  def addUser(email: Email, password: Password, role: Role = simpleUser) = {
+  def addUser(email: Email, password: Password, role: Role = simpleUser): Unit = {
+    addUser(email, password, role, UUID(util.UUID.randomUUID().toString))
+  }
+
+  def addUser(email: Email, password: Password, role: Role, uuid: UUID): Unit = {
     if (!DBQueries.exists(email)) {
       runTransaction(
-        userTable += (UUID(util.UUID.randomUUID().toString), email, password, role)
+        userTable += (uuid, email, password, role)
       )
     }
   }

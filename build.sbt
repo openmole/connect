@@ -16,6 +16,8 @@ val skuberVersion = "2.2.0"
 val httpComponentsVersion = "4.5.9"
 val slickVersion = "3.3.1"
 val h2Version = "1.4.200"
+val autowireVersion = "0.2.6"
+val boopickleVersion = "1.2.6"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -49,7 +51,9 @@ lazy val adminclient = project.in(file("adminclient")) enablePlugins (ExecNpmPlu
     "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion
+    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
+    "com.lihaoyi" %%% "autowire" % autowireVersion,
+    "io.suzaku" %%% "boopickle" % boopickleVersion
   )
 ) dependsOn (shared)
 
@@ -67,7 +71,9 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
     "org.apache.httpcomponents" % "httpmime" % httpComponentsVersion,
     "com.typesafe.slick" %% "slick" % slickVersion,
-    "com.h2database" % "h2" % h2Version
+    "com.h2database" % "h2" % h2Version,
+    "io.suzaku" %% "boopickle" % boopickleVersion,
+    "com.lihaoyi" %% "autowire" % autowireVersion
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 

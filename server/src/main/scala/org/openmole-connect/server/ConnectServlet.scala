@@ -1,6 +1,7 @@
 package org.openmoleconnect.server
 
 import java.net.URI
+import java.nio.ByteBuffer
 
 import org.openmoleconnect.server.JWT._
 import org.scalatra._
@@ -10,15 +11,21 @@ import scalatags.Text.all._
 import scalatags.Text.{all => tags}
 
 import scala.concurrent.duration._
-import shared.Data._
+import shared._
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.io.IOUtils
-import org.apache.http.client.HttpClient
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.entity.InputStreamEntity
 import org.apache.http.impl.client.HttpClients
+import shared.Data.UserData
+import boopickle.Default._
 
+import scala.reflect.ClassTag
+import java.nio.ByteBuffer
+
+import scala.concurrent.Await
+import autowire._
 
 class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
 
@@ -48,6 +55,15 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
             }
           case false => Ok(connectionHtml)
         }
+    }
+  }
+
+  def withAdminRights(action: TokenData=> ActionResult): Serializable = {
+    withAccesToken { tokenData =>
+      DBQueries.isAdmin(tokenData.email) match {
+        case true=> action(tokenData)
+        case false=> Unauthorized("You seem unauthorized to do this !")
+      }
     }
   }
 
@@ -109,19 +125,31 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     }
   }
 
-  case class ListFilesData(list: Seq[TreeNodeData], nbFilesOnServer: Int)
 
-  case class DirData(isEmpty: Boolean)
+  post(s"/${Data.adminRoutePrefix}/*") {
+    withAdminRights { _ =>
+      val req = Await.result({
+        val is = request.getInputStream
+        val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
+        val bb = ByteBuffer.wrap(bytes)
 
-  case class TreeNodeData(
-                           name: String,
-                           dirData: Option[DirData],
-                           size: Long,
-                           time: Long
-                         )
+        AutowireServer.route[shared.AdminApi](AdminApiImpl)(
+          autowire.Core.Request(
+            Data.adminRoutePrefix.split("/").toSeq ++ multiParams("splat").head.split("/"),
+            Unpickle[Map[String, ByteBuffer]].fromBytes(bb)
+          )
+        )
+      },
+        Duration.Inf
+      )
 
+      val data = Array.ofDim[Byte](req.remaining)
+      req.get(data)
+      Ok(data)
+    }
+  }
 
-  post(connectionRoute) {
+  post(Data.connectionRoute) {
     Authentication.isValid(request, TokenType.accessToken) match {
       case false =>
         val email = params.getOrElse("email", "")
@@ -221,6 +249,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   }
 
   def connectionHtml = someHtml("connect", "connection();")
+
   def adminHtml = someHtml("admin", "admin();")
 
 
@@ -263,3 +292,10 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
 
 }
+
+object AutowireServer extends autowire.Server[ByteBuffer, Pickler, Pickler] {
+  override def read[R: Pickler](p: ByteBuffer) = Unpickle[R].fromBytes(p)
+
+  override def write[R: Pickler](r: R) = Pickle.intoBytes(r)
+}
+
