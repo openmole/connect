@@ -2,10 +2,13 @@ package org.openmoleconnect.server
 
 import java.util
 
+import shared.Data.UserData
+
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.H2Profile.api._
+import DBQueries._
 import shared._
 
 object DB {
@@ -24,7 +27,9 @@ object DB {
 
   case class User(name: String, email: Email, password: Password, role: Role = simpleUser, uuid: UUID = UUID(""))
 
-  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map{u=> Data.UserData(u.name.value, u.email.value, u.password.value, u.role.value, u.uuid.value)}
+  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map { u => Data.UserData(u.name.value, u.email.value, u.password.value, u.role.value) }
+
+  def toUser(uuid: UUID, userData: UserData): User = User(userData.name, Email(userData.email), Password(userData.password), Role(userData.role), uuid)
 
   class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role)](tag, "USERS") {
     def uuid = column[UUID]("UUID", O.PrimaryKey)
@@ -47,26 +52,7 @@ object DB {
     url = s"jdbc:h2:/${Settings.location}/db"
   )
 
-  def users =
-    Await.result(
-      db.run(userTable.result).map { x =>
-        x.map {
-          case (uuid, name, email, password, role) => User(name, email, password, role, uuid)
-        }
-      }, Duration.Inf
-    )
-
-  // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
-
-
-  def uuid(email: Email): Option[UUID] = users.find(_.email == email).map {
-    _.uuid
-  }
-
-  def uuid(email: Email, password: Password): Option[UUID] = users.find(u => u.email == email && u.password == password).map {
-    _.uuid
-  }
-
+  // TRANSACTIONS
   def runTransaction[E <: Effect](actions: DBIOAction[_, NoStream, E]*) =
     Await.result(
       db.run(
@@ -86,11 +72,47 @@ object DB {
   }
 
   def addUser(name: String, email: Email, password: Password, role: Role, uuid: UUID): Unit = {
-    if (!DBQueries.exists(email)) {
+    if (!exists(email)) {
       runTransaction(
         userTable += (uuid, name, email, password, role)
       )
     }
   }
 
+  def update(user: User) = {
+    println("user updated " + user.name)
+    runTransaction(
+      getQuery(user.email).update(user.uuid, user.name, user.email, user.password, user.role)
+    )
+  }
+
+  //QUERIES
+  // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
+
+
+  def uuid(email: Email): Option[UUID] = users.find(_.email == email).map {
+    _.uuid
+  }
+
+  def uuid(email: Email, password: Password): Option[UUID] = users.find(u => u.email == email && u.password == password).map {
+    _.uuid
+  }
+
+  def get(email: Email) = {
+    runQuery(
+      getQuery(email)
+    ).headOption
+  }
+
+  def users = runQuery(
+    for {
+      u <- userTable
+    } yield (u)
+  )
+
+  def exists(email: Email) = get(email).isDefined
+
+  def isAdmin(email: Email) = get(email).map {
+    _.role
+  } == Some(admin)
 }

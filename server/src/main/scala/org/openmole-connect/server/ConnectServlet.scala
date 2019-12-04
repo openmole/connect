@@ -60,7 +60,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def withAdminRights(action: TokenData=> ActionResult): Serializable = {
     withAccesToken { tokenData =>
-      DBQueries.isAdmin(tokenData.email) match {
+      DB.isAdmin(tokenData.email) match {
         case true=> action(tokenData)
         case false=> Unauthorized("You seem unauthorized to do this !")
       }
@@ -76,7 +76,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def connectionAppRedirection = {
     withAccesToken { tokenData =>
-      if (DBQueries.isAdmin(tokenData.email)) {
+      if (DB.isAdmin(tokenData.email)) {
         Ok(adminHtml)
       }
       else {

@@ -19,22 +19,10 @@ object DBQueries {
       ), Duration.Inf
     ).map { case (u, n, e, p, r) => User(n, e, p, r, u) }
 
-  def exists(email: Email) = get(email).isDefined
-
-  def isAdmin(email: Email) = get(email).map{_.role} == Some(admin)
-
-  def get(email: Email) = {
-    runQuery(
-      for {
-        u <- userTable if (u.email === email)
-      } yield (u)
-    ).headOption
-  }
-
-  def users = runQuery(
+  // Query statements
+  def getQuery(email: Email) =
     for {
-      u <- userTable
+      u <- userTable if (u.email === email)
     } yield (u)
-  )
 
 }

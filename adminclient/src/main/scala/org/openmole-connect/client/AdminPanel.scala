@@ -20,7 +20,6 @@ import scala.concurrent.Future
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 
 
-
 import scaladget.bootstrapnative.bsn._
 import scaladget.tools._
 import scalatags.JsDom.all._
@@ -30,26 +29,37 @@ object AdminPanel {
   @JSExportTopLevel("admin")
   def admin() = {
 
-   // val users: Var[Seq[UserData]] = Var(Seq())
+    // val users: Var[Seq[UserData]] = Var(Seq())
 
-    println("admin ...")
-    lazy val rows: Var[Seq[ExpandableRow]] = Var(Seq())
-
-
-    def save(expandableRow: ExpandableRow, name: TextCell, email: TextCell, password: PasswordCell, role: LabelCell, status: Status) = {
-      //SET USER
-      //rows() = rows.now.updated(rows.now.indexOf(expandableRow), buildExpandable(name.get, email.get, password.get, role.get, status, true))
+    implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[ExpandableRow] = userData.map { u =>
+      buildExpandable(u.name, u.email, u.password, u.role, running)
     }
-
-    def closeAll(except: ExpandableRow) = rows.now.filterNot{_ == except}.foreach{_.subRow.trigger() = false}
 
 
     lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround, alignItems.center)
     lazy val columnFlex = Seq(styles.display.flex, flexDirection.column, styles.justifyContent.center)
 
+    lazy val roles = Seq(user, shared.Data.admin)
+    lazy val roleFilter = (r: Role) => r == shared.Data.admin
 
-    val roles = Seq(user, shared.Data.admin)
-    val roleFilter = (r: Role) => r == shared.Data.admin
+    lazy val rows: Var[Seq[ExpandableRow]] = Var(Seq())
+
+
+    def save(expandableRow: ExpandableRow, name: TextCell, email: TextCell, password: PasswordCell, role: LabelCell, status: Status): Unit = {
+      //SET USER
+      val userRole: Role = role.get
+
+      val modifiedUser = UserData(name.get, email.get, password.get, userRole)
+      Post[AdminApi].updated(modifiedUser).call().foreach {
+        rows() = _
+      }
+    }
+
+    def closeAll(except: ExpandableRow) = rows.now.filterNot {
+      _ == except
+    }.foreach {
+      _.subRow.trigger() = false
+    }
 
 
     def buildExpandable(userName: String, userEmail: String, userPassword: String, userRole: Role, userStatus: Status, expanded: Boolean = false): ExpandableRow = {
@@ -116,19 +126,10 @@ object AdminPanel {
     }
 
 
-
     Post[AdminApi].users().call().foreach { us =>
-      rows() = us.map{u=>
-        buildExpandable(u.name, u.email, u.password, u.role, running)
-      }
+      println("US " + us)
+      rows() = us
     }
-
-
-//    lazy val rows = Var(Seq(
-//      buildExpandable("Bobi", "bobi@me.com", "mypass", admin, running),
-//      buildExpandable("Barbara", "barb@gmail.com", "toto", user, off)
-//    ))
-
 
     val headerStyle: ModifierSeq = Seq(
       height := 40.85
@@ -142,27 +143,8 @@ object AdminPanel {
       }
     )
 
-
-
-
-
-
-
-//    val table = div(
-//      Rx {
-//        val t = dataTable.
-//          addHeaders("Email", "Password", "Role")
-//        users().foreach { u =>
-//          t.addRow(u.email, u.password, u.role)
-//        }
-//        t.render
-//      }
-//    ).render
-
-
     dom.document.body.appendChild(editablePanel.render)
   }
-
 
 }
 
