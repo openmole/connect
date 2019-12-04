@@ -8,7 +8,7 @@ val scalatraVersion = "2.6.5"
 val jettyVersion = "9.4.19.v20190610"
 val json4sVersion = "3.6.7"
 val scalatagsVersion = "0.7.0"
-val scaladgetVersion = "1.2.7"
+val scaladgetVersion = "1.3.0-SNAPSHOT"
 val scalajsDomVersion = "0.9.7"
 val scalaJWTVersion = "4.0.0"
 val rosHttpVersion = "2.2.4"
@@ -104,8 +104,8 @@ lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSetti
                      dependencyJS: sbt.File,
                      depsCSS: sbt.File,
                      targetName: String) = {
-      IO.copyFile(jsBuild, appTarget / s"webapp/js/${targetName}.js")
-      IO.copyFile(dependencyJS, appTarget / "webapp/js/${targetName}-deps.js")
+      IO.copyFile(jsBuild, appTarget / s"webapp/js/$targetName.js")
+      IO.copyFile(dependencyJS, appTarget / s"webapp/js/$targetName-deps.js")
       IO.copyDirectory(depsCSS, appTarget / "webapp/css")
       IO.copyDirectory(clientResources, appTarget)
     }

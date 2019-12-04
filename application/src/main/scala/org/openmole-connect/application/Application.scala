@@ -43,6 +43,6 @@ object Application extends App {
       server.start()
   }
 
-  DB.addUser(DB.Email("moo@moo.com"), DB.Password("moo"), DB.simpleUser)
+  DB.addUser("Moo",DB.Email("moo@moo.com"), DB.Password("moo"), DB.simpleUser)
 
 }

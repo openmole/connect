@@ -22,12 +22,14 @@ object DB {
   val admin = Role("admin")
   val simpleUser = Role("simpleUser")
 
-  case class User(email: Email, password: Password, role: Role = simpleUser, uuid: UUID = UUID(""))
+  case class User(name: String, email: Email, password: Password, role: Role = simpleUser, uuid: UUID = UUID(""))
 
-  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map{u=> Data.UserData(u.email.value, u.password.value, u.role.value, u.uuid.value)}
+  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map{u=> Data.UserData(u.name.value, u.email.value, u.password.value, u.role.value, u.uuid.value)}
 
-  class Users(tag: Tag) extends Table[(UUID, Email, Password, Role)](tag, "USERS") {
+  class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role)](tag, "USERS") {
     def uuid = column[UUID]("UUID", O.PrimaryKey)
+
+    def name = column[String]("NAME")
 
     def email = column[Email]("EMAIL")
 
@@ -35,7 +37,7 @@ object DB {
 
     def role = column[Role]("ROLE")
 
-    def * = (uuid, email, password, role)
+    def * = (uuid, name, email, password, role)
   }
 
   val userTable = TableQuery[Users]
@@ -49,7 +51,7 @@ object DB {
     Await.result(
       db.run(userTable.result).map { x =>
         x.map {
-          case (uuid, email, password, role) => User(email, password, role, uuid)
+          case (uuid, name, email, password, role) => User(name, email, password, role, uuid)
         }
       }, Duration.Inf
     )
@@ -75,18 +77,18 @@ object DB {
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
-      DB.addUser(DB.Email("admin@admin.com"), DB.Password("admin"), DB.admin, UUID("foo-123-567-foo"))
+      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), DB.admin, UUID("foo-123-567-foo"))
     }
   }
 
-  def addUser(email: Email, password: Password, role: Role = simpleUser): Unit = {
-    addUser(email, password, role, UUID(util.UUID.randomUUID().toString))
+  def addUser(name: String, email: Email, password: Password, role: Role = simpleUser): Unit = {
+    addUser(name, email, password, role, UUID(util.UUID.randomUUID().toString))
   }
 
-  def addUser(email: Email, password: Password, role: Role, uuid: UUID): Unit = {
+  def addUser(name: String, email: Email, password: Password, role: Role, uuid: UUID): Unit = {
     if (!DBQueries.exists(email)) {
       runTransaction(
-        userTable += (uuid, email, password, role)
+        userTable += (uuid, name, email, password, role)
       )
     }
   }

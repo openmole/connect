@@ -10,14 +10,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import shared._
 
 object DBQueries {
-  type UserQuery = Query[Users, (UUID, Email, Password, Role), Seq]
+  type UserQuery = Query[Users, (UUID, String, Email, Password, Role), Seq]
 
   def runQuery(query: UserQuery) =
     Await.result(
       db.run(
         query.result
       ), Duration.Inf
-    ).map { case (u, e, p, r) => User(e, p, r, u) }
+    ).map { case (u, n, e, p, r) => User(n, e, p, r, u) }
 
   def exists(email: Email) = get(email).isDefined
 
