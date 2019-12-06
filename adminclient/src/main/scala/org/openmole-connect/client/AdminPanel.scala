@@ -46,14 +46,21 @@ object AdminPanel {
 
 
     def save(expandableRow: ExpandableRow, name: TextCell, email: TextCell, password: PasswordCell, role: LabelCell, status: Status): Unit = {
-      //SET USER
-      val userRole: Role = role.get
+      if (name.get.isEmpty)
+        rows.update(rows.now.filterNot(_ == expandableRow))
+      else {
+        val userRole: Role = role.get
 
-      val modifiedUser = UserData(name.get, email.get, password.get, userRole)
-      Post[AdminApi].updated(modifiedUser).call().foreach {
-        rows() = _
+        val modifiedUser = UserData(name.get, email.get, password.get, userRole)
+        upsert(modifiedUser)
       }
     }
+
+    def upsert(userData: UserData) =
+      Post[AdminApi].upserted(userData).call().foreach {
+        rows() = _
+      }
+
 
     def closeAll(except: ExpandableRow) = rows.now.filterNot {
       _ == except
@@ -62,7 +69,7 @@ object AdminPanel {
     }
 
 
-    def buildExpandable(userName: String, userEmail: String, userPassword: String, userRole: Role, userStatus: Status, expanded: Boolean = false): ExpandableRow = {
+    def buildExpandable(userName: String = "", userEmail: String = "", userPassword: String = "", userRole: Role = "", userStatus: Status = user, expanded: Boolean = false): ExpandableRow = {
       val aVar = Var(expanded)
 
       def roleStyle(s: Role) =
@@ -127,15 +134,20 @@ object AdminPanel {
 
 
     Post[AdminApi].users().call().foreach { us =>
-      println("US " + us)
       rows() = us
     }
+
+    val addUserButton = button(btn_success, "Add", onclick := { () =>
+      val row = buildExpandable(userRole = user, expanded = true)
+      rows.update(rows.now :+ row)
+    })
 
     val headerStyle: ModifierSeq = Seq(
       height := 40.85
     )
 
     val editablePanel = div(
+      addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd),
       Rx {
         div(styles.display.flex, flexDirection.row, styles.justifyContent.center)(
           EdiTable(Seq("Name", "Status"), rows()).render(width := "90%")

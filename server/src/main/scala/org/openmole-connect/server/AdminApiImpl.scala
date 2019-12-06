@@ -9,10 +9,9 @@ object AdminApiImpl extends shared.AdminApi {
     DB.users
   }
 
-  def updated(userData: UserData): Seq[UserData] = {
-    DB.uuid(Email(userData.email)).foreach { id =>
-      update(toUser(id, userData))
-    }
+  def upserted(userData: UserData): Seq[UserData] = {
+    val id = DB.uuid(Email(userData.email)).getOrElse(UUID(java.util.UUID.randomUUID.toString))
+    upsert(toUser(id, userData))
     users
   }
 

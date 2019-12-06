@@ -6,5 +6,5 @@ trait AdminApi {
 
   def users(): Seq[UserData]
 
-  def updated(userData: UserData): Seq[UserData]
+  def upserted(userData: UserData): Seq[UserData]
 }

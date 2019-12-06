@@ -79,10 +79,9 @@ object DB {
     }
   }
 
-  def update(user: User) = {
-    println("user updated " + user.name)
+  def upsert(user: User) = {
     runTransaction(
-      getQuery(user.email).update(user.uuid, user.name, user.email, user.password, user.role)
+        userTable.insertOrUpdate(user.uuid, user.name, user.email, user.password, user.role)
     )
   }
 
