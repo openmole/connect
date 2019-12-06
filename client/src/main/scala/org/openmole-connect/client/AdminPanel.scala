@@ -1,4 +1,4 @@
-package org.openmoleconnect.adminclient
+package org.openmoleconnect.client
 
 import java.nio.ByteBuffer
 
@@ -29,8 +29,6 @@ object AdminPanel {
   @JSExportTopLevel("admin")
   def admin() = {
 
-    // val users: Var[Seq[UserData]] = Var(Seq())
-
     implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[ExpandableRow] = userData.map { u =>
       buildExpandable(u.name, u.email, u.password, u.role, running)
     }
@@ -39,20 +37,15 @@ object AdminPanel {
     lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround, alignItems.center)
     lazy val columnFlex = Seq(styles.display.flex, flexDirection.column, styles.justifyContent.center)
 
-    lazy val roles = Seq(user, shared.Data.admin)
-    lazy val roleFilter = (r: Role) => r == shared.Data.admin
 
     lazy val rows: Var[Seq[ExpandableRow]] = Var(Seq())
 
 
-    def save(expandableRow: ExpandableRow, name: TextCell, email: TextCell, password: PasswordCell, role: LabelCell, status: Status): Unit = {
-      if (name.get.isEmpty)
+    def save(expandableRow: ExpandableRow, userData: UserData): Unit = {
+      if (userData.name.isEmpty)
         rows.update(rows.now.filterNot(_ == expandableRow))
       else {
-        val userRole: Role = role.get
-
-        val modifiedUser = UserData(name.get, email.get, password.get, userRole)
-        upsert(modifiedUser)
+        upsert(userData)
       }
     }
 
@@ -71,23 +64,6 @@ object AdminPanel {
 
     def buildExpandable(userName: String = "", userEmail: String = "", userPassword: String = "", userRole: Role = "", userStatus: Status = user, expanded: Boolean = false): ExpandableRow = {
       val aVar = Var(expanded)
-
-      def roleStyle(s: Role) =
-        if (s == shared.Data.admin) label_success
-        else label_default
-
-      val name = TextCell(userName, Some("Name"))
-      val email = TextCell(userEmail, Some("Email"))
-      val password = PasswordCell(userPassword, Some("Password"))
-      val role = LabelCell(userRole, roles, optionStyle = roleStyle, title = Some("Role"))
-
-      val rowEdit = Var(false)
-
-      val buttonStyle: ModifierSeq = Seq(
-        fontSize := 22,
-        color := "#23527c",
-        opacity := 0.8
-      )
 
       lazy val aSubRow: StaticSubRow = StaticSubRow({
         div(height := 120, rowFlex)(
@@ -108,26 +84,8 @@ object AdminPanel {
         LabelCell(userStatus, Seq(), optionStyle = statusStyle),
       )), aSubRow)
 
-      lazy val groupCell: GroupCell = GroupCell(
-        div(rowFlex, width := "100%")(
-          name.build(padding := 10),
-          email.build(padding := 10),
-          password.build(padding := 10),
-          role.build(padding := 10),
-          span(
-            Rx {
-              if (rowEdit()) glyphSpan(glyph_save +++ buttonStyle +++ toClass("actionIcon"), () => {
-                rowEdit.update(!rowEdit.now)
-                save(expandableRow, name, email, password, role, userStatus)
-              })
-              else glyphSpan(glyph_edit2 +++ buttonStyle +++ toClass("actionIcon"), () => {
-                //button("Edit", btn_default, onclick := { () =>
-                rowEdit.update(!rowEdit.now)
-                groupCell.switch
-              })
-            }
-          )
-        ), name, email, password, role)
+
+      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, userStatus, expanded, (uData: UserData)=> save(expandableRow, uData))
 
       expandableRow
     }
@@ -146,7 +104,7 @@ object AdminPanel {
       height := 40.85
     )
 
-    val editablePanel = div(
+    val editablePanel = div(maxWidth := 1000, margin := "40px auto")(
       addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd),
       Rx {
         div(styles.display.flex, flexDirection.row, styles.justifyContent.center)(

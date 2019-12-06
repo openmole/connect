@@ -41,16 +41,6 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
     "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
     "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-    "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion
-  )
-) dependsOn (shared)
-
-lazy val adminclient = project.in(file("adminclient")) enablePlugins (ExecNpmPlugin) settings (defaultSettings) settings(
-  skip in packageJSDependencies := false,
-  libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
-    "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
-    "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
     "com.lihaoyi" %%% "autowire" % autowireVersion,
     "io.suzaku" %%% "boopickle" % boopickleVersion
@@ -117,12 +107,5 @@ lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSetti
     val dependencyJS = (dependencyFile in client in Compile).value
     val depsCSS = (cssFile in client in Compile).value
     copyToTarget(jsBuild, appTarget, clientResources, dependencyJS, depsCSS, "connect")
-
-
-    val jsBuildAdmin = (fullOptJS in adminclient in Compile).value.data
-    val clientResourcesAdmin = (resourceDirectory in adminclient in Compile).value
-    val dependencyJSAdmin = (dependencyFile in adminclient in Compile).value
-    val depsCSSAdmin = (cssFile in adminclient in Compile).value
-    copyToTarget(jsBuildAdmin, appTarget, clientResourcesAdmin, dependencyJSAdmin, depsCSSAdmin, "admin")
 
   }) dependsOn(client, server)

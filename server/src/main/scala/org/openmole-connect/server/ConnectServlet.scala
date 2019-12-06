@@ -249,18 +249,18 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     }
   }
 
-  def connectionHtml = someHtml("connect", "connection();")
+  def connectionHtml = someHtml("connection();")
 
-  def adminHtml = someHtml("admin", "admin();")
+  def adminHtml = someHtml("admin();")
 
 
-  def someHtml(jsFileName: String, jsCall: String) = {
+  def someHtml(jsCall: String) = {
     contentType = "text/html"
     tags.html(
       tags.head(
         tags.meta(tags.httpEquiv := "Content-Type", tags.content := "text/html; charset=UTF-8"),
         tags.link(tags.rel := "stylesheet", tags.`type` := "text/css", href := "css/deps.css"),
-        Seq(s"${jsFileName}-deps.js", s"${jsFileName}.js").map {
+        Seq(s"connect-deps.js", "connect.js").map {
           jf => tags.script(tags.`type` := "text/javascript", tags.src := s"js/$jf ")
         }
       ),
