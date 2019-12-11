@@ -34,7 +34,7 @@ object Connection {
   @JSExportTopLevel("connection")
   def connect() = {
 
-    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit").render
+    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit", float.right, right := 0).render
 
     //lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
 
@@ -71,8 +71,8 @@ object Connection {
       div(
         div(css.connectionTabOverlay)(
           div(
-            img(src := "img/logo.svg", css.openmoleLogo),
-            div(marginLeft := 300)(
+            img(src := "img/logo.png", css.openmoleLogo),
+            div(css.connectionFormStyle)(
               connectionForm
             )
           )

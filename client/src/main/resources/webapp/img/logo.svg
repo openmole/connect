@@ -1,8 +1,110 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="505" height="142.6" viewBox="0 0 505 142.6">
-  <g fill="#403D56">
-    <path d="M100 92.6c-13.2 0-24.5-11.3-24.5-24.5S86.8 43.6 100 43.6s24.5 11.3 24.5 24.5c0 13.1-11.4 24.5-24.5 24.5zm0-38.6c-7.4 0-14 6.7-14 14 0 7.4 6.7 14.1 14 14.1 7.4 0 14-6.7 14-14.1 0-7.3-6.7-14-14-14zM130.6 109.4V61h10.5v3.8c2.7-3.4 6.6-4.5 10.6-4.5 8.8 0 15.3 7.6 15.3 16.2s-6.6 16.1-15.3 16.1c-4 0-8.5-1.3-10.6-4.4v21.2h-10.5zm17.9-25.2c4.2 0 7.4-3.6 7.4-7.7s-3.2-7.7-7.4-7.7-7.4 3.6-7.4 7.7 3.2 7.7 7.4 7.7zM206 77.7h-23.9c0 3.6 2.5 7.4 6.7 7.4 3.7 0 6-2.5 6.1-4.7h10.7c-1.8 8.1-8.4 12.2-16.6 12.2-10.6 0-18-6.3-18-16.1 0-9.7 7.6-16.2 18-16.2 9.4 0 17.2 5.6 17.2 15.5-.1.6-.2 1.3-.2 1.9zm-10-4.9s-.5-5.7-6.9-5.7c-6.6 0-6.9 5.7-6.9 5.7H196zM243.3 91.9h-10.5V74.4c0-3.6-1.4-5.6-4.7-5.6s-5.9 3.5-5.9 7.7v15.4h-10.5V61h10.5v3.8c2.1-2.7 5.4-4.5 9.5-4.5 8.3 0 11.6 5.7 11.6 14.1v17.5z"/>
-  </g>
-  <g fill="#A6BF25">
-    <path d="M299.3 91.9l-5.6-32.8-9.3 32.8h-10.3l-9.3-32.8-5.6 32.8h-11.6l9.2-47.6h12.5l9.9 33.4 9.9-33.4h12.5l9.2 47.6h-11.5zM337.3 92.6c-13.2 0-24.5-11.3-24.5-24.5s11.3-24.5 24.5-24.5 24.5 11.3 24.5 24.5c0 13.1-11.3 24.5-24.5 24.5zm0-38.6c-7.4 0-14 6.7-14 14 0 7.4 6.7 14.1 14 14.1 7.4 0 14-6.7 14-14.1 0-7.3-6.6-14-14-14zM368.2 44.3h10.5v38.1h17.1v9.5h-27.6V44.3zM427.9 91.9h-27.6V44.3h27.6v9.5h-17.1v9.5h16.4v9.5h-16.4v9.6h17.1v9.5z"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="94.145271mm"
+   height="29.854778mm"
+   viewBox="0 0 94.145271 29.854778"
+   version="1.1"
+   id="svg1668"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
+   sodipodi:docname="openmoleLogo.svg">
+  <defs
+     id="defs1662" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.071875"
+     inkscape:cx="270.50708"
+     inkscape:cy="-173.7856"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="5"
+     fit-margin-left="5"
+     fit-margin-right="5"
+     fit-margin-bottom="5"
+     inkscape:window-width="1850"
+     inkscape:window-height="1016"
+     inkscape:window-x="70"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata1665">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(51.515785,-72.997779)">
+    <g
+       id="g1721"
+       transform="matrix(0.81418991,0,0,0.81418991,-342.64896,-957.87024)"
+       inkscape:export-filename="/tmp/om2.png"
+       inkscape:export-xdpi="218.60001"
+       inkscape:export-ydpi="218.60001">
+      <flowRoot
+         transform="translate(333.18084,218.55724)"
+         style="font-style:normal;font-weight:normal;font-size:21.33333397px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#a6bf25;fill-opacity:1;stroke:none"
+         id="flowRoot1683"
+         xml:space="preserve"><flowRegion
+           style="fill:#a6bf25;fill-opacity:1"
+           id="flowRegion1685"><rect
+             style="fill:#a6bf25;fill-opacity:1"
+             y="1050.3021"
+             x="81.413231"
+             height="122.91802"
+             width="268.98294"
+             id="rect1687" /></flowRegion><flowPara
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Glacial Indifference';-inkscape-font-specification:'Glacial Indifference';fill:#a6bf25;fill-opacity:1"
+           id="flowPara1689">MOLE</flowPara></flowRoot>      <flowRoot
+         xml:space="preserve"
+         id="flowRoot1697"
+         style="font-style:normal;font-weight:normal;font-size:21.33333397px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#403d56;fill-opacity:1;stroke:none"
+         transform="translate(281.34105,217.83191)"><flowRegion
+           id="flowRegion1693"
+           style="fill:#403d56;fill-opacity:1"><rect
+             id="rect1691"
+             width="268.98294"
+             height="122.91802"
+             x="81.413231"
+             y="1050.3021"
+             style="fill:#403d56;fill-opacity:1" /></flowRegion><flowPara
+           id="flowPara1695"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Glacial Indifference';-inkscape-font-specification:'Glacial Indifference';fill:#403d56;fill-opacity:1">Open</flowPara></flowRoot>      <flowRoot
+         transform="matrix(0.43505595,0,0,0.43505595,173.02593,820.72121)"
+         style="font-style:normal;font-weight:normal;font-size:21.33333397px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#403d56;fill-opacity:1;stroke:none"
+         id="flowRoot1699"
+         xml:space="preserve"><flowRegion
+           style="fill:#403d56;fill-opacity:1"
+           id="flowRegion1701"><rect
+             style="fill:#403d56;fill-opacity:1"
+             y="1071.8656"
+             x="500.33569"
+             height="37.527565"
+             width="304.94797"
+             id="rect1703" /></flowRegion><flowPara
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.87190723px;font-family:'Glacial Indifference';-inkscape-font-specification:'Glacial Indifference';fill:#403d56;fill-opacity:1"
+           id="flowPara1705">the model exploration sfotware</flowPara></flowRoot>    </g>
   </g>
 </svg>
