@@ -14,7 +14,7 @@ object Data {
   val off: Status = "Off"
   val error: Status = "Error"
 
-  case class UserData(name: String, email: String, password: String, role: Role, omVersion: String, lastAccess: Long)
+  case class UserData(name: String, email: String, password: String, role: Role, omVersion: String, lastAccess: String)
 
   case class PersonalUserData(name: String, email: String, password: String, role: Role)
 

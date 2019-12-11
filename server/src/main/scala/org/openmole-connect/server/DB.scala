@@ -1,5 +1,6 @@
 package org.openmoleconnect.server
 
+import java.text.SimpleDateFormat
 import java.util
 
 import shared.Data.UserData
@@ -39,16 +40,17 @@ object DB {
       u.password.value,
       u.role.value,
       u.omVersion.value,
-      u.lastAccess.value) }
+      Utils.toStringDate(u.lastAccess.value))
+  }
 
   def toUser(uuid: UUID, userData: UserData): User = User(
     userData.name,
     Email(userData.email),
     Password(userData.password),
     Version(userData.omVersion),
-    userData.lastAccess,
+    Utils.toLongDate(userData.lastAccess),
     Role(userData.role),
-   uuid
+    uuid
   )
 
   class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role, Version, Long)](tag, "USERS") {

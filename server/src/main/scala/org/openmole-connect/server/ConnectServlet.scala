@@ -44,7 +44,9 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   def withAccesToken(action: TokenData => ActionResult): Serializable = {
     Authentication.tokenData(request, TokenType.accessToken) match {
-      case Some(tokenData: TokenData) => action(tokenData)
+      case Some(tokenData: TokenData) =>
+        DB.setLastAccess(tokenData.email, JWT.now)
+        action(tokenData)
       case None =>
         Authentication.isValid(request, TokenType.refreshToken) match {
           case true =>
@@ -166,9 +168,6 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
               val host = Host(uuid, None)
               buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Email(email)))
               buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Email(email)))
-              println("SET Last access")
-              DB.setLastAccess(DB.Email(email), JWT.now)
-              println("ACSS ? " + DB.get(DB.Email(email)).map{_.lastAccess})
               redirect("/")
             case _ => Ok(connectionHtml)
           }

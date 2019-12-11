@@ -72,18 +72,16 @@ object AdminPanel {
                         userPassword: String = "",
                         userRole: Role = "",
                         userOMVersion: String = "",
-                        userLastAccess: Long = 0L,
+                        userLastAccess: String = "",
                         userStatus: Status = user,
                         expanded: Boolean = false): ExpandableRow = {
       val aVar = Var(expanded)
-
-      val lastAccess = new Date(userLastAccess.toDouble)
 
       lazy val aSubRow: StaticSubRow = StaticSubRow({
         div(height := 300, rowFlex)(
           groupCell.build(margin := 25),
           label(label_primary, userOMVersion),
-          div(lastAccess.toUTCString), //.formatted("EEE, d MMM yyyy HH:mm:ss"),
+          div(userLastAccess, fontSize := "12px", minWidth := "150"),
           span(columnFlex, alignItems.flexEnd, justifyContent.flexEnd)(
           button(btn_danger, "Delete", onclick := { () =>
             val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
@@ -117,8 +115,8 @@ object AdminPanel {
       rows() = us
     }
 
-    val addUserButton = button(btn_success, "Add", onclick := { () =>
-      val row = buildExpandable(userRole = user, expanded = true)
+    val addUserButton = button(btn_primary, "Add", onclick := { () =>
+      val row = buildExpandable(userRole = user, userOMVersion = "LATEST", expanded = true)
       rows.update(rows.now :+ row)
     })
 
@@ -127,7 +125,10 @@ object AdminPanel {
     )
 
     val editablePanel = div(maxWidth := 1000, margin := "40px auto")(
-      addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd),
+      Utils.logoutItem(styles.display.flex, flexDirection.row, justifyContent.flexEnd),
+      div(styles.display.flex, flexDirection.row, justifyContent.flexStart, marginLeft := 50, marginBottom := 20, marginTop := 80)(
+        addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd)
+      ),
       Rx {
         div(styles.display.flex, flexDirection.row, styles.justifyContent.center)(
           EdiTable(Seq("Name", "Status"), rows()).render(width := "90%")
