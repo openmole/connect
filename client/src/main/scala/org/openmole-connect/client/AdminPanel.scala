@@ -18,11 +18,11 @@ import shared.Data._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
-
-
 import scaladget.bootstrapnative.bsn._
 import scaladget.tools._
 import scalatags.JsDom.all._
+
+import scala.scalajs.js.Date
 
 object AdminPanel {
 
@@ -30,7 +30,7 @@ object AdminPanel {
   def admin() = {
 
     implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[ExpandableRow] = userData.map { u =>
-      buildExpandable(u.name, u.email, u.password, u.role, running)
+      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, running)
     }
 
 
@@ -54,6 +54,11 @@ object AdminPanel {
         rows() = _
       }
 
+    def delete(userData: UserData) =
+      Post[AdminApi].delete(userData).call().foreach {
+        rows() = _
+      }
+
 
     def closeAll(except: ExpandableRow) = rows.now.filterNot {
       _ == except
@@ -62,12 +67,29 @@ object AdminPanel {
     }
 
 
-    def buildExpandable(userName: String = "", userEmail: String = "", userPassword: String = "", userRole: Role = "", userStatus: Status = user, expanded: Boolean = false): ExpandableRow = {
+    def buildExpandable(userName: String = "",
+                        userEmail: String = "",
+                        userPassword: String = "",
+                        userRole: Role = "",
+                        userOMVersion: String = "",
+                        userLastAccess: Long = 0L,
+                        userStatus: Status = user,
+                        expanded: Boolean = false): ExpandableRow = {
       val aVar = Var(expanded)
 
+      val lastAccess = new Date(userLastAccess.toDouble)
+
       lazy val aSubRow: StaticSubRow = StaticSubRow({
-        div(height := 120, rowFlex)(
+        div(height := 300, rowFlex)(
           groupCell.build(margin := 25),
+          label(label_primary, userOMVersion),
+          div(lastAccess.toUTCString), //.formatted("EEE, d MMM yyyy HH:mm:ss"),
+          span(columnFlex, alignItems.flexEnd, justifyContent.flexEnd)(
+          button(btn_danger, "Delete", onclick := { () =>
+            val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+            delete(userData)
+          }, margin := 10)
+          )
         )
       }, aVar)
 
@@ -85,7 +107,7 @@ object AdminPanel {
       )), aSubRow)
 
 
-      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, userStatus, expanded, (uData: UserData)=> save(expandableRow, uData))
+      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, userStatus, userOMVersion, userLastAccess, expanded, (uData: UserData) => save(expandableRow, uData))
 
       expandableRow
     }

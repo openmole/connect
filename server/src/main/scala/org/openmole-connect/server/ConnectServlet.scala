@@ -166,6 +166,9 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
               val host = Host(uuid, None)
               buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Email(email)))
               buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Email(email)))
+              println("SET Last access")
+              DB.setLastAccess(DB.Email(email), JWT.now)
+              println("ACSS ? " + DB.get(DB.Email(email)).map{_.lastAccess})
               redirect("/")
             case _ => Ok(connectionHtml)
           }

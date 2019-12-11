@@ -15,4 +15,11 @@ object AdminApiImpl extends shared.AdminApi {
     users
   }
 
+  def delete(userData: UserData): Seq[UserData] = {
+    val id = DB.uuid(Email(userData.email))
+    id.foreach {i=>
+       DB.delete(toUser(i, userData))
+    }
+    users
+  }
 }

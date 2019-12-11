@@ -10,9 +10,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import slick.jdbc.H2Profile.api._
 import DBQueries._
 import shared._
+import slick.model.ForeignKey
 
 object DB {
 
+
+  // USERS
 
   case class UUID(value: String) extends MappedTo[String]
 
@@ -22,16 +25,33 @@ object DB {
 
   case class Role(value: String) extends MappedTo[String]
 
+  case class Version(value: String) extends MappedTo[String]
+
   val admin = Role("admin")
   val simpleUser = Role("simpleUser")
 
-  case class User(name: String, email: Email, password: Password, role: Role = simpleUser, uuid: UUID = UUID(""))
+  case class User(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role = simpleUser, uuid: UUID = UUID(""))
 
-  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map { u => Data.UserData(u.name.value, u.email.value, u.password.value, u.role.value) }
+  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map { u =>
+    Data.UserData(
+      u.name.value,
+      u.email.value,
+      u.password.value,
+      u.role.value,
+      u.omVersion.value,
+      u.lastAccess.value) }
 
-  def toUser(uuid: UUID, userData: UserData): User = User(userData.name, Email(userData.email), Password(userData.password), Role(userData.role), uuid)
+  def toUser(uuid: UUID, userData: UserData): User = User(
+    userData.name,
+    Email(userData.email),
+    Password(userData.password),
+    Version(userData.omVersion),
+    userData.lastAccess,
+    Role(userData.role),
+   uuid
+  )
 
-  class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role)](tag, "USERS") {
+  class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role, Version, Long)](tag, "USERS") {
     def uuid = column[UUID]("UUID", O.PrimaryKey)
 
     def name = column[String]("NAME")
@@ -42,7 +62,12 @@ object DB {
 
     def role = column[Role]("ROLE")
 
-    def * = (uuid, name, email, password, role)
+    def omVersion = column[Version]("OMVERSION")
+
+    def lastAccess = column[Long]("LASTACCESS")
+
+
+    def * = (uuid, name, email, password, role, omVersion, lastAccess)
   }
 
   val userTable = TableQuery[Users]
@@ -63,25 +88,38 @@ object DB {
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
-      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), DB.admin, UUID("foo-123-567-foo"))
+      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), Utils.openmoleversion.stable, JWT.now, DB.admin, UUID("foo-123-567-foo"))
     }
   }
 
-  def addUser(name: String, email: Email, password: Password, role: Role = simpleUser): Unit = {
-    addUser(name, email, password, role, UUID(util.UUID.randomUUID().toString))
+  def addUser(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role = simpleUser): Unit = {
+    addUser(name, email, password, omVersion, lastAccess, role, UUID(util.UUID.randomUUID().toString))
   }
 
-  def addUser(name: String, email: Email, password: Password, role: Role, uuid: UUID): Unit = {
+  def addUser(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role, uuid: UUID): Unit = {
     if (!exists(email)) {
       runTransaction(
-        userTable += (uuid, name, email, password, role)
+        userTable += (uuid, name, email, password, role, omVersion, lastAccess)
       )
     }
   }
 
   def upsert(user: User) = {
     runTransaction(
-        userTable.insertOrUpdate(user.uuid, user.name, user.email, user.password, user.role)
+      userTable.insertOrUpdate(user.uuid, user.name, user.email, user.password, user.role, user.omVersion, user.lastAccess)
+    )
+  }
+
+  def setLastAccess(email: Email, lastAccess: Long) =
+    runTransaction {
+      getLastAccesQuery(email).update(lastAccess)
+    }
+
+  def delete(user: User) = {
+    runTransaction(
+      userTable.filter {
+        _.uuid === user.uuid
+      }.delete
     )
   }
 

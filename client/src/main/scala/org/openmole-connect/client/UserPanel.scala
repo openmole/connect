@@ -12,8 +12,8 @@ import rx._
 
 object UserPanel {
 
-  lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround, alignItems.center)
-  lazy val columnFlex = Seq(styles.display.flex, flexDirection.column, styles.justifyContent.center)
+  lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround)
+  lazy val columnFlex = Seq(styles.display.flex, flexDirection.column, styles.justifyContent.center, alignItems.flexStart)
 
   lazy val roles = Seq(user, shared.Data.admin)
   lazy val roleFilter = (r: Role) => r == shared.Data.admin
@@ -23,9 +23,11 @@ object UserPanel {
                    userPassword: String = "",
                    userRole: Role = "",
                    userStatus: Status = user,
+                   userOMVersion: String,
+                   userLastAccess: Long,
                    expanded: Boolean = false,
-                   upserting: (UserData) => Unit): GroupCell = {
-    val aVar = Var(expanded)
+                   upserting: (UserData) => Unit
+                  ): GroupCell = {
 
     def roleStyle(s: Role) =
       if (s == shared.Data.admin) label_success
@@ -38,34 +40,29 @@ object UserPanel {
 
     val rowEdit = Var(false)
 
-    val buttonStyle: ModifierSeq = Seq(
-      fontSize := 22,
-      color := "#23527c",
-      opacity := 0.8
-    )
-
     lazy val groupCell: GroupCell = GroupCell(
-      div(rowFlex, width := "100%")(
+      div(columnFlex, width := "100%")(
         name.build(padding := 10),
         email.build(padding := 10),
         password.build(padding := 10),
         role.build(padding := 10),
-        span(
+        span(rowFlex, marginTop := 50)(
           Rx {
-            if (rowEdit()) glyphSpan(glyph_save +++ buttonStyle +++ toClass("actionIcon"), () => {
+            if (rowEdit()) button(btn_primary, "Save", onclick := { () =>
               val userRole: Role = role.get
-              val modifiedUser = UserData(name.get, email.get, password.get, userRole)
+              val modifiedUser = UserData(name.get, email.get, password.get, userRole, userOMVersion, userLastAccess)
               upserting(modifiedUser)
               rowEdit.update(!rowEdit.now)
             })
-            else glyphSpan(glyph_edit2 +++ buttonStyle +++ toClass("actionIcon"), () => {
+            else button(btn_default, "Edit", onclick := { () =>
               //button("Edit", btn_default, onclick := { () =>
               rowEdit.update(!rowEdit.now)
               groupCell.switch
             })
           }
-        )
-      ), name, email, password, role)
+        )),
+      name, email, password, role
+    )
 
     groupCell
   }

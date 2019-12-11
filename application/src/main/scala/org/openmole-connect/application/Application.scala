@@ -43,6 +43,6 @@ object Application extends App {
       server.start()
   }
 
-  DB.addUser("Moo",DB.Email("moo@moo.com"), DB.Password("moo"), DB.simpleUser)
+  DB.addUser("Moo",DB.Email("moo@moo.com"), DB.Password("moo"), Utils.openmoleversion.stable, 900009870L, DB.simpleUser)
 
 }
