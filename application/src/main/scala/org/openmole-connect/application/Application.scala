@@ -1,5 +1,6 @@
 package org.openmoleconnect.application
 
+import org.openmoleconnect.server.DB.UUID
 import org.openmoleconnect.server._
 
 object Application extends App {
@@ -12,6 +13,7 @@ object Application extends App {
 
   case class Config(
                      tokenSecret: String = "",
+                     kubeOff: Boolean = false,
                      launchMode: LaunchMode = ServerMode
                    )
 
@@ -25,6 +27,7 @@ object Application extends App {
     else {
       args match {
         case "--secret" :: tail ⇒ parse(tail.tail, c.copy(tokenSecret = tail.head))
+        case "-kubeOff" :: tail ⇒ parse(List(), c.copy(kubeOff = true))
         case "--help" :: tail => c.copy(launchMode = HelpMode)
         case _ => c.copy(launchMode = HelpMode)
       }
@@ -39,10 +42,18 @@ object Application extends App {
       if (!Settings.location.exists)
         Settings.location.mkdirs()
       DB.initDB
-      val server = new ConnectServer(secret = config.tokenSecret)
+      val server = new ConnectServer(secret = config.tokenSecret, config.kubeOff)
       server.start()
   }
 
-  DB.addUser("Moo",DB.Email("moo@moo.com"), DB.Password("moo"), Utils.openmoleversion.stable, 900009870L, DB.simpleUser)
+//  DB.addUser(
+//    "Moo",
+//    DB.Email("moo@moo.com"),
+//    DB.Password("moo"),
+//    Utils.openmoleversion.stable,
+//    900009870L,
+//    DB.simpleUser,
+//    UUID("foo-123-567-foo")
+//  )
 
 }

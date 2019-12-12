@@ -95,7 +95,9 @@ object DB {
   }
 
   def addUser(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role = simpleUser): Unit = {
-    addUser(name, email, password, omVersion, lastAccess, role, UUID(util.UUID.randomUUID().toString))
+    if (!exists(email)) {
+      addUser(name, email, password, omVersion, lastAccess, role, UUID(util.UUID.randomUUID().toString))
+    }
   }
 
   def addUser(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role, uuid: UUID): Unit = {

@@ -60,11 +60,11 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     }
   }
 
-  def withAdminRights(action: TokenData=> ActionResult): Serializable = {
+  def withAdminRights(action: TokenData => ActionResult): Serializable = {
     withAccesToken { tokenData =>
       DB.isAdmin(tokenData.email) match {
-        case true=> action(tokenData)
-        case false=> Unauthorized("You seem unauthorized to do this !")
+        case true => action(tokenData)
+        case false => Unauthorized("You seem unauthorized to do this !")
       }
     }
   }
@@ -164,8 +164,13 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         else {
           DB.uuid(DB.Email(email), DB.Password(password)) match {
             case Some(uuid) =>
-              //val host = Host(uuid, K8sService.hostIP(uuid))
-              val host = Host(uuid, None)
+              // Hack to desactivate K8s when necessary
+              val host = {
+                if (arguments.kubeOff) Host(uuid, None)
+                else {
+                  Host(uuid, K8sService.hostIP(uuid))
+                }
+              }
               buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Email(email)))
               buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Email(email)))
               redirect("/")
