@@ -262,6 +262,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
       tags.head(
         tags.meta(tags.httpEquiv := "Content-Type", tags.content := "text/html; charset=UTF-8"),
         tags.link(tags.rel := "stylesheet", tags.`type` := "text/css", href := "css/deps.css"),
+        tags.link(tags.rel := "stylesheet", tags.`type` := "text/css", href := "css/style.css"),
         Seq(s"connect-deps.js", "connect.js").map {
           jf => tags.script(tags.`type` := "text/javascript", tags.src := s"js/$jf ")
         }
