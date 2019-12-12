@@ -28,8 +28,8 @@ object DB {
 
   case class Version(value: String) extends MappedTo[String]
 
-  val admin = Role("admin")
-  val simpleUser = Role("simpleUser")
+  val admin = Role("Admin")
+  val simpleUser = Role("User")
 
   case class User(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role = simpleUser, uuid: UUID = UUID(""))
 
@@ -40,7 +40,7 @@ object DB {
       u.password.value,
       u.role.value,
       u.omVersion.value,
-      Utils.toStringDate(u.lastAccess.value))
+      u.lastAccess.value)
   }
 
   def toUser(uuid: UUID, userData: UserData): User = User(
@@ -48,7 +48,7 @@ object DB {
     Email(userData.email),
     Password(userData.password),
     Version(userData.omVersion),
-    Utils.toLongDate(userData.lastAccess),
+    userData.lastAccess,
     Role(userData.role),
     uuid
   )

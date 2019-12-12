@@ -21,6 +21,7 @@ import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scaladget.bootstrapnative.bsn._
 import scaladget.tools.{ModifierSeq, _}
 import scalatags.JsDom.all._
+import Utils._
 
 import scala.scalajs.js.Date
 
@@ -72,7 +73,7 @@ object AdminPanel {
                         userPassword: String = "",
                         userRole: Role = "",
                         userOMVersion: String = "",
-                        userLastAccess: String = "",
+                        userLastAccess: Long = 0L,
                         userStatus: Status = user,
                         expanded: Boolean = false): ExpandableRow = {
       val aVar = Var(expanded)
@@ -80,13 +81,13 @@ object AdminPanel {
       lazy val aSubRow: StaticSubRow = StaticSubRow({
         div(height := 300, rowFlex)(
           groupCell.build(margin := 25),
+          div(userLastAccess.toStringDate, fontSize := "12px", minWidth := 150),
           label(label_primary, userOMVersion),
-          div(userLastAccess, fontSize := "12px", minWidth := "150"),
           span(columnFlex, alignItems.flexEnd, justifyContent.flexEnd)(
-          button(btn_danger, "Delete", onclick := { () =>
-            val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
-            delete(userData)
-          }, margin := 10)
+            button(btn_danger, "Delete", onclick := { () =>
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+              delete(userData)
+            }, margin := 10)
           )
         )
       }, aVar)

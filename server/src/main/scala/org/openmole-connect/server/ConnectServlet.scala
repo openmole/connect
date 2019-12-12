@@ -281,9 +281,9 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
             flexDirection.column,
             justifyContent.center,
             alignItems.center,
-            height := 300)(
+            width := 500)(
             tags.div(
-              tags.img(src := "img/logo.svg",
+              tags.img(src := "img/logo.png",
                 paddingTop := 300,
                 width := 600),
               div(paddingLeft := 180)("Wrong way buddy. Are you lost ?")

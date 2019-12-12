@@ -24,7 +24,7 @@ object UserPanel {
                    userRole: Role = "",
                    userStatus: Status = user,
                    userOMVersion: String,
-                   userLastAccess: String,
+                   userLastAccess: Long,
                    expanded: Boolean = false,
                    upserting: (UserData) => Unit
                   ): GroupCell = {
