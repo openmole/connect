@@ -9,15 +9,22 @@ object Data {
   val admin: Role = "Admin"
   val user: Role = "User"
 
-  type Status = String
-  val running: Status = "Running"
-  val off: Status = "Off"
-  val error: Status = "Error"
+  trait Status {
+    def value: String
+  }
+  case class Waiting(message: String, value: String = "Waiting") extends Status
+  case class Terminated(message: String, finishedAt: Long, value: String = "Terminated") extends Status
+  case class Running(value: String = "Running") extends Status
+
+  case class PodInfo(
+                      name: String,
+                      status: String,
+                      restarts: Int,
+                      createTime: Long,
+                      podIP: String,
+                      userEmail: Option[String]
+                    )
 
   case class UserData(name: String, email: String, password: String, role: Role, omVersion: String, lastAccess: Long)
-
-  case class PersonalUserData(name: String, email: String, password: String, role: Role)
-
-  case class UserStatus(uuid: String, status: Status)
 
 }

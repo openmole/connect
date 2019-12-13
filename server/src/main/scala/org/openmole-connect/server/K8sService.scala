@@ -1,26 +1,20 @@
 package org.openmoleconnect.server
 
+import java.time.temporal.ChronoField
+
 import org.openmoleconnect.server.DB.UUID
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import shared.Data
 import skuber._
 import skuber.Timestamp
 import skuber.json.format._
+import shared.Data._
 
 import scala.concurrent.duration._
-
 import scala.concurrent.{Await, Future}
 
 object K8sService {
-
-  case class PodInfo(
-                      name: String,
-                      status: String,
-                      restarts: Int,
-                      createTime: Timestamp,
-                      podIP: String
-                    )
-
 
   private def listPods = {
     implicit val system = ActorSystem()
@@ -41,7 +35,7 @@ object K8sService {
       _.flatMap {
         pod: Pod =>
           val name = pod.name
-          val ns = pod.namespace
+         // val ns = pod.namespace
 
           (for {
             stat <- pod.status.toList
@@ -51,13 +45,20 @@ object K8sService {
             createTime <- pod.metadata.creationTimestamp
             podIP <- stat.podIP
           } yield {
-            PodInfo(name, status.toString.slice(0, status.toString.indexOf("(")), restarts.restartCount, createTime, podIP)
+
+            val st: Status = status match {
+              case Container.Waiting(reason)=> Data.Waiting(reason.getOrElse(""))
+              case _: Container.Running=> Data.Running()
+              case Container.Terminated(_,_,_,message,_,finishedAt, _)=> Data.Terminated(message.getOrElse(""), finishedAt.map{_.toLocalTime.getLong(ChronoField.INSTANT_SECONDS)}.getOrElse(0L))
+            }
+
+            PodInfo(name, st.value, restarts.restartCount, createTime.toLocalTime.getLong(ChronoField.INSTANT_SECONDS), podIP, DB.email(UUID(pod.metadata.name)).map{_.value})
           })
       }
     }
   }
 
-  private def pod(uuid: UUID) = {
+  private def podInfo(uuid: UUID) = {
 
     import monix.execution.Scheduler.Implicits.global
     Await.result(
@@ -70,14 +71,15 @@ object K8sService {
 
 
   def isServiceUp(uuid: UUID): Boolean = {
-    pod(uuid).isDefined
-    //    existsInMap(uuid) match {
-    //      case true=>
-    //        if(isUp(uuid)) forwarRequest
-    //        else createOMService(uuid)
-    //      case false => addService(uuid)
-    //    }
+    podInfo(uuid).map{_.status} == Some(Running)
   }
 
-  def hostIP(uuid:UUID) = pod(uuid).map{_.podIP}
+  def podInfos: Seq[PodInfo] = {
+    for {
+      uuid <- DB.uuids
+      podInfo <- podInfo(uuid)
+    } yield (podInfo)
+  }
+
+  def hostIP(uuid:UUID) = podInfo(uuid).map{_.podIP}
 }

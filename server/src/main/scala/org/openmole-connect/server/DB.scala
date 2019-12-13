@@ -139,6 +139,10 @@ object DB {
     _.uuid
   }
 
+  def uuids = users.map{_.uuid}
+
+  def email(uuid: UUID) = users.find(u=> u.uuid == uuid).map{_.email}
+
   def get(email: Email) = {
     runQuery(
       getQuery(email)

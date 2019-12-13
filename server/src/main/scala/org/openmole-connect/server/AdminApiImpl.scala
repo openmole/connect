@@ -1,6 +1,6 @@
 package org.openmoleconnect.server
 
-import shared.Data.UserData
+import shared.Data.{PodInfo, UserData}
 import DB._
 
 object AdminApiImpl extends shared.AdminApi {
@@ -22,4 +22,8 @@ object AdminApiImpl extends shared.AdminApi {
     }
     users
   }
+
+  //PODS
+  def podInfos(): Seq[PodInfo] = K8sService.podInfos
+
 }

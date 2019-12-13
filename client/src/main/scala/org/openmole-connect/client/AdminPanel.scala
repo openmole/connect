@@ -11,7 +11,6 @@ import autowire._
 import rx._
 import scaladget.bootstrapnative.Table.StaticSubRow
 import scaladget.bootstrapnative._
-import scaladget.bootstrapnative.bsn.{glyph_edit2, glyph_save}
 import scalatags.JsDom.styles
 import shared.Data._
 
@@ -21,6 +20,8 @@ import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scaladget.bootstrapnative.bsn._
 import scaladget.tools.{ModifierSeq, _}
 import scalatags.JsDom.all._
+import scala.scalajs.js.timers._
+
 import Utils._
 
 import scala.scalajs.js.Date
@@ -31,7 +32,7 @@ object AdminPanel {
   def admin() = {
 
     implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[ExpandableRow] = userData.map { u =>
-      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, running)
+      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, podInfos.now.filter{_.userEmail == u.email}.headOption)
     }
 
 
@@ -40,6 +41,7 @@ object AdminPanel {
 
 
     lazy val rows: Var[Seq[ExpandableRow]] = Var(Seq())
+    lazy val podInfos: Var[Seq[PodInfo]] = Var(Seq())
 
 
     def save(expandableRow: ExpandableRow, userData: UserData): Unit = {
@@ -60,6 +62,24 @@ object AdminPanel {
         rows() = _
       }
 
+    def updateRows =
+      Post[AdminApi].users().call().foreach { us =>
+        rows() = us
+      }
+
+    def updatePodInfos =
+      Post[AdminApi].podInfos().call().foreach {pi=>
+        podInfos() = pi
+        updateRows
+      }
+
+    def updatePodInfoTimer:Unit = {
+        setTimeout(5000) {
+          updatePodInfos
+          updatePodInfoTimer
+        }
+      }
+
 
     def closeAll(except: ExpandableRow) = rows.now.filterNot {
       _ == except
@@ -74,7 +94,7 @@ object AdminPanel {
                         userRole: Role = "",
                         userOMVersion: String = "",
                         userLastAccess: Long = 0L,
-                        userStatus: Status = user,
+                        podInfo: Option[PodInfo] = None,
                         expanded: Boolean = false): ExpandableRow = {
       val aVar = Var(expanded)
 
@@ -92,9 +112,9 @@ object AdminPanel {
         )
       }, aVar)
 
-      def statusStyle(s: Status) =
-        if (s == running) label_success
-        else if (s == off) label_default
+      def statusStyle(s: String) =
+        if (s == "Running") label_success
+        else if (s == "Waiting") label_warning
         else label_danger
 
       lazy val expandableRow: ExpandableRow = ExpandableRow(EditableRow(Seq(
@@ -102,19 +122,21 @@ object AdminPanel {
           closeAll(expandableRow)
           aVar() = !aVar.now
         })),
-        LabelCell(userStatus, Seq(), optionStyle = statusStyle),
+        LabelCell(podInfo.map {
+          _.status
+        }.getOrElse("Unknown"), Seq(), optionStyle = _ => podInfo.map { pi => statusStyle(pi.status) }.getOrElse(label_danger)),
       )), aSubRow)
 
 
-      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, userStatus, userOMVersion, userLastAccess, expanded, (uData: UserData) => save(expandableRow, uData))
+      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userLastAccess, expanded, (uData: UserData) => save(expandableRow, uData))
 
       expandableRow
     }
 
 
-    Post[AdminApi].users().call().foreach { us =>
-      rows() = us
-    }
+    updateRows
+    updatePodInfos
+    updatePodInfoTimer
 
     val addUserButton = button(btn_primary, "Add", onclick := { () =>
       val row = buildExpandable(userRole = user, userOMVersion = "LATEST", expanded = true)

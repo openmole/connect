@@ -22,7 +22,7 @@ object UserPanel {
                    userEmail: String = "",
                    userPassword: String = "",
                    userRole: Role = "",
-                   userStatus: Status = user,
+                   podInfo: Option[PodInfo] = None,
                    userOMVersion: String,
                    userLastAccess: Long,
                    expanded: Boolean = false,
