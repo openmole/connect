@@ -32,7 +32,12 @@ object AdminPanel {
   def admin() = {
 
     implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[ExpandableRow] = userData.map { u =>
-      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, podInfos.now.filter{_.userEmail == u.email}.headOption)
+
+      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, podInfos.now.filter {
+        _.userEmail == Some(u.email)
+      }.headOption, open.now.map {
+        _ == u.email
+      }.getOrElse(false))
     }
 
 
@@ -41,6 +46,7 @@ object AdminPanel {
 
 
     lazy val rows: Var[Seq[ExpandableRow]] = Var(Seq())
+    lazy val open: Var[Option[String]] = Var(None)
     lazy val podInfos: Var[Seq[PodInfo]] = Var(Seq())
 
 
@@ -68,17 +74,18 @@ object AdminPanel {
       }
 
     def updatePodInfos =
-      Post[AdminApi].podInfos().call().foreach {pi=>
+      Post[AdminApi].podInfos().call().foreach { pi =>
+        println("PI " + pi)
         podInfos() = pi
         updateRows
       }
 
-    def updatePodInfoTimer:Unit = {
-        setTimeout(5000) {
-          updatePodInfos
-          updatePodInfoTimer
-        }
-      }
+//    def updatePodInfoTimer: Unit = {
+//      setTimeout(10000) {
+//        updatePodInfos
+//        updatePodInfoTimer
+//      }
+//    }
 
 
     def closeAll(except: ExpandableRow) = rows.now.filterNot {
@@ -121,6 +128,10 @@ object AdminPanel {
         TriggerCell(a(userName, onclick := { () =>
           closeAll(expandableRow)
           aVar() = !aVar.now
+          open() = {
+            if (aVar.now) Some(userEmail)
+            else None
+          }
         })),
         LabelCell(podInfo.map {
           _.status
@@ -136,11 +147,15 @@ object AdminPanel {
 
     updateRows
     updatePodInfos
-    updatePodInfoTimer
+    //updatePodInfoTimer
 
     val addUserButton = button(btn_primary, "Add", onclick := { () =>
       val row = buildExpandable(userRole = user, userOMVersion = "LATEST", expanded = true)
       rows.update(rows.now :+ row)
+    })
+
+    val refreshButton = button(btn_default, "Refresh", onclick := { () =>
+      updatePodInfos
     })
 
     val headerStyle: ModifierSeq = Seq(
@@ -151,7 +166,8 @@ object AdminPanel {
       img(src := "img/logo.png", css.adminLogoStyle),
       Utils.logoutItem(styles.display.flex, flexDirection.row, justifyContent.flexEnd),
       div(styles.display.flex, flexDirection.row, justifyContent.flexStart, marginLeft := 50, marginBottom := 20, marginTop := 80)(
-        addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd)
+        addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd),
+        refreshButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd)
       ),
       Rx {
         div(styles.display.flex, flexDirection.row, styles.justifyContent.center)(

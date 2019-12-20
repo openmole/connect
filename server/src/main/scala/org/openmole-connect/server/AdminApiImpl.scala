@@ -12,18 +12,21 @@ object AdminApiImpl extends shared.AdminApi {
   def upserted(userData: UserData): Seq[UserData] = {
     val id = DB.uuid(Email(userData.email)).getOrElse(UUID(java.util.UUID.randomUUID.toString))
     upsert(toUser(id, userData))
+    K8sService.deployIfNotDeployedYet(id)
     users
   }
 
   def delete(userData: UserData): Seq[UserData] = {
     val id = DB.uuid(Email(userData.email))
-    id.foreach {i=>
-       DB.delete(toUser(i, userData))
+    id.foreach { i =>
+      DB.delete(toUser(i, userData))
     }
     users
   }
 
   //PODS
-  def podInfos(): Seq[PodInfo] = K8sService.podInfos
+  def podInfos(): Seq[PodInfo] = {
+    K8sService.podInfos
+  }
 
 }

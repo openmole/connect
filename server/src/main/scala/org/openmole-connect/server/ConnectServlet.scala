@@ -171,6 +171,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
                   Host(uuid, K8sService.hostIP(uuid))
                 }
               }
+              println("HOST " + host)
               buildAndAddCookieToHeader(TokenData.accessToken(host, DB.Email(email)))
               buildAndAddCookieToHeader(TokenData.refreshToken(host, DB.Email(email)))
               redirect("/")

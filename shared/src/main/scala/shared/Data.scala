@@ -27,4 +27,9 @@ object Data {
 
   case class UserData(name: String, email: String, password: String, role: Role, omVersion: String, lastAccess: Long)
 
+
+  trait K8ActionResult
+
+  case class K8Success(message: String) extends K8ActionResult
+  case class K8Failure(message: String, stackTrace: String) extends K8ActionResult
 }
