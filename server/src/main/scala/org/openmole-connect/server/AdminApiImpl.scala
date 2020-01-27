@@ -3,7 +3,7 @@ package org.openmoleconnect.server
 import shared.Data.{PodInfo, UserData}
 import DB._
 
-object AdminApiImpl extends shared.AdminApi {
+class AdminApiImpl(kubeOff: Boolean) extends shared.AdminApi {
 
   def users() = {
     DB.users
@@ -12,7 +12,8 @@ object AdminApiImpl extends shared.AdminApi {
   def upserted(userData: UserData): Seq[UserData] = {
     val id = DB.uuid(Email(userData.email)).getOrElse(UUID(java.util.UUID.randomUUID.toString))
     upsert(toUser(id, userData))
-    K8sService.deployIfNotDeployedYet(id)
+    if (!kubeOff)
+      K8sService.deployIfNotDeployedYet(id)
     users
   }
 

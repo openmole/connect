@@ -31,6 +31,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
 
   implicit val secret: JWT.Secret = arguments.secret
+  val adminApiImpl = new AdminApiImpl(arguments.kubeOff)
 
   val httpClient = HttpClients.createDefault()
 
@@ -135,7 +136,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
         val bb = ByteBuffer.wrap(bytes)
 
-        AutowireServer.route[shared.AdminApi](AdminApiImpl)(
+        AutowireServer.route[shared.AdminApi](adminApiImpl)(
           autowire.Core.Request(
             Data.adminRoutePrefix.split("/").toSeq ++ multiParams("splat").head.split("/"),
             Unpickle[Map[String, ByteBuffer]].fromBytes(bb)

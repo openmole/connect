@@ -15,8 +15,8 @@ object UserPanel {
   lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround)
   lazy val columnFlex = Seq(styles.display.flex, flexDirection.column, styles.justifyContent.center, alignItems.flexStart)
 
-  lazy val roles = Seq(user, shared.Data.admin)
-  lazy val roleFilter = (r: Role) => r == shared.Data.admin
+  lazy val roles = Seq(user, admin)
+  lazy val roleFilter = (r: Role) => r == admin
 
   def editableData(userName: String = "",
                    userEmail: String = "",
@@ -26,19 +26,18 @@ object UserPanel {
                    userOMVersion: String,
                    userLastAccess: Long,
                    expanded: Boolean = false,
+                   editing: Boolean = false,
                    upserting: (UserData) => Unit
                   ): GroupCell = {
 
     def roleStyle(s: Role) =
-      if (s == shared.Data.admin) label_success
+      if (s == admin) label_success
       else label_default
 
-    val name = TextCell(userName, Some("Name"))
-    val email = TextCell(userEmail, Some("Email"))
-    val password = PasswordCell(userPassword, Some("Password"))
-    val role = LabelCell(userRole, roles, optionStyle = roleStyle, title = Some("Role"))
-
-    val rowEdit = Var(false)
+    val name = TextCell(userName, Some("Name"), editing)
+    val email = TextCell(userEmail, Some("Email"), editing)
+    val password = PasswordCell(userPassword, Some("Password"), editing)
+    val role = LabelCell(userRole, roles, optionStyle = roleStyle, title = Some("Role"), editing = editing)
 
     lazy val groupCell: GroupCell = GroupCell(
       div(columnFlex, width := "100%")(
@@ -48,15 +47,13 @@ object UserPanel {
         role.build(padding := 10),
         span(rowFlex, marginTop := 50)(
           Rx {
-            if (rowEdit()) button(btn_primary, "Save", onclick := { () =>
+            if (name.editMode()) button(btn_primary, "Save", onclick := { () =>
+              groupCell.switch
               val userRole: Role = role.get
               val modifiedUser = UserData(name.get, email.get, password.get, userRole, userOMVersion, userLastAccess)
               upserting(modifiedUser)
-              rowEdit.update(!rowEdit.now)
             })
             else button(btn_default, "Edit", onclick := { () =>
-              //button("Edit", btn_default, onclick := { () =>
-              rowEdit.update(!rowEdit.now)
               groupCell.switch
             })
           }

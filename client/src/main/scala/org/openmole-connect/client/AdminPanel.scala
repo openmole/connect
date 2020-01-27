@@ -31,7 +31,7 @@ object AdminPanel {
   @JSExportTopLevel("admin")
   def admin() = {
 
-    implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[ExpandableRow] = userData.map { u =>
+    implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[EmailRow] = userData.map { u =>
 
       buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, podInfos.now.filter {
         _.userEmail == Some(u.email)
@@ -44,18 +44,19 @@ object AdminPanel {
     lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround, alignItems.center)
     lazy val columnFlex = Seq(styles.display.flex, flexDirection.column, styles.justifyContent.center)
 
+    case class EmailRow(email: String, expandableRow: ExpandableRow)
 
-    lazy val rows: Var[Seq[ExpandableRow]] = Var(Seq())
+    lazy val rows: Var[Seq[EmailRow]] = Var(Seq())
     lazy val open: Var[Option[String]] = Var(None)
     lazy val podInfos: Var[Seq[PodInfo]] = Var(Seq())
 
 
     def save(expandableRow: ExpandableRow, userData: UserData): Unit = {
-      if (userData.name.isEmpty)
-        rows.update(rows.now.filterNot(_ == expandableRow))
-      else {
-        upsert(userData)
-      }
+      //  if (userData.name.isEmpty)
+      //   rows.update(rows.now.filterNot(_.expandableRow == expandableRow))
+      //  else {
+      upsert(userData)
+      //   }
     }
 
     def upsert(userData: UserData) =
@@ -68,10 +69,11 @@ object AdminPanel {
         rows() = _
       }
 
-    def updateRows =
+    def updateRows = {
       Post[AdminApi].users().call().foreach { us =>
         rows() = us
       }
+    }
 
     def updatePodInfos =
       Post[AdminApi].podInfos().call().foreach { pi =>
@@ -80,18 +82,26 @@ object AdminPanel {
         updateRows
       }
 
-//    def updatePodInfoTimer: Unit = {
-//      setTimeout(10000) {
-//        updatePodInfos
-//        updatePodInfoTimer
-//      }
-//    }
+    def isEditing(email: String): Boolean = rows.now.filter { er =>
+      er.expandableRow.editableRow.cells.exists {
+        _.editMode.now
+      }
+    }.map {
+      _.email
+    }.headOption == Some(email)
+
+    //    def updatePodInfoTimer: Unit = {
+    //      setTimeout(10000) {
+    //        updatePodInfos
+    //        updatePodInfoTimer
+    //      }
+    //    }
 
 
     def closeAll(except: ExpandableRow) = rows.now.filterNot {
-      _ == except
+      _.expandableRow == except
     }.foreach {
-      _.subRow.trigger() = false
+      _.expandableRow.subRow.trigger() = false
     }
 
 
@@ -102,11 +112,13 @@ object AdminPanel {
                         userOMVersion: String = "",
                         userLastAccess: Long = 0L,
                         podInfo: Option[PodInfo] = None,
-                        expanded: Boolean = false): ExpandableRow = {
+                        expanded: Boolean = false,
+                        edited: Option[Boolean] = None): EmailRow = {
       val aVar = Var(expanded)
+      val editing = edited.getOrElse(isEditing(userEmail))
 
       lazy val aSubRow: StaticSubRow = StaticSubRow({
-        div(height := 300, rowFlex)(
+        div(height := 350, rowFlex)(
           groupCell.build(margin := 25),
           div(userLastAccess.toStringDate, fontSize := "12px", minWidth := 150),
           label(label_primary, userOMVersion),
@@ -139,9 +151,9 @@ object AdminPanel {
       )), aSubRow)
 
 
-      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userLastAccess, expanded, (uData: UserData) => save(expandableRow, uData))
+      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userLastAccess, expanded, editing, (uData: UserData) => save(expandableRow, uData))
 
-      expandableRow
+      EmailRow(userEmail, expandableRow)
     }
 
 
@@ -150,7 +162,7 @@ object AdminPanel {
     //updatePodInfoTimer
 
     val addUserButton = button(btn_primary, "Add", onclick := { () =>
-      val row = buildExpandable(userRole = user, userOMVersion = "LATEST", expanded = true)
+      val row = buildExpandable(userRole = user, userOMVersion = "LATEST", expanded = true, edited = Some(true))
       rows.update(rows.now :+ row)
     })
 
@@ -171,7 +183,9 @@ object AdminPanel {
       ),
       Rx {
         div(styles.display.flex, flexDirection.row, styles.justifyContent.center)(
-          EdiTable(Seq("Name", "Status"), rows()).render(width := "90%")
+          EdiTable(Seq("Name", "Status"), rows().map {
+            _.expandableRow
+          }).render(width := "90%")
         )
       }
     )
