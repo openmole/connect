@@ -43,6 +43,10 @@ object DB {
       u.lastAccess.value)
   }
 
+  implicit def optionUserToOptionUserData(auser: Option[User]): Option[UserData] = {
+    auser.flatMap { u => userToUserData(Seq(u)).headOption }
+  }
+
   def toUser(uuid: UUID, userData: UserData): User = User(
     userData.name,
     Email(userData.email),
@@ -139,9 +143,13 @@ object DB {
     _.uuid
   }
 
-  def uuids = users.map{_.uuid}
+  def uuids = users.map {
+    _.uuid
+  }
 
-  def email(uuid: UUID) = users.find(u=> u.uuid == uuid).map{_.email}
+  def email(uuid: UUID) = users.find(u => u.uuid == uuid).map {
+    _.email
+  }
 
   def get(email: Email) = {
     runQuery(

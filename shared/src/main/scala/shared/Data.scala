@@ -3,6 +3,7 @@ package shared
 object Data {
   val connectionRoute = "/connection"
   val adminRoutePrefix = "shared/AdminApi"
+  val userRoutePrefix = "shared/UserApi"
 
 
   type Role = String

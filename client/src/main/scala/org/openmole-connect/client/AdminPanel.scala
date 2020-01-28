@@ -151,7 +151,7 @@ object AdminPanel {
       )), aSubRow)
 
 
-      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userLastAccess, expanded, editing, (uData: UserData) => save(expandableRow, uData))
+      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userLastAccess, editableEmail = true, editableRole = true, expanded, editing, (uData: UserData) => save(expandableRow, uData))
 
       EmailRow(userEmail, expandableRow)
     }

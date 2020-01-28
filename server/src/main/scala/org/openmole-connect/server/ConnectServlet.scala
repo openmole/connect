@@ -24,7 +24,7 @@ import boopickle.Default._
 import scala.reflect.ClassTag
 import java.nio.ByteBuffer
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import autowire._
 
 class ConnectServlet(arguments: ConnectServer.ServletArguments) extends ScalatraServlet {
@@ -32,6 +32,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   implicit val secret: JWT.Secret = arguments.secret
   val adminApiImpl = new AdminApiImpl(arguments.kubeOff)
+  val userApiImpl = new UserApiImpl(arguments.kubeOff)
 
   val httpClient = HttpClients.createDefault()
 
@@ -86,7 +87,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         tokenData.host.hostIP.map { hip =>
           getFromHip(hip)
           Ok()
-        }.getOrElse(NotFound())
+        }.getOrElse(Ok(userHtml))
       }
     }
   }
@@ -128,28 +129,49 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
     }
   }
 
-
   post(s"/${Data.adminRoutePrefix}/*") {
     withAdminRights { _ =>
-      val req = Await.result({
-        val is = request.getInputStream
-        val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
-        val bb = ByteBuffer.wrap(bytes)
-
-        AutowireServer.route[shared.AdminApi](adminApiImpl)(
+      runRequest(
+        (bb: ByteBuffer) => AutowireServer.route[shared.AdminApi](adminApiImpl)(
           autowire.Core.Request(
             Data.adminRoutePrefix.split("/").toSeq ++ multiParams("splat").head.split("/"),
             Unpickle[Map[String, ByteBuffer]].fromBytes(bb)
           )
         )
-      },
-        Duration.Inf
       )
-
-      val data = Array.ofDim[Byte](req.remaining)
-      req.get(data)
-      Ok(data)
     }
+  }
+
+  post(s"/${Data.userRoutePrefix}/*") {
+    withAccesToken { tokenData =>
+      val userData: Option[UserData] = DB.get(tokenData.email)
+      val userDataByteBuffer = AutowireServer.write(userData)
+
+      runRequest(
+        (bb: ByteBuffer) => AutowireServer.route[shared.UserApi](userApiImpl)(
+          autowire.Core.Request(
+            Data.userRoutePrefix.split("/").toSeq ++ multiParams("splat").head.split("/").map{_ + "WithData"},
+            Unpickle[Map[String, ByteBuffer]].fromBytes(bb) ++ Map("connectedUserData" -> userDataByteBuffer)
+          )
+        )
+      )
+    }
+  }
+
+  def runRequest(router: ByteBuffer => Future[ByteBuffer]) = {
+    val req = Await.result({
+      val is = request.getInputStream
+      val bytes: Array[Byte] = Iterator.continually(is.read()).takeWhile(_ != -1).map(_.asInstanceOf[Byte]).toArray[Byte]
+      val bb = ByteBuffer.wrap(bytes)
+
+      router(bb)
+    },
+      Duration.Inf
+    )
+
+    val data = Array.ofDim[Byte](req.remaining)
+    req.get(data)
+    Ok(data)
   }
 
   post(Data.connectionRoute) {
@@ -261,6 +283,8 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
   def connectionHtml = someHtml("connection();")
 
   def adminHtml = someHtml("admin();")
+
+  def userHtml = someHtml("user();")
 
 
   def someHtml(jsCall: String) = {
