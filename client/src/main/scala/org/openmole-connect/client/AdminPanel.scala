@@ -20,11 +20,8 @@ import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scaladget.bootstrapnative.bsn._
 import scaladget.tools.{ModifierSeq, _}
 import scalatags.JsDom.all._
-import scala.scalajs.js.timers._
+import ConnectUtils._
 
-import Utils._
-
-import scala.scalajs.js.Date
 
 object AdminPanel {
 
@@ -175,8 +172,8 @@ object AdminPanel {
     )
 
     val editablePanel = div(maxWidth := 1000, margin := "40px auto")(
-      img(src := "img/logo.png", css.adminLogoStyle),
-      Utils.logoutItem(styles.display.flex, flexDirection.row, justifyContent.flexEnd),
+      img(src := "img/logo.png", Css.adminLogoStyle),
+      ConnectUtils.logoutItem(styles.display.flex, flexDirection.row, justifyContent.flexEnd),
       div(styles.display.flex, flexDirection.row, justifyContent.flexStart, marginLeft := 50, marginBottom := 20, marginTop := 80)(
         addUserButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd),
         refreshButton(styles.display.flex, flexDirection.row, styles.justifyContent.flexEnd)

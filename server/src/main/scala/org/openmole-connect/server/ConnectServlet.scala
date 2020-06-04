@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import org.openmoleconnect.server.JWT._
 import org.scalatra._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scalatags.Text.all._
 import scalatags.Text.{all => tags}
 
@@ -36,10 +36,10 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
   val httpClient = HttpClients.createDefault()
 
-  def uriBuilder(hostIP: String, path: String) = new URIBuilder()
+  def uriBuilder(hostIP: String, path: String, port: Int  =80) = new URIBuilder()
     .setScheme("http")
     .setHost(hostIP)
-    .setPort(80)
+    .setPort(port)
     .setPath(path)
 
   def uri(hostIP: String, path: String) = uriBuilder(hostIP, path).build()
@@ -113,7 +113,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
             httpPost.setEntity(new InputStreamEntity(is))
 
             val filtred = Seq("Content-Length")
-            request.getHeaderNames.filter(n => !filtred.contains(n)).foreach {
+            request.getHeaderNames.asScala.filter(n => !filtred.contains(n)).foreach {
               n => httpPost.setHeader(n, request.getHeader(n))
             }
 
@@ -191,6 +191,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
               val host = {
                 if (arguments.kubeOff) Host(uuid, None)
                 else {
+                  println("INgress :: " + K8sService.ingressIP)
                   Host(uuid, K8sService.hostIP(uuid))
                 }
               }
@@ -233,7 +234,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
         tokenData.host.hostIP.map { hip =>
 
           val u = uriBuilder(hip, path)
-          request.getParameterNames.foreach { pn =>
+          request.getParameterNames.asScala.foreach { pn =>
             u.addParameter(pn, request.getParameter(pn))
           }
 
@@ -247,6 +248,7 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
 
   def getFromURI(uri: URI, requestContentType: String): Int = {
+    println("GET FROM URI " + uri.toString)
     val httpGet = new HttpGet(uri)
 
     httpGet.setHeader("Content-Type", requestContentType)

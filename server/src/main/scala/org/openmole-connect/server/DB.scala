@@ -94,7 +94,9 @@ object DB {
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
-      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), Utils.openmoleversion.stable, JWT.now, DB.admin, UUID("foo-123-567-foo"))
+      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), Utils.openmoleversion.stable, JWT.now, DB.admin, UUID("admin-123-567-admin"))
+      DB.addUser("foo", DB.Email("foo@foo.com"), DB.Password("foo"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("foo"))
+      DB.addUser("toto", DB.Email("toto@toto.com"), DB.Password("toto"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("openmole-toto"))
     }
   }
 

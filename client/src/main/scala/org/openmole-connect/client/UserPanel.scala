@@ -18,6 +18,8 @@ import scaladget.bootstrapnative.bsn._
 import scaladget.tools.{ModifierSeq, _}
 import scalatags.JsDom.all._
 
+import ConnectUtils._
+
 object UserPanel {
 
   lazy val rowFlex = Seq(styles.display.flex, flexDirection.row, justifyContent.spaceAround)
@@ -57,8 +59,8 @@ object UserPanel {
             upserting = (userData: UserData) => upsert(userData)).build
 
           div(maxWidth := 1000, margin := "40px auto")(
-            img(src := "img/logo.png", css.adminLogoStyle),
-            Utils.logoutItem(styles.display.flex, flexDirection.row, justifyContent.flexEnd),
+            img(src := "img/logo.png", Css.adminLogoStyle),
+            ConnectUtils.logoutItem(styles.display.flex, flexDirection.row, justifyContent.flexEnd),
             div(styles.display.flex, flexDirection.row, justifyContent.flexStart, marginLeft := 50, marginBottom := 20, marginTop := 80)(
               //  div(width := 350, margin.auto, paddingTop := 200 )(
               panel)
@@ -84,7 +86,7 @@ object UserPanel {
                    editableRole: Boolean,
                    expanded: Boolean = false,
                    editing: Boolean = false,
-                   upserting: (UserData) => Unit = (u: UserData) => Unit
+                   upserting: (UserData) => Unit = (u: UserData) => ()
                   ): GroupCell = {
 
     def roleStyle(s: Role) =

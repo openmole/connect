@@ -3,7 +3,7 @@ package org.openmoleconnect.client
 import scalatags.JsDom.all._
 import scaladget.tools._
 
-package object css {
+object Css {
   lazy val connectionTabOverlay: ModifierSeq = Seq(
     display.flex,
     flexDirection.column,

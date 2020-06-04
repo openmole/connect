@@ -19,7 +19,8 @@ object Application extends App {
 
   def usage =
     """OpenMOLE-connect application options:
-      |[--secret secret] specify the keycloak secret
+      |[--secret secret] the token generation secret
+      |[-kubeOff ] do not request kubernetes (limited usage).
     """
 
   def parse(args: List[String], c: Config = Config()): Config = {

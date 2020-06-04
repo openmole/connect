@@ -69,10 +69,10 @@ object Connection {
 
     val render = {
       div(
-        div(css.connectionTabOverlay)(
+        div(Css.connectionTabOverlay)(
           div(
-            img(src := "img/logo.png", css.openmoleLogo),
-            div(css.connectionFormStyle)(
+            img(src := "img/logo.png", Css.openmoleLogo),
+            div(Css.connectionFormStyle)(
               connectionForm
             )
           )

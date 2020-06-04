@@ -8,7 +8,7 @@ import scalatags.JsDom.all._
 
 import scala.scalajs.js.Date
 
-object Utils {
+object ConnectUtils {
 
   val logoutLogo = toClass("glyphicon glyphicon-off")
 
@@ -18,10 +18,10 @@ object Utils {
     color := "#337ab7"
   )
 
-  val logoutItem =
+  def logoutItem =
     div(logoutLogo, itemStyle, onclick := { () ⇒ org.scalajs.dom.window.location.href = s"${org.scalajs.dom.window.location.href}logout" })
 
-  implicit class FromInt(i: Int) {
+  implicit class FromDouble(i: Double) {
     def toDayString = i match {
       case 0 => "Mon"
       case 1 => "Tue"

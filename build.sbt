@@ -4,20 +4,20 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 import scala.collection.mutable
 
-val scalatraVersion = "2.6.5"
-val jettyVersion = "9.4.19.v20190610"
-val json4sVersion = "3.6.7"
-val scalatagsVersion = "0.7.0"
-val scaladgetVersion = "1.3.0-SNAPSHOT"
-val scalajsDomVersion = "0.9.7"
-val scalaJWTVersion = "4.0.0"
-val rosHttpVersion = "2.2.4"
-val skuberVersion = "2.2.0"
-val httpComponentsVersion = "4.5.9"
-val slickVersion = "3.3.1"
+val scalatraVersion = "2.7.0"
+val jettyVersion = "9.4.28.v20200408"
+val json4sVersion = "3.6.8"
+val scalatagsVersion = "0.9.1"
+val scaladgetVersion = "1.3.3"
+val scalajsDomVersion = "1.0.0"
+val scalaJWTVersion = "4.2.0"
+val rosHttpVersion = "3.0.0"
+val skuberVersion = "2.4.0"
+val httpComponentsVersion = "4.5.12"
+val slickVersion = "3.3.2"
 val h2Version = "1.4.200"
-val autowireVersion = "0.2.6"
-val boopickleVersion = "1.2.6"
+val autowireVersion = "0.3.2"
+val boopickleVersion = "1.3.2"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -27,7 +27,7 @@ val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
 lazy val defaultSettings = Seq(
   organization := "openmole.org",
   version := "0.1.0-SNAPSHOT",
-  scalaVersion := "2.12.8",
+  scalaVersion := "2.13.2",
   resolvers := Resolvers
 )
 
@@ -39,8 +39,8 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
   skip in packageJSDependencies := false,
   libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
-    "fr.iscpif.scaladget" %%% "tools" % scaladgetVersion,
-    "fr.iscpif.scaladget" %%% "bootstrapnative" % scaladgetVersion,
+    "org.openmole.scaladget" %%% "tools" % scaladgetVersion,
+    "org.openmole.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
     "com.lihaoyi" %%% "autowire" % autowireVersion,
     "io.suzaku" %%% "boopickle" % boopickleVersion
@@ -79,7 +79,8 @@ lazy val application = project.in(file("application")) settings (defaultSettings
     Cmd("USER", "1001:0"),
     ExecCmd("ENTRYPOINT", "/opt/docker/bin/application")
   ),
-  packageName in Docker := "openmole-connect"
+  packageName in Docker := "openmole-connect",
+  organization in Docker := "openmole"
 )
 
 
