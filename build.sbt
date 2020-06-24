@@ -1,6 +1,8 @@
 import com.typesafe.sbt.packager.docker
 import com.typesafe.sbt.packager.docker.{Cmd, ExecCmd}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import com.typesafe.sbt.packager.docker._
+import NativePackagerHelper._
 
 import scala.collection.mutable
 
@@ -67,46 +69,28 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
   )
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
-lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins (JavaServerAppPackaging) settings(
-  dockerCommands := Seq(
-    Cmd("FROM", "gafiatulin/alpine-sbt as simop"),
-    Cmd("RUN", "apk update && apk add bash git sudo nodejs-npm"),
-    Cmd("RUN", "adduser connect -g \"\" -D -h /var/connect/"),
-    Cmd("USER", "connect"),
-    Cmd("RUN", "cd /var/connect && git clone https://gitlab.openmole.org/openmole/openmole-connect && cd openmole-connect && sbt go")
-  ) ++ dockerCommands.value.dropRight(3) ++ Seq(
-    Cmd("COPY", "--from=simop", "--chown=root:root", "/var/connect/openmole-connect/application/target/webapp", "/opt/docker/application/target/webapp"),
-    Cmd("USER", "1001:0"),
-    ExecCmd("ENTRYPOINT", "/opt/docker/bin/application")
-  ),
+val prefix = "/opt/docker/application/target"
+lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins (JavaServerAppPackaging) enablePlugins (DockerPlugin) settings(
+  mappings in Docker ++= Seq((dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
+    (fullOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
+  ) ++ doMapping((resourceDirectory in client in Compile).value, prefix) ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/"),
+  dockerCommands := dockerCommands.value,
   packageName in Docker := "openmole-connect",
   organization in Docker := "openmole"
 )
 
+def doMapping(from: java.io.File, toBase: String): Seq[(File, String)] = {
+  val fromPath = s"${from.getAbsolutePath}"
+  val list = recursiveFileList(from).toSeq.filterNot {
+    _.getName == "webapp"
+  }.map { f =>
+    f -> s"$toBase${f.getAbsolutePath diff fromPath}"
+  }
 
+  list
+}
 
-
-lazy val bootstrap = project.in(file("target/bootstrap")) settings (defaultSettings) settings (
-  go := {
-
-    def copyToTarget(jsBuild: sbt.File,
-                     appTarget: sbt.File,
-                     clientResources: sbt.File,
-                     dependencyJS: sbt.File,
-                     depsCSS: sbt.File,
-                     targetName: String) = {
-      IO.copyFile(jsBuild, appTarget / s"webapp/js/$targetName.js")
-      IO.copyFile(dependencyJS, appTarget / s"webapp/js/$targetName-deps.js")
-      IO.copyDirectory(depsCSS, appTarget / "webapp/css")
-      IO.copyDirectory(clientResources, appTarget)
-    }
-
-    val appTarget = (target in application in Compile).value
-
-    val jsBuild = (fullOptJS in client in Compile).value.data
-    val clientResources = (resourceDirectory in client in Compile).value
-    val dependencyJS = (dependencyFile in client in Compile).value
-    val depsCSS = (cssFile in client in Compile).value
-    copyToTarget(jsBuild, appTarget, clientResources, dependencyJS, depsCSS, "connect")
-
-  }) dependsOn(client, server)
+def recursiveFileList(dir: File): Array[File] = {
+  val these = dir.listFiles
+  these ++ these.filter(_.isDirectory).flatMap(recursiveFileList)
+}
