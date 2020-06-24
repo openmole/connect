@@ -70,11 +70,12 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
   ) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
 val prefix = "/opt/docker/application/target"
-lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn (server) enablePlugins (JavaServerAppPackaging) enablePlugins (DockerPlugin) settings(
-  mappings in Docker ++= Seq((dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
+lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn(server) enablePlugins (JavaServerAppPackaging) settings(
+  mappings in Docker ++= Seq(
+    (dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
     (fullOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
-  ) ++ doMapping((resourceDirectory in client in Compile).value, prefix) ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/"),
-  dockerCommands := dockerCommands.value,
+  ) ++ doMapping((resourceDirectory in client in Compile).value, prefix)
+    ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/"),
   packageName in Docker := "openmole-connect",
   organization in Docker := "openmole"
 )
