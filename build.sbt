@@ -19,7 +19,7 @@ val httpComponentsVersion = "4.5.12"
 val slickVersion = "3.3.2"
 val h2Version = "1.4.200"
 val autowireVersion = "0.3.2"
-val boopickleVersion = "1.3.2"
+val boopickleVersion = "1.3.3"
 
 val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
@@ -28,7 +28,7 @@ val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
 
 lazy val defaultSettings = Seq(
   organization := "openmole.org",
-  version := "0.1.0-SNAPSHOT",
+  version := "0.1.1",
   scalaVersion := "2.13.2",
   resolvers := Resolvers
 )
