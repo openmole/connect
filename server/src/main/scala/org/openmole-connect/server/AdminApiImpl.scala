@@ -14,6 +14,7 @@ class AdminApiImpl(kubeOff: Boolean) extends shared.AdminApi {
   def delete(userData: UserData): Seq[UserData] = {
     val id = DB.uuid(Email(userData.email))
     id.foreach { i =>
+      K8sService.deleteOpenMOLE(i)
       DB.delete(toUser(i, userData))
     }
     users

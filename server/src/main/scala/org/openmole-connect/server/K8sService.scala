@@ -18,6 +18,10 @@ import scala.util.{Failure, Success}
 
 object K8sService {
 
+  object Namespace {
+    val openmole = "openmole"
+    val connect = "connect"
+  }
 
   def listPods = {
     withK8s { k8s =>
@@ -105,17 +109,23 @@ object K8sService {
 
   def deployOpenMOLE(uuid: UUID) = {
     withK8s { k8s =>
-      val podName = s"${uuid.value}"
+      val podName = uuid.value
 
       val openmoleContainer = Container(
         name = "openmole",
         image = "openmole/openmole",
         command = List("bin/bash", "-c", "openmole --port 80 --password password --http --remote --mem 1G")).exposePort(80)
 
-      val openmolePod = Pod(spec = Some(Pod.Spec().addContainer(openmoleContainer)), metadata = ObjectMeta(name = podName, namespace = "openmole"))
+      val openmolePod = Pod(podName, Pod.Spec().addContainer(openmoleContainer))
 
 
-        k8s create openmolePod
+      k8s.usingNamespace(Namespace.openmole) create openmolePod
+    }
+  }
+
+  def deleteOpenMOLE(uuid: UUID) = {
+    withK8s { k8s =>
+      k8s.usingNamespace(Namespace.openmole).delete[Pod](uuid.value)
     }
   }
 
