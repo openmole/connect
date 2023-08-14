@@ -1,4 +1,4 @@
-resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+resolvers += Resolver.sonatypeRepo("releases")
 
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.1.0")
 

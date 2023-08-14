@@ -17,7 +17,8 @@ release/*
 .idea/
 .idea/*
 *~
-.project
+project
+project/*
 .settings
 *.bak
 *.js

@@ -14,21 +14,22 @@ val scaladgetVersion = "1.3.3"
 val scalajsDomVersion = "1.0.0"
 val scalaJWTVersion = "4.2.0"
 val rosHttpVersion = "3.0.0"
-val skuberVersion = "2.4.0"
+val skuberVersion = "2.6.7"
 val httpComponentsVersion = "4.5.12"
 val slickVersion = "3.3.2"
 val h2Version = "1.4.200"
 val autowireVersion = "0.3.2"
 val boopickleVersion = "1.3.3"
 
-val Resolvers = Seq(Resolver.sonatypeRepo("snapshots"),
-  "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
+val Resolvers = Seq(
+  Resolver.sonatypeRepo("snapshots"),
+  Resolver.sonatypeRepo("releases"),
   Resolver.bintrayRepo("hmil", "maven")
 )
 
 lazy val defaultSettings = Seq(
   organization := "openmole.org",
-  version := "0.1.1",
+  version := "0.6-SNAPSHOT",
   scalaVersion := "2.13.2",
   resolvers := Resolvers
 )
