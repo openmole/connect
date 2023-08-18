@@ -9,11 +9,13 @@ import shared.Data._
 import skuber.PersistentVolume.AccessMode
 import skuber.api.client.KubernetesClient
 import skuber.apps.StatefulSet
+import skuber.apps.v1.Deployment
 import skuber.networking.{Ingress, IngressList}
 import skuber.json.format._
 import skuber.json.ext.format._
 import skuber.json.networking.format._
 
+import java.util
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -27,7 +29,7 @@ object K8sService {
   }
 
   object Ceph {
-    val storageClassName = "ceph-storage"
+    val storageClassName = "rook-ceph-block"
   }
 
   def listPods = {
@@ -104,7 +106,7 @@ object K8sService {
   }
 
   def ingressIP: Option[String] =
-    getIngress.flatMap {i=>
+    getIngress.flatMap { i =>
       i.status.flatMap {
         _.loadBalancer.flatMap {
           _.ingress.headOption.flatMap {
@@ -114,90 +116,89 @@ object K8sService {
       }
     }
 
-    def deployOpenMOLE(uuid: UUID) = {
-      withK8s { k8s =>
-        val podName = uuid.value
-        val openmoleContainer = Container(
-          name = "openmole",
-          image = "openmole/openmole",
-          command = List("bin/bash", "-c", "openmole --port 80 --password password --http --remote --mem 1G"),
-          volumeMounts = List(Volume.Mount(name = uuid.value, mountPath = "~/.openmole/"))
-        ).exposePort(80)
+  def deployOpenMOLE(uuid: UUID) = {
+    withK8s { k8s =>
+      val podName = uuid.value
+      val pvcName = s"${podName}-pvc"
+      val pvName = s"${podName}-pv"
 
-        val openmolePodSpec = Pod.Spec()
-          .addContainer(openmoleContainer)
+      def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map("app" -> Namespace.openmole))
 
-        val openmolePod = Pod(podName, openmolePodSpec)
+      val pvc = PersistentVolumeClaim(
+        metadata = metadata(pvcName),
+        spec = Some(PersistentVolumeClaim.Spec(
+          storageClassName = Some(Ceph.storageClassName),
+          accessModes = List(AccessMode.ReadWriteOnce),
+          resources = Some(Resource.Requirements(requests = Map("storage" -> "20Gi"))),
+        ))
+      )
 
-        val pvc = PersistentVolumeClaim(
-          metadata = ObjectMeta(name = uuid.value, namespace = Namespace.openmole),
-          spec = Some(PersistentVolumeClaim.Spec(
-            storageClassName = Some(Ceph.storageClassName),
-            accessModes = List(AccessMode.ReadWriteOnce),
-            resources = Some(Resource.Requirements(limits = Map("storage" -> "1Gi"))),
-          ))
+      val openmoleContainer = Container(
+        name = "openmole",
+        image = "openmole/openmole",
+        command = List("bin/bash", "-c", "openmole --port 80 --password password --http --remote --mem 1G"),
+        volumeMounts = List(Volume.Mount(name = pvName, mountPath = "/root/.openmole/")),
+      ).exposePort(80)
+
+      val openmolePod = Pod(
+        metadata = metadata(podName),
+        spec = Some(
+          Pod.Spec(
+            containers = List(openmoleContainer),
+            volumes = List(Volume(name = pvName, source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
+            )
+          )
         )
 
-        println("PVC " + pvc + "\n\n")
-
-        val statefulSet = StatefulSet(metadata = ObjectMeta(name = uuid.value, namespace = Namespace.openmole))
-          .withServiceName(uuid.value)
-          .withVolumeClaimTemplate(pvc)
-          .withTemplate(Pod.Template.Spec(spec = Some(openmolePodSpec)))
-
-
-        println("statefulset " + statefulSet + "\n\n")
-
-
-        k8s.usingNamespace(Namespace.openmole) create openmolePod
-        k8s.usingNamespace(Namespace.openmole) create statefulSet
-      }
-
-
-    }
-
-    def deleteOpenMOLE(uuid: UUID) = {
-      withK8s { k8s =>
-        k8s.usingNamespace(Namespace.openmole).delete[Pod](uuid.value)
-      }
-    }
-
-    def deployIfNotDeployedYet(uuid: UUID) = {
-      if (!isDeploymentExists(uuid))
-        deployOpenMOLE(uuid)
-
-    }
-
-    private def podInfo(uuid: UUID) = {
-
-      //  import monix.execution.Scheduler.Implicits.global
-      val lp = listPods
-      println("pods " + lp)
-      lp.find {
-        _.name.contains(uuid.value)
-      }
+      k8s.usingNamespace(Namespace.openmole) create pvc
+      k8s.usingNamespace(Namespace.openmole) create openmolePod
     }
 
 
-    def isServiceUp(uuid: UUID): Boolean = {
-      podInfo(uuid).map {
-        _.status
-      } == Some(Running)
-    }
+  }
 
-    def isDeploymentExists(uuid: UUID) = podInfo(uuid).isDefined
-
-    def podInfos: Seq[PodInfo] = {
-
-      for {
-        uuid <- DB.uuids
-        podInfo <- podInfo(uuid)
-      } yield (podInfo)
-    }
-
-    def hostIP(uuid: UUID) = {
-      podInfo(uuid).map {
-        _.podIP
-      }
+  def deleteOpenMOLE(uuid: UUID) = {
+    withK8s { k8s =>
+      k8s.usingNamespace(Namespace.openmole).delete[Pod](uuid.value)
     }
   }
+
+  def deployIfNotDeployedYet(uuid: UUID) = {
+    if (!isDeploymentExists(uuid))
+      deployOpenMOLE(uuid)
+
+  }
+
+  private def podInfo(uuid: UUID) = {
+
+    //  import monix.execution.Scheduler.Implicits.global
+    val lp = listPods
+    println("pods " + lp)
+    lp.find {
+      _.name.contains(uuid.value)
+    }
+  }
+
+
+  def isServiceUp(uuid: UUID): Boolean = {
+    podInfo(uuid).map {
+      _.status
+    } == Some(Running)
+  }
+
+  def isDeploymentExists(uuid: UUID) = podInfo(uuid).isDefined
+
+  def podInfos: Seq[PodInfo] = {
+
+    for {
+      uuid <- DB.uuids
+      podInfo <- podInfo(uuid)
+    } yield (podInfo)
+  }
+
+  def hostIP(uuid: UUID) = {
+    podInfo(uuid).map {
+      _.podIP
+    }
+  }
+}
