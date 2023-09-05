@@ -11,6 +11,8 @@ trait AdminApi {
 
   def delete(userData: UserData): Seq[UserData]
 
+  def stopOpenMOLE(userData: UserData): Seq[UserData]
+
   // PODS
   def podInfos(): Seq[PodInfo]
 }

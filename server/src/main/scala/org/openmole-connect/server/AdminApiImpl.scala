@@ -20,6 +20,15 @@ class AdminApiImpl(kubeOff: Boolean) extends shared.AdminApi {
     users
   }
 
+  def stopOpenMOLE(userData: UserData): Seq[UserData] = {
+    val id = DB.uuid(Email(userData.email))
+    id.foreach { i =>
+      K8sService.stopOpenMOLEPod(i)
+    }
+    users
+  }
+
+
   //PODS
   def podInfos(): Seq[PodInfo] = {
     K8sService.podInfos

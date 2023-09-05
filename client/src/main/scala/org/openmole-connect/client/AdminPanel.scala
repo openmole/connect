@@ -61,8 +61,13 @@ object AdminPanel {
         rows() = _
       }
 
-    def delete(userData: UserData) =
+    def deleteUser(userData: UserData) =
       Post[AdminApi].delete(userData).call().foreach {
+        rows() = _
+      }
+
+    def stopOpenMOLE(userData: UserData) =
+      Post[AdminApi].stopOpenMOLE(userData).call().foreach {
         rows() = _
       }
 
@@ -120,9 +125,13 @@ object AdminPanel {
           div(userLastAccess.toStringDate, fontSize := "12px", minWidth := 150),
           label(label_primary, userOMVersion),
           span(columnFlex, alignItems.flexEnd, justifyContent.flexEnd)(
-            button(btn_danger, "Delete", onclick := { () =>
+            button(btn_danger, "Delete user (and data)", onclick := { () =>
               val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
-              delete(userData)
+              deleteUser(userData)
+            }, margin := 10),
+            button(btn_danger, "Stop OpenMOLE", onclick := { () =>
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+              stopOpenMOLE(userData)
             }, margin := 10)
           )
         )
