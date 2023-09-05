@@ -135,8 +135,8 @@ object K8sService {
       val openMOLEContainer = Container(
         name = "openmole",
         image = "openmole/openmole",
-        command = List("bin/bash", "-c", "openmole --port 80 --password password --remote --mem 1G"),
-        volumeMounts = List(Volume.Mount(name = pvName, mountPath = "/root/.openmole/")),
+        command = List("bin/bash", "-c", "openmole-docker --port 80 --password password --remote --mem 1G --workspace /var/openmole/.openmole"),
+        volumeMounts = List(Volume.Mount(name = pvName, mountPath = "/var/openmole/")),
       ).exposePort(80)
 
       val openMOLELabel = "app" -> "openmole"
