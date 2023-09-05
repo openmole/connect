@@ -123,7 +123,7 @@ object K8sService {
           resources = Some(Resource.Requirements(requests = Map("storage" -> "20Gi"))),
         ))
       )
-      val openMOLESelector  = "app" is "openmole"
+      val openMOLESelector = "app" is "openmole"
 
       val openMOLEContainer = Container(
         name = "openmole",
@@ -142,7 +142,7 @@ object K8sService {
         .addContainer(openMOLEContainer)
         .addVolume(Volume(name = pvName, source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
         .addLabel(openMOLELabel)
-        .addLabel("podName"->podName)
+        .addLabel("podName" -> podName)
 
       val desiredCount = 1
 
@@ -199,15 +199,17 @@ object K8sService {
       deployOpenMOLE(uuid)
   }
 
-  private def podInfo(uuid: UUID) = {
+  private def podInfo(uuid: UUID, podList: List[PodInfo]): Option[PodInfo] =
+    podList.find {
+      _.name.contains(uuid.value)
+    }
+
+  private def podInfo(uuid: UUID): Option[PodInfo] = {
     //  import monix.execution.Scheduler.Implicits.global
     val lp = listPods
     println("pods:\n" + lp.mkString("\n"))
-    lp.find {
-      _.name.contains(uuid.value)
-    }
+    podInfo(uuid, lp)
   }
-
 
   def isServiceUp(uuid: UUID): Boolean = {
     podInfo(uuid).map {
@@ -218,9 +220,10 @@ object K8sService {
   def isDeploymentExists(uuid: UUID) = podInfo(uuid).isDefined
 
   def podInfos: Seq[PodInfo] = {
+    val pods = listPods
     for {
       uuid <- DB.uuids
-      podInfo <- podInfo(uuid)
+      podInfo <- podInfo(uuid, pods)
     } yield (podInfo)
   }
 
