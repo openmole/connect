@@ -13,6 +13,8 @@ trait AdminApi {
 
   def stopOpenMOLE(userData: UserData): Seq[UserData]
 
+  def startOpenMOLE(userData: UserData): Seq[UserData]
+
   // PODS
   def podInfos(): Seq[PodInfo]
 }
