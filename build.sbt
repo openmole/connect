@@ -19,8 +19,8 @@ val skuberVersion = "2.6.7"
 val httpComponentsVersion = "4.5.12"
 val slickVersion = "3.3.2"
 val h2Version = "1.4.200"
-val autowireVersion = "0.3.2"
-val boopickleVersion = "1.3.3"
+val autowireVersion = "0.3.3"
+val boopickleVersion = "1.4.0"
 
 val Resolvers = Seq(
   Resolver.sonatypeRepo("snapshots"),
