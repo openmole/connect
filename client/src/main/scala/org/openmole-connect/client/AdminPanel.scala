@@ -71,6 +71,11 @@ object AdminPanel {
         rows() = _
       }
 
+    def startOpenMOLE(userData: UserData) =
+      Post[AdminApi].startOpenMOLE(userData).call().foreach {
+        rows() = _
+      }
+
     def updateRows = {
       Post[AdminApi].users().call().foreach { us =>
         rows() = us
@@ -132,6 +137,10 @@ object AdminPanel {
             button(btn_danger, "Stop OpenMOLE", onclick := { () =>
               val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
               stopOpenMOLE(userData)
+            }, margin := 10),
+            button(btn_success, "Start OpenMOLE", onclick := { () =>
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+              startOpenMOLE(userData)
             }, margin := 10)
           )
         )
