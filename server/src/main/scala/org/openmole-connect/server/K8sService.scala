@@ -178,7 +178,8 @@ object K8sService {
   def stopOpenMOLEPod(uuid: UUID) = {
     withK8s { k8s =>
       k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
-        d.withReplicas(0)
+        println("stopOpenMOLEPod : " + uuid.value + " = " + d)
+        k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
       }
     }
   }
