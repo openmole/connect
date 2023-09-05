@@ -153,12 +153,13 @@ object K8sService {
 
       val desiredCount = 1
 
+      // https://kubernetes.io/docs/tasks/run-application/run-single-instance-stateful-application/
       val openMOLEDeployment = Deployment(podName)
         .withReplicas(desiredCount)
         .withTemplate(openMOLETemplate)
         .withLabelSelector(openMOLESelector)
 
-      println("Creating openmole deployment")
+      // Creating the openmole deployment
       k8s.usingNamespace(Namespace.openmole) create pvc
       val createdDeploymentFut = k8s.usingNamespace(Namespace.openmole) create openMOLEDeployment
 
