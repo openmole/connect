@@ -59,7 +59,7 @@ object K8sService {
       implicit val materializer = ActorMaterializer()
       implicit val dispatcher = system.dispatcher
 
-      val allPodsMapFut: Future[PodList] = k8s.listSelected[PodList](LabelSelector.IsEqualRequirement("app","openmole"))
+      val allPodsMapFut: Future[PodList] = k8s.listInNamespace[PodList]("openmole")//k8s.listSelected[PodList](LabelSelector.IsEqualRequirement("app","openmole"))
       val allPodsFuture: Future[List[Pod]] = allPodsMapFut.map(_.items)
 
       def listPods0(pods: List[Pod]) = pods.flatMap { pod: Pod => toPodInfoList(pod) }
@@ -205,6 +205,16 @@ object K8sService {
     }
 
   private def podInfo(uuid: UUID): Option[PodInfo] = {
+    /*
+    withK8s {
+      k8s =>
+        val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
+        pods.map { list =>
+          println("podinfo for " + uuid.value + " - " + list.items.size)
+          list.items.flatMap { pod => toPodInfoList(pod) }.foreach{podinfo=>println(podinfo)}
+        }
+    }
+    */
     //  import monix.execution.Scheduler.Implicits.global
     val lp = listPods
     println("pods:\n" + lp.mkString("\n"))
