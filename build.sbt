@@ -3,6 +3,7 @@ import com.typesafe.sbt.packager.docker.{Cmd, ExecCmd}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import com.typesafe.sbt.packager.docker._
 import NativePackagerHelper._
+import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport.daemonUser
 
 import scala.collection.mutable
 
@@ -72,6 +73,11 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
 
 val prefix = "/opt/docker/application/target"
 lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn(server) enablePlugins (JavaServerAppPackaging) settings(
+//  daemonUserUid in Docker := None,
+//  daemonUser in Docker    := "openmoleconnect",
+//  dockerChmodType := DockerChmodType.UserGroupWriteExecute,
+//  dockerAdditionalPermissions += (DockerChmodType.UserGroupPlusExecute, "/opt/docker/bin/application"),
+//  dockerAdditionalPermissions += (DockerChmodType.UserGroupWriteExecute, "/home/demiourgos728/.openmole-connect"),
   mappings in Docker ++= Seq(
     (dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
     (fullOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
