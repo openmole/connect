@@ -88,7 +88,7 @@ object K8sService {
 
   def getIngress = withK8s { k8s =>
 
-    println("get Ingres")
+    //println("get Ingres")
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
     implicit val dispatcher = system.dispatcher
@@ -175,10 +175,19 @@ object K8sService {
     }
   }
 
-  def deleteOpenMOLE(uuid: UUID) = {
-    // TODO: Should we also force the deletion of the pvc as we're at it?
+  def stopOpenMOLEPod(uuid: UUID) = {
     withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).delete[Deployment](uuid.value)
+      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
+        d.withReplicas(0)
+      }
+    }
+  }
+
+  def deleteOpenMOLE(uuid: UUID) = {
+    //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
+    withK8s { k8s =>
+      val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
+      k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
     }
   }
 
