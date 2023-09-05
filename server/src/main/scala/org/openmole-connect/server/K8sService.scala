@@ -188,6 +188,7 @@ object K8sService {
     withK8s { k8s =>
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
       k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
+      k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](s"pvc-${uuid.value}")
     }
   }
 
