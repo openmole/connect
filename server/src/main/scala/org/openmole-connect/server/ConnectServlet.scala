@@ -249,19 +249,23 @@ class ConnectServlet(arguments: ConnectServer.ServletArguments) extends Scalatra
 
 
   def getFromURI(uri: URI, requestContentType: String): Int = {
-    println("GET FROM URI " + uri.toString)
+    //println("GET FROM URI " + uri.toString + " - " + requestContentType)
     val httpGet = new HttpGet(uri)
 
-    httpGet.setHeader("Content-Type", requestContentType)
+    val filtered = Seq("Content-Length")
+    request.getHeaderNames.asScala.filter(n => !filtered.contains(n)).foreach {
+      n => httpGet.setHeader(n, request.getHeader(n))
+    }
     val forwardResponse = httpClient.execute(httpGet)
-
     response.setStatus(forwardResponse.getStatusLine.getStatusCode)
+    response.setHeader("Content-Type", requestContentType)
+    forwardResponse.getAllHeaders.foreach(header=>response.setHeader(header.getName, header.getValue))
     IOUtils.copy(forwardResponse.getEntity.getContent, response.getOutputStream())
   }
 
 
   def getFromHip(hip: String): Int = {
-    getFromURI(uri(hip, ""), "html")
+    getFromURI(uri(hip, ""), request.getContentType)
   }
 
   get("/*") {
