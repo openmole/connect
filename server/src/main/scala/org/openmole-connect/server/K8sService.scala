@@ -62,9 +62,7 @@ object K8sService {
       val allPodsMapFut: Future[PodList] = k8s.listInNamespace[PodList]("openmole")//k8s.listSelected[PodList](LabelSelector.IsEqualRequirement("app","openmole"))
       val allPodsFuture: Future[List[Pod]] = allPodsMapFut.map(_.items)
 
-      def listPods0(pods: List[Pod]) = pods.flatMap { pod: Pod => toPodInfoList(pod) }
-
-      allPodsFuture map { pods => listPods0(pods) }
+      allPodsFuture map { _.flatMap { pod: Pod => toPodInfoList(pod) } }
 
     }
   }
@@ -125,11 +123,14 @@ object K8sService {
       )
       val openMOLESelector = "app" is "openmole"
 
+      // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
+      // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
       val openMOLEContainer = Container(
         name = "openmole",
         image = "openmole/openmole",
         command = List("bin/bash", "-c", "openmole-docker --port 80 --password password --remote --mem 1G --workspace /var/openmole/.openmole"),
         volumeMounts = List(Volume.Mount(name = pvName, mountPath = "/var/openmole/")),
+        securityContext = Some(SecurityContext(privileged = Some(true))),
       ).exposePort(80)
 
       val openMOLELabel = "app" -> "openmole"
@@ -204,21 +205,18 @@ object K8sService {
       _.name.contains(uuid.value)
     }
 
+  // This method was kept to test the LabelSelector method. Is works but requires more API requests => longer
   private def podInfo(uuid: UUID): Option[PodInfo] = {
-    /*
+    println("podInfo: " + uuid)
     withK8s {
       k8s =>
         val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
+        println("PODINFO select for " + uuid.value)
         pods.map { list =>
           println("podinfo for " + uuid.value + " - " + list.items.size)
-          list.items.flatMap { pod => toPodInfoList(pod) }.foreach{podinfo=>println(podinfo)}
+          list.items.flatMap { pod => toPodInfoList(pod) }.headOption
         }
     }
-    */
-    //  import monix.execution.Scheduler.Implicits.global
-    val lp = listPods
-    println("pods:\n" + lp.mkString("\n"))
-    podInfo(uuid, lp)
   }
 
   def isServiceUp(uuid: UUID): Boolean = {
