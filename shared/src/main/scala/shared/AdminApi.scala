@@ -15,6 +15,10 @@ trait AdminApi {
 
   def startOpenMOLE(userData: UserData): Seq[UserData]
 
+  def updateOpenMOLE(userData: UserData): Seq[UserData]
+
+  def updateOpenMOLEPersistentVolumeStorage(userData: UserData): Seq[UserData]
+
   // PODS
   def podInfos(): Seq[PodInfo]
 }

@@ -53,6 +53,7 @@ object UserPanel {
             uu.role,
             None,
             uu.omVersion,
+            uu.storage,
             uu.lastAccess,
             editableEmail = false,
             editableRole = false,
@@ -81,6 +82,7 @@ object UserPanel {
                    userRole: Role = "",
                    podInfo: Option[PodInfo] = None,
                    userOMVersion: String,
+                   userStorage: String,
                    userLastAccess: Long,
                    editableEmail: Boolean,
                    editableRole: Boolean,
@@ -109,7 +111,7 @@ object UserPanel {
             if (name.editMode()) button(btn_primary, "Save", onclick := { () =>
               groupCell.switch
               val userRole: Role = role.get
-              val modifiedUser = UserData(name.get, email.get, password.get, userRole, userOMVersion, userLastAccess)
+              val modifiedUser = UserData(name.get, email.get, password.get, userRole, userOMVersion, userStorage, userLastAccess)
               upserting(modifiedUser)
             })
             else button(btn_default, "Edit", onclick := { () =>

@@ -28,10 +28,12 @@ object DB {
 
   case class Version(value: String) extends MappedTo[String]
 
+  case class Storage(value: String) extends MappedTo[String]
+
   val admin = Role("Admin")
   val simpleUser = Role("User")
 
-  case class User(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role = simpleUser, uuid: UUID = UUID(""))
+  case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, uuid: UUID = UUID(""))
 
   implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map { u =>
     Data.UserData(
@@ -40,6 +42,7 @@ object DB {
       u.password.value,
       u.role.value,
       u.omVersion.value,
+      u.storage.value,
       u.lastAccess.value)
   }
 
@@ -52,12 +55,13 @@ object DB {
     Email(userData.email),
     Password(userData.password),
     Version(userData.omVersion),
+    Storage(userData.storage),
     userData.lastAccess,
     Role(userData.role),
     uuid
   )
 
-  class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role, Version, Long)](tag, "USERS") {
+  class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role, Version, Storage, Long)](tag, "USERS") {
     def uuid = column[UUID]("UUID", O.PrimaryKey)
 
     def name = column[String]("NAME")
@@ -70,10 +74,12 @@ object DB {
 
     def omVersion = column[Version]("OMVERSION")
 
+    def storage = column[Storage]("STORAGE")
+
     def lastAccess = column[Long]("LASTACCESS")
 
 
-    def * = (uuid, name, email, password, role, omVersion, lastAccess)
+    def * = (uuid, name, email, password, role, omVersion, storage, lastAccess)
   }
 
   val userTable = TableQuery[Users]
@@ -94,29 +100,29 @@ object DB {
   def initDB = {
     runTransaction(userTable.schema.createIfNotExists)
     if (DB.users.isEmpty) {
-      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), Utils.openmoleversion.stable, JWT.now, DB.admin, UUID("admin-123-567-admin"))
+      DB.addUser("admin", DB.Email("admin@admin.com"), DB.Password("admin"), Utils.openmoleversion.stable, DB.Storage("0Gi"), JWT.now, DB.admin, UUID("admin-123-567-admin"))
 //      DB.addUser("foo", DB.Email("foo@foo.com"), DB.Password("foo"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("bar-123-567-bar"))
 //      DB.addUser("toto", DB.Email("toto@toto.com"), DB.Password("toto"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("openmole-toto"))
     }
   }
 
-  def addUser(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role = simpleUser): Unit = {
+  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser): Unit = {
     if (!exists(email)) {
-      addUser(name, email, password, omVersion, lastAccess, role, UUID(util.UUID.randomUUID().toString))
+      addUser(name, email, password, omVersion, storage, lastAccess, role, UUID(util.UUID.randomUUID().toString))
     }
   }
 
-  def addUser(name: String, email: Email, password: Password, omVersion: Version, lastAccess: Long, role: Role, uuid: UUID): Unit = {
+  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role, uuid: UUID): Unit = {
     if (!exists(email)) {
       runTransaction(
-        userTable += (uuid, name, email, password, role, omVersion, lastAccess)
+        userTable += (uuid, name, email, password, role, omVersion, storage, lastAccess)
       )
     }
   }
 
   def upsert(user: User) = {
     runTransaction(
-      userTable.insertOrUpdate(user.uuid, user.name, user.email, user.password, user.role, user.omVersion, user.lastAccess)
+      userTable.insertOrUpdate(user.uuid, user.name, user.email, user.password, user.role, user.omVersion, user.storage, user.lastAccess)
     )
   }
 

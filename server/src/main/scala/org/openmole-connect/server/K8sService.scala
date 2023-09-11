@@ -14,6 +14,7 @@ import skuber.json.format._
 import skuber.json.networking.format._
 import skuber.networking.{Ingress, IngressList}
 
+import scala.collection.immutable.List
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -105,33 +106,41 @@ object K8sService {
       }
     }
 
-  def deployOpenMOLE(uuid: UUID) = {
+  def createOpenMOLEContainer(version: String, pvName: String) = {
+    // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
+    // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    Container(
+      name = "openmole",
+      image = s"openmole/openmole:${version}",
+      command = List("bin/bash", "-c", "openmole-docker --port 80 --password password --remote --mem 1G --workspace /var/openmole/.openmole"),
+      volumeMounts = List(Volume.Mount(name = pvName, mountPath = "/var/openmole/")),
+      securityContext = Some(SecurityContext(privileged = Some(true))),
+    ).exposePort(80)
+  }
+  def createPersistentVolumeClaim(pvcName: String, pvName:String, storage: String) = {
+    def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map("app" -> Namespace.openmole))
+
+    PersistentVolumeClaim(
+      metadata = metadata(pvcName),
+      spec = Some(PersistentVolumeClaim.Spec(
+        volumeName = Some(pvName),
+        storageClassName = Some(Ceph.storageClassName),
+        accessModes = List(AccessMode.ReadWriteOnce),
+        resources = Some(Resource.Requirements(requests = Map("storage" -> storage))),//"20Gi"
+      ))
+    )
+  }
+  def deployOpenMOLE(uuid: UUID, omVersion: String, storage: String) = {
     withK8s { k8s =>
       val podName = uuid.value
       val pvcName = s"pvc-${podName}"
       val pvName = s"pv-${podName}"
 
-      def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map("app" -> Namespace.openmole))
+      val pvc = createPersistentVolumeClaim(pvcName, pvName, storage)
 
-      val pvc = PersistentVolumeClaim(
-        metadata = metadata(pvcName),
-        spec = Some(PersistentVolumeClaim.Spec(
-          storageClassName = Some(Ceph.storageClassName),
-          accessModes = List(AccessMode.ReadWriteOnce),
-          resources = Some(Resource.Requirements(requests = Map("storage" -> "20Gi"))),
-        ))
-      )
       val openMOLESelector = "app" is "openmole"
 
-      // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
-      // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
-      val openMOLEContainer = Container(
-        name = "openmole",
-        image = "openmole/openmole",
-        command = List("bin/bash", "-c", "openmole-docker --port 80 --password password --remote --mem 1G --workspace /var/openmole/.openmole"),
-        volumeMounts = List(Volume.Mount(name = pvName, mountPath = "/var/openmole/")),
-        securityContext = Some(SecurityContext(privileged = Some(true))),
-      ).exposePort(80)
+      val openMOLEContainer = createOpenMOLEContainer(omVersion, pvName)
 
       val openMOLELabel = "app" -> "openmole"
 
@@ -148,10 +157,16 @@ object K8sService {
       val desiredCount = 1
 
       // https://kubernetes.io/docs/tasks/run-application/run-single-instance-stateful-application/
-      val openMOLEDeployment = Deployment(podName)
-        .withReplicas(desiredCount)
-        .withTemplate(openMOLETemplate)
-        .withLabelSelector(openMOLESelector)
+      val openMOLEDeployment = new Deployment(
+        metadata=ObjectMeta(name=podName),
+        spec=Some(Deployment.Spec(
+          replicas = Some(desiredCount),
+          selector=openMOLESelector,
+          template=openMOLETemplate,
+          strategy = Some(Deployment.Strategy.Recreate))))
+//        .withReplicas(desiredCount)
+//        .withTemplate(openMOLETemplate)
+//        .withLabelSelector(openMOLESelector)
 
       // Creating the openmole deployment
       k8s.usingNamespace(Namespace.openmole) create pvc
@@ -186,6 +201,28 @@ object K8sService {
     }
   }
 
+  def updateOpenMOLEPod(uuid: UUID, newVersion: String) = {
+    withK8s { k8s =>
+      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
+        val container = createOpenMOLEContainer(newVersion,s"pv-${uuid.value}")
+        k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
+      }
+    }
+  }
+
+  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: String) = {
+    withK8s { k8s =>
+      k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").map{pvc=>
+        pvc.spec.map{spec=>
+          spec.volumeName.map{pvName=>
+            println(s"updating openmole spec with ${uuid.value} and ${pvName} for ${newStorage}")
+            k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", pvName, newStorage))
+          }
+        }
+      }
+    }
+  }
+
   def deleteOpenMOLE(uuid: UUID) = {
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
     withK8s { k8s =>
@@ -195,9 +232,9 @@ object K8sService {
     }
   }
 
-  def deployIfNotDeployedYet(uuid: UUID) = {
+  def deployIfNotDeployedYet(uuid: UUID, omVersion: String, storage: String) = {
     if (!isDeploymentExists(uuid))
-      deployOpenMOLE(uuid)
+      deployOpenMOLE(uuid, omVersion, storage)
   }
 
   private def podInfo(uuid: UUID, podList: List[PodInfo]): Option[PodInfo] =

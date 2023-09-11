@@ -1,12 +1,11 @@
 package org.openmoleconnect.client
 
 import java.nio.ByteBuffer
-
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 import boopickle.Default._
-import shared.AdminApi
+import shared.{AdminApi, Data}
 import autowire._
 import rx._
 import scaladget.bootstrapnative.Table.StaticSubRow
@@ -21,6 +20,9 @@ import scaladget.bootstrapnative.bsn._
 import scaladget.tools.{ModifierSeq, _}
 import scalatags.JsDom.all._
 import ConnectUtils._
+import org.scalajs.dom.raw.HTMLInputElement
+import scaladget.bootstrapnative.Selector.Options
+import scalatags.generic.Attr
 
 
 object AdminPanel {
@@ -30,7 +32,7 @@ object AdminPanel {
 
     implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[EmailRow] = userData.map { u =>
 
-      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.lastAccess, podInfos.now.filter {
+      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.storage, u.lastAccess, podInfos.now.filter {
         _.userEmail == Some(u.email)
       }.headOption, open.now.map {
         _ == u.email
@@ -52,6 +54,7 @@ object AdminPanel {
       //  if (userData.name.isEmpty)
       //   rows.update(rows.now.filterNot(_.expandableRow == expandableRow))
       //  else {
+      println(s"save with ${userData}")
       upsert(userData)
       //   }
     }
@@ -76,6 +79,20 @@ object AdminPanel {
         rows() = _
       }
 
+    def updateOpenMOLE(userData: UserData) = {
+      Post[AdminApi].updateOpenMOLE(userData).call().foreach {
+        rows() = _
+      }
+      upsert(userData)
+    }
+
+    def updateOpenMOLEPersistentVolumeStorage(userData: UserData) = {
+      Post[AdminApi].updateOpenMOLEPersistentVolumeStorage(userData).call().foreach {
+        rows() = _
+      }
+      upsert(userData)
+    }
+
     def updateRows = {
       Post[AdminApi].users().call().foreach { us =>
         rows() = us
@@ -84,7 +101,7 @@ object AdminPanel {
 
     def updatePodInfos =
       Post[AdminApi].podInfos().call().foreach { pi =>
-        println("PI " + pi)
+        println("PI\n" + pi.mkString("\n"))
         podInfos() = pi
         updateRows
       }
@@ -117,31 +134,62 @@ object AdminPanel {
                         userPassword: String = "",
                         userRole: Role = "",
                         userOMVersion: String = "",
+                        userStorage: String = "10Gi",//
                         userLastAccess: Long = 0L,
                         podInfo: Option[PodInfo] = None,
                         expanded: Boolean = false,
                         edited: Option[Boolean] = None): EmailRow = {
       val aVar = Var(expanded)
       val editing = edited.getOrElse(isEditing(userEmail))
+      val selectedOMVersion = Var(userOMVersion)
+      val index = Data.openMOLEVersions.indexOf(userOMVersion)
+      println(s"userOMVersion = ${userOMVersion} at index ${Data.openMOLEVersions.indexOf(userOMVersion)}")
+      lazy val optionDropDown: Options[String] = Selector.options[String](
+        contents = Data.openMOLEVersions,
+        defaultIndex = if (index < 0) 0 else index,
+        naming = (s:String) => s,
+        decorations = Map[String, ModifierSeq](),
+        onclose = () => {
+          val res:String = optionDropDown.content.now.get
+          selectedOMVersion.update(res)
+          println(s"selected is ${selectedOMVersion.now}")
+        }
+      )
+      val inputStorage = Var(userStorage)
+      println(s"userOMStorage = ${userStorage}")
+      lazy val storage: HTMLInputElement = inputTag(userStorage)(oninput := { () =>
+        inputStorage.update(storage.value)
+      }).render
 
       lazy val aSubRow: StaticSubRow = StaticSubRow({
         div(height := 350, rowFlex)(
           groupCell.build(margin := 25),
           div(userLastAccess.toStringDate, fontSize := "12px", minWidth := 150),
           label(label_primary, userOMVersion),
+          optionDropDown.selector,
+          storage,
           span(columnFlex, alignItems.flexEnd, justifyContent.flexEnd)(
             button(btn_danger, "Delete user (and data)", onclick := { () =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
               deleteUser(userData)
             }, margin := 10),
             button(btn_danger, "Stop OpenMOLE", onclick := { () =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
               stopOpenMOLE(userData)
             }, margin := 10),
             button(btn_success, "Start OpenMOLE", onclick := { () =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userLastAccess)
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
               startOpenMOLE(userData)
-            }, margin := 10)
+            }, margin := 10),
+            button(btn_success, "Update OpenMOLE", onclick := { () =>
+              val userData = UserData(userName, userEmail, userPassword, userRole, selectedOMVersion.now, userStorage, userLastAccess)
+              updateOpenMOLE(userData)
+            }, margin := 10),
+            button(btn_success, "Update OpenMOLE Storage", onclick := { () =>
+              println(s"Update OpenMOLE Storage with ${inputStorage.now}")
+              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, inputStorage.now, userLastAccess)
+              updateOpenMOLEPersistentVolumeStorage(userData)
+            }, margin := 10),
           )
         )
       }, aVar)
@@ -166,7 +214,7 @@ object AdminPanel {
       )), aSubRow)
 
 
-      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userLastAccess, editableEmail = true, editableRole = true, expanded, editing, (uData: UserData) => save(expandableRow, uData))
+      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userStorage, userLastAccess, editableEmail = true, editableRole = true, expanded, editing, (uData: UserData) => save(expandableRow, uData.copy(omVersion = selectedOMVersion.now, storage = inputStorage.now)))
 
       EmailRow(userEmail, expandableRow)
     }
@@ -177,7 +225,7 @@ object AdminPanel {
     //updatePodInfoTimer
 
     val addUserButton = button(btn_primary, "Add", onclick := { () =>
-      val row = buildExpandable(userRole = user, userOMVersion = "LATEST", expanded = true, edited = Some(true))
+      val row = buildExpandable(userRole = user, userOMVersion = Data.openMOLEVersions.head, expanded = true, edited = Some(true))
       rows.update(rows.now :+ row)
     })
 

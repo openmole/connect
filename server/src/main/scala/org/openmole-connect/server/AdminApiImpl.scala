@@ -36,6 +36,22 @@ class AdminApiImpl(kubeOff: Boolean) extends shared.AdminApi {
     users
   }
 
+  def updateOpenMOLE(userData: UserData): Seq[UserData] = {
+    val id = DB.uuid(Email(userData.email))
+    id.foreach { i =>
+      K8sService.updateOpenMOLEPod(i, userData.omVersion)
+    }
+    users
+  }
+
+  def updateOpenMOLEPersistentVolumeStorage(userData: UserData): Seq[UserData] = {
+    val id = DB.uuid(Email(userData.email))
+    id.foreach { i =>
+      K8sService.updateOpenMOLEPersistentVolumeStorage(i, userData.storage)
+    }
+    users
+  }
+
   //PODS
   def podInfos(): Seq[PodInfo] = {
     K8sService.podInfos
