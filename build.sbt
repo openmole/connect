@@ -31,7 +31,7 @@ val Resolvers = Seq(
 lazy val defaultSettings = Seq(
   organization := "openmole.org",
   version := "0.6-SNAPSHOT",
-  scalaVersion := "2.13.2",
+  scalaVersion := "2.13.12",
   resolvers := Resolvers
 )
 
