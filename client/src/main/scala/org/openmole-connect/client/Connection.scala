@@ -2,13 +2,10 @@ package org.openmoleconnect.client
 
 import org.scalajs.dom
 import scaladget.bootstrapnative.bsn._
-import org.scalajs.dom.raw._
-import scalatags.JsDom.all._
-import scalatags.JsDom.tags
+import com.raquo.laminar.api.L.*
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 
-import scala.collection.mutable
 import shared.Data._
 
 
@@ -34,53 +31,49 @@ object Connection {
   @JSExportTopLevel("connection")
   def connect() = {
 
-    lazy val connectButton = tags.button("Connect", btn_primary, `type` := "submit", float.right, right := 0).render
+    lazy val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
     //lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
 
-    lazy val emailInput = inputTag("")(
-      name := "email",
-      placeholder := "Email",
-      width := "130px",
-      marginBottom := 15,
-      autofocus := true
-    ).render
+    lazy val emailInput = inputTag("")
+      .amend(
+        placeholder := "Email",
+        width := "130px",
+        marginBottom := "15"
+      )
 
-    lazy val passwordInput = inputTag("")(
-      name := "password",
-      placeholder := "Password",
-      `type` := "password",
-      width := "130px",
-      marginBottom := 15
-    ).render
+    lazy val passwordInput = inputTag("")
+      .amend(
+        placeholder := "Password",
+        `type` := "password",
+        width := "130px",
+        marginBottom := "15"
+      )
 
     def cleanInputs = {
-      passwordInput.value = ""
-      emailInput.value = ""
+      passwordInput.ref.value = ""
+      emailInput.ref.value = ""
     }
 
-    val connectionForm: HTMLFormElement = form(
+    val connectionForm = form(
       method := "post",
       action := connectionRoute,
       emailInput,
       passwordInput,
       connectButton
-    ).render
+    )
 
     val render = {
       div(
-        div(Css.connectionTabOverlay)(
+        div(Css.connectionTabOverlay,
           div(
             img(src := "img/logo.png", Css.openmoleLogo),
-            div(Css.connectionFormStyle)(
-              connectionForm
-            )
+            div(Css.connectionFormStyle, connectionForm)
           )
         )
-      ).render
-
+      )
     }
 
-    dom.document.body.appendChild(render)
+    renderOnDomContentLoaded(dom.document.body, render)
   }
 }

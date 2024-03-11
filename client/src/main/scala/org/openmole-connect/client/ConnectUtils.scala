@@ -1,25 +1,25 @@
 package org.openmoleconnect.client
 
 
-import scalatags.JsDom.styles
 import scaladget.bootstrapnative.bsn._
 import scaladget.tools._
-import scalatags.JsDom.all._
+import com.raquo.laminar.api.L.*
+
 
 import scala.scalajs.js.Date
 
 object ConnectUtils {
 
-  val logoutLogo = toClass("glyphicon glyphicon-off")
+  val logoutLogo = cls := "glyphicon glyphicon-off"
 
-  val itemStyle: ModifierSeq = Seq(
-    fontSize := 30,
-    pointer,
+  val itemStyle = Seq(
+    fontSize := "30",
+    cursor.pointer,
     color := "#337ab7"
   )
 
   def logoutItem =
-    div(logoutLogo, itemStyle, onclick := { () ⇒ org.scalajs.dom.window.location.href = s"${org.scalajs.dom.window.location.href}logout" })
+    div(logoutLogo, itemStyle, onClick --> { _ ⇒ org.scalajs.dom.window.location.href = s"${org.scalajs.dom.window.location.href}logout" })
 
   implicit class FromDouble(i: Double) {
     def toDayString = i match {
