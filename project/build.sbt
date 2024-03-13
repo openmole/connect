@@ -1,6 +1,6 @@
 resolvers += Resolver.sonatypeRepo("releases")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.14.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.15.0")
 
 addSbtPlugin("org.scalatra.sbt" % "sbt-scalatra" % "1.0.4")
 
