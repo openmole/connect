@@ -36,7 +36,7 @@ object Connection:
 
     lazy val emailInput = inputTag("")
       .amend(
-        idAttr := "Email",
+        nameAttr := "Email",
         placeholder := "Email",
         width := "130px",
         marginBottom := "15"
@@ -44,7 +44,7 @@ object Connection:
 
     lazy val passwordInput = inputTag("")
       .amend(
-        idAttr := "Password",
+        nameAttr := "Password",
         placeholder := "Password",
         `type` := "password",
         width := "130px",
