@@ -26,11 +26,10 @@ import shared.Data._
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-object Connection {
+object Connection:
 
   @JSExportTopLevel("connection")
-  def connect() = {
-
+  def connect() =
     lazy val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
     //lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
@@ -50,10 +49,9 @@ object Connection {
         marginBottom := "15"
       )
 
-    def cleanInputs = {
-      passwordInput.ref.value = ""
-      emailInput.ref.value = ""
-    }
+//    def cleanInputs =
+//      passwordInput.ref.value = ""
+//      emailInput.ref.value = ""
 
     val connectionForm = form(
       method := "post",
@@ -63,7 +61,7 @@ object Connection {
       connectButton
     )
 
-    val render = {
+    def renderContent =
       div(
         div(Css.connectionTabOverlay,
           div(
@@ -72,8 +70,6 @@ object Connection {
           )
         )
       )
-    }
 
-    renderOnDomContentLoaded(dom.document.body, render)
-  }
-}
+    lazy val appContainer = dom.document.querySelector("#appContainer")
+    render(appContainer, renderContent)

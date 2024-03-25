@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExportTopLevel
-import shared.{AdminApi, UserApi}
+import shared.{AdminAPI, UserAPI}
 import scaladget.bootstrapnative._
 import shared.Data._
 import com.raquo.laminar.api.L._
@@ -27,12 +27,12 @@ object UserPanel {
 
     val currentUser: Var[Option[UserData]] = Var(None)
 
-        def getUser = ???
+    def getUser = ???
     //      Post[UserApi].user().call().foreach { u =>
     //        currentUser() = u
     //      }
     //
-        def upsert(userData: UserData) = ???
+    def upsert(userData: UserData) = ???
     //      Post[UserApi].upserted(userData).call().foreach { u =>
     //        currentUser() = u
     //      }
@@ -90,23 +90,23 @@ object UserPanel {
       else badge_secondary
 
     div(columnFlex, width := "300",
-        div(userName, padding := "10"),
-        div(userEmail,padding := "10"),
-        div(userPassword, padding := "10"),
-        div(userRole, padding := "10"),
-        span(rowFlex, marginTop := "50",
-            //FIXME
-//          child <-- name.editMode.signal.map { em =>
-//            if (em) button(btn_primary, "Save", onclick --> { _ =>
-//              val userRole: Role = role.get
-//              val modifiedUser = UserData(name.get, email.get, password.get, userRole, userOMVersion, userStorage, userLastAccess)
-//              upserting(modifiedUser)
-//            })
-//            else button(btn_default, "Edit", onclick -> { _ =>
-//            })
-//          }
-        )
+      div(userName, padding := "10"),
+      div(userEmail,padding := "10"),
+      div(userPassword, padding := "10"),
+      div(userRole, padding := "10"),
+      span(rowFlex, marginTop := "50",
+        //FIXME
+        //          child <-- name.editMode.signal.map { em =>
+        //            if (em) button(btn_primary, "Save", onclick --> { _ =>
+        //              val userRole: Role = role.get
+        //              val modifiedUser = UserData(name.get, email.get, password.get, userRole, userOMVersion, userStorage, userLastAccess)
+        //              upserting(modifiedUser)
+        //            })
+        //            else button(btn_default, "Edit", onclick -> { _ =>
+        //            })
+        //          }
       )
+    )
   }
 
 }

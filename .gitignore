@@ -22,4 +22,4 @@ project/*
 .settings
 *.bak
 *.js
-.bsp
+.bsp/

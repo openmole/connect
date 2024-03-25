@@ -3,7 +3,7 @@ package org.openmoleconnect.client
 import scaladget.tools._
 import com.raquo.laminar.api.L.*
 
-object Css {
+object Css:
   lazy val connectionTabOverlay = Seq(
     display.flex,
     flexDirection.column,
@@ -32,4 +32,3 @@ object Css {
     width := "500",
   )
 
-}

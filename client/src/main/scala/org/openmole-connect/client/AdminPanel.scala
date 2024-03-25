@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExportTopLevel
-import shared.{AdminApi, Data}
+import shared.{AdminAPI, Data}
 import scaladget.bootstrapnative._
 import shared.Data._
 
@@ -194,23 +194,23 @@ object AdminPanel {
         else if (s == "Waiting") badge_warning
         else badge_danger
 
-        //      lazy val expandableRow: ExpandableRow = ExpandableRow(EditableRow(Seq(
-        //        TriggerCell(a(userName, onclick := { () =>
-        //          closeAll(expandableRow)
-        //          aVar() = !aVar.now()
-        //          open() = {
-        //            if (aVar.now()) Some(userEmail)
-        //            else None
-        //          }
-        //        })),
-        //        LabelCell(podInfo.map {
-        //          _.status
-        //        }.getOrElse("Unknown"), Seq(), optionStyle = _ => podInfo.map { pi => statusStyle(pi.status) }.getOrElse(label_danger)),
-        //      )), aSubRow)
-        //
-        //
-        //      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userStorage, userLastAccess, editableEmail = true, editableRole = true, expanded, editing, (uData: UserData) => save(expandableRow, uData.copy(omVersion = selectedOMVersion.now(), storage = inputStorage.now())))
-        //
+      //      lazy val expandableRow: ExpandableRow = ExpandableRow(EditableRow(Seq(
+      //        TriggerCell(a(userName, onclick := { () =>
+      //          closeAll(expandableRow)
+      //          aVar() = !aVar.now()
+      //          open() = {
+      //            if (aVar.now()) Some(userEmail)
+      //            else None
+      //          }
+      //        })),
+      //        LabelCell(podInfo.map {
+      //          _.status
+      //        }.getOrElse("Unknown"), Seq(), optionStyle = _ => podInfo.map { pi => statusStyle(pi.status) }.getOrElse(label_danger)),
+      //      )), aSubRow)
+      //
+      //
+      //      lazy val groupCell: GroupCell = UserPanel.editableData(userName, userEmail, userPassword, userRole, podInfo, userOMVersion, userStorage, userLastAccess, editableEmail = true, editableRole = true, expanded, editing, (uData: UserData) => save(expandableRow, uData.copy(omVersion = selectedOMVersion.now(), storage = inputStorage.now())))
+      //
       EmailRow(userEmail)
     }
 
