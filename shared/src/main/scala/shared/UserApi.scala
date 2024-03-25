@@ -10,7 +10,7 @@ import io.circe.generic.auto._
 trait UserAPI
   extends algebra.Endpoints
     with algebra.circe.JsonEntitiesFromCodecs
-    with circe.JsonSchemas {
+    with circe.JsonSchemas:
 
   val user: Endpoint[Unit, Option[UserData]] =
     endpoint(
@@ -35,8 +35,7 @@ trait UserAPI
       post(path / "upserted-with-data", jsonRequest[(UserData, Option[UserData])]),
       ok(jsonResponse[Option[UserData]])
     )
-  
-}
+
 
 
 //trait UserApi {

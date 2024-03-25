@@ -1,21 +1,19 @@
 package org.openmoleconnect.server
 
-import cats.effect._
-import org.http4s.blaze.server._
-import org.http4s.implicits._
+import cats.effect.*
+import org.http4s.blaze.server.*
+import org.http4s.implicits.*
 import org.http4s.server.Router
-import java.io.File
 
+import java.io.File
 import cats.effect.IO
-import cats.implicits._
-import dev.profunktor.auth._
-import dev.profunktor.auth.jwt._
-import pdi.jwt._
+import cats.implicits.*
+import dev.profunktor.auth.*
+import dev.profunktor.auth.jwt.*
+import pdi.jwt.*
 import org.http4s.*
 import org.http4s.headers.*
-
 import org.http4s.dsl.io.*
-
 import cats.effect.unsafe.IORuntime
 
 
@@ -55,7 +53,15 @@ class ConnectServer(secret: String, kubeOff: Boolean):
         case GET -> Root =>
           Ok.apply(ServerContent.someHtml("connection();").render)
             .map(_.withContentType(`Content-Type`(MediaType.text.html)))
-            .map(_.addCookie(ResponseCookie("name", "test")))
+
+        case req @ POST -> Root / shared.Data.connectionRoute =>
+          println(req.params)
+//          val cookie = req.headers.get[org.http4s.headers.Cookie]
+//          val email =
+//          DB.uuid(DB.Email(email), DB.Password(password))
+          Ok("connect")
+
+            //.map(_.addCookie(ResponseCookie("name", "test")))
 
     val adminRoute: AuthedRoutes[AuthUser, IO] = AuthedRoutes.of:
       case req @ GET -> Root / "admin" as user =>
@@ -63,6 +69,8 @@ class ConnectServer(secret: String, kubeOff: Boolean):
         println(user)
         Ok(s"$user")
 
+
+    //val connectAPI = new ConnectAPIImpl
     val routes = openRoute <+> ServerContent.contentRoutes <+> middleware(adminRoute)
 
     val httpApp = Router("/" -> routes).orNotFound

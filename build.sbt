@@ -35,7 +35,7 @@ val Resolvers = Seq(
 val skuberProject = RootProject(uri("https://github.com/doriordan/skuber.git#30refactor"))
 
 lazy val defaultSettings = Seq(
-  organization := "openmole.org",
+  organization := "org.openmole",
   version := "0.6-SNAPSHOT",
   scalaVersion := "3.3.3",
   resolvers := Resolvers
@@ -58,7 +58,8 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "org.openmole.scaladget" %%% "bootstrapnative" % scaladgetVersion,
    // "com.lihaoyi" %%% "autowire" % autowireVersion,
    // "io.suzaku" %%% "boopickle" % boopickleVersion,
-    "com.raquo" %%% "laminar" % laminarVersion
+    "com.raquo" %%% "laminar" % laminarVersion,
+    "org.endpoints4s" %%% "xhr-client" % "5.3.0"
   )
 ) dependsOn (shared)
 //lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) settings (defaultSettings) settings(

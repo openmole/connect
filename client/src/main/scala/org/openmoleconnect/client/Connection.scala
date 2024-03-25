@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.*
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 import shared.Data._
-
+import com.raquo.laminar.api.features.unitArrows
 
 /*
  * Copyright (C) 11/07/19 // mathieu.leclaire@openmole.org
@@ -36,6 +36,7 @@ object Connection:
 
     lazy val emailInput = inputTag("")
       .amend(
+        idAttr := "Email",
         placeholder := "Email",
         width := "130px",
         marginBottom := "15"
@@ -43,25 +44,22 @@ object Connection:
 
     lazy val passwordInput = inputTag("")
       .amend(
+        idAttr := "Password",
         placeholder := "Password",
         `type` := "password",
         width := "130px",
         marginBottom := "15"
       )
 
-//    def cleanInputs =
-//      passwordInput.ref.value = ""
-//      emailInput.ref.value = ""
-
     val connectionForm = form(
-      method := "post",
+      method := "POST",
       action := connectionRoute,
       emailInput,
       passwordInput,
       connectButton
     )
 
-    def renderContent =
+    val renderContent =
       div(
         div(Css.connectionTabOverlay,
           div(
