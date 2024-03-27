@@ -17,11 +17,12 @@ package org.openmole.connect.client
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//import endpoints4s.xhr
-//import endpoints4s.xhr.EndpointsSettings
+import endpoints4s.xhr
+import endpoints4s.xhr.EndpointsSettings
+import org.openmole.connect.shared.*
 
-//object APIClient
-//  extends shared.ConnectAPI
-//    with xhr.future.Endpoints
-//    with xhr.JsonEntitiesFromCodecs:
-//  lazy val settings: EndpointsSettings = EndpointsSettings()
+object UserAPIClient
+  extends UserAPI
+    with xhr.future.Endpoints
+    with xhr.JsonEntitiesFromCodecs:
+  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some("user"))

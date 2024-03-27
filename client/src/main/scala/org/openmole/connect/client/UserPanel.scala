@@ -12,6 +12,7 @@ import org.openmole.connect.shared.Data.*
 
 import java.nio.ByteBuffer
 import scala.scalajs.js.annotation.JSExportTopLevel
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object UserPanel {
 
@@ -22,11 +23,11 @@ object UserPanel {
   lazy val roleFilter = (r: Role) => r == admin
 
   @JSExportTopLevel("user")
-  def user(): Unit = {
+  def user(): Unit =
 
     val currentUser: Var[Option[UserData]] = Var(None)
 
-    def getUser = ???
+    def getUser = UserAPIClient.user(()).future
     //      Post[UserApi].user().call().foreach { u =>
     //        currentUser() = u
     //      }
@@ -36,13 +37,15 @@ object UserPanel {
     //        currentUser() = u
     //      }
 
+    getUser.foreach(u => println("user " + u))
+
     lazy val userPanel = div(
       child <-- currentUser.signal.map:
         case Some(uu)=>
           val panel = editableData(
             uu.name,
             uu.email,
-            uu.password,
+            "",//uu.password,
             uu.role,
             None,
             uu.omVersion,
@@ -66,7 +69,6 @@ object UserPanel {
     renderOnDomContentLoaded(dom.document.body, userPanel)
     getUser
 
-  }
 
 
   def editableData(userName: String = "",

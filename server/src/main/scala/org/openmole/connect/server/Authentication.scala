@@ -18,6 +18,11 @@ object Authentication:
 
     cookie
 
+  def authenticatedUser[T](request: Request[IO])(using JWT.Secret): Option[DB.User] =
+    authorizationToken(request) match
+      case Some(t) => DB.get(t.email)
+      case _ => None
+
   def isAuthenticated(request: Request[IO])(using JWT.Secret) =
     authorizationToken(request) match
       case Some(t) => DB.get(t.email).isDefined

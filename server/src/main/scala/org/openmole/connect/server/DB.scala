@@ -28,32 +28,35 @@ object DB:
   val admin = "Admin"
   val simpleUser = "User"
 
+  object User:
+    def toUserData(u: User): Data.UserData =
+      Data.UserData(
+        u.name.value,
+        u.email.value,
+        //u.password.value,
+        u.role.value,
+        u.omVersion.value,
+        u.storage.value,
+        u.lastAccess.value)
+
+
   case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, uuid: UUID = "")
 
-  implicit def userToUserData(users: Seq[User]): Seq[Data.UserData] = users.map { u =>
-    Data.UserData(
-      u.name.value,
-      u.email.value,
-      u.password.value,
-      u.role.value,
-      u.omVersion.value,
-      u.storage.value,
-      u.lastAccess.value)
-  }
 
-  implicit def optionUserToOptionUserData(auser: Option[User]): Option[UserData] =
-    auser.flatMap { u => userToUserData(Seq(u)).headOption }
 
-  def toUser(uuid: UUID, userData: UserData): User = User(
-    userData.name,
-    userData.email,
-    userData.password,
-    userData.omVersion,
-    userData.storage,
-    userData.lastAccess,
-    userData.role,
-    uuid
-  )
+//  implicit def optionUserToOptionUserData(auser: Option[User]): Option[UserData] =
+//    auser.flatMap { u => userToUserData(Seq(u)).headOption }
+
+//  def toUser(uuid: UUID, userData: UserData): User = User(
+//    userData.name,
+//    userData.email,
+//    userData.password,
+//    userData.omVersion,
+//    userData.storage,
+//    userData.lastAccess,
+//    userData.role,
+//    uuid
+//  )
 
   class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role, Version, Storage, Long)](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)

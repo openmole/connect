@@ -165,24 +165,24 @@ object AdminPanel {
           storage,
           span(columnFlex, alignItems.flexEnd, justifyContent.flexEnd,
             button(btn_danger, "Delete user (and data)", onClick --> { _ =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
+//              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
               //  deleteUser(userData)
             }, margin := "10"),
             button(btn_danger, "Stop OpenMOLE", onClick --> { _ =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
+//              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
               // stopOpenMOLE(userData)
             }, margin := "10"),
             button(btn_success, "Start OpenMOLE", onClick --> { _ =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
+//              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, userStorage, userLastAccess)
               //startOpenMOLE(userData)
             }, margin := "10"),
             button(btn_success, "Update OpenMOLE", onClick --> { _ =>
-              val userData = UserData(userName, userEmail, userPassword, userRole, selectedOMVersion.now(), userStorage, userLastAccess)
+//              val userData = UserData(userName, userEmail, userPassword, userRole, selectedOMVersion.now(), userStorage, userLastAccess)
               //updateOpenMOLE(userData)
             }, margin := "10"),
             button(btn_success, "Update OpenMOLE Storage", onClick --> { _ =>
               println(s"Update OpenMOLE Storage with ${inputStorage.now()}")
-              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, inputStorage.now(), userLastAccess)
+//              val userData = UserData(userName, userEmail, userPassword, userRole, userOMVersion, inputStorage.now(), userLastAccess)
               //updateOpenMOLEPersistentVolumeStorage(userData)
             }, margin := "10"),
           )

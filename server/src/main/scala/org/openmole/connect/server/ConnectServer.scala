@@ -64,8 +64,6 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
     // https://blog.rockthejvm.com/scala-http4s-authentication/
 
 
-    val connectAPI = new ConnectAPIImpl
-
     val connectionError =
       Forbidden.apply(ServerContent.someHtml("connection(true);").render)
         .map(_.withContentType(`Content-Type`(MediaType.text.html)))
@@ -73,9 +71,8 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
     val openRoute: HttpRoutes[IO] =
       HttpRoutes.of:
         case req @ GET -> Root =>
-          println("auth " + Authentication.isAuthenticated(req) + " " + Authentication.isAdmin(req))
-          Ok.apply(ServerContent.someHtml("connection(false);").render)
-            .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+          //println("auth " + Authentication.isAuthenticated(req) + " " + Authentication.isAdmin(req))
+          ServerContent.ok("connection(false);")
 
         case req @ POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
@@ -85,13 +82,20 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
                   case Some(uuid) =>
                     val token = JWT.TokenData(email)
                     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
-                    Ok("connected").map(_.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate))))
+                    ServerContent.ok("user();").map(_.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate))))
                   case None => connectionError
               case None => connectionError
             //.map(_.addCookie(ResponseCookie("name", "test")))
 
-        case req =>
-          connectAPI.routes.apply(req).getOrElseF(NotFound())
+        case req if req.uri.path.startsWith(Root / "user") =>
+          Authentication.authenticatedUser(req) match
+            case Some(user) =>
+              val userAPI = new UserAPIImpl(kubeOff, DB.User.toUserData(user))
+              val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
+              val apiReq = req.withUri(req.uri.withPath(apiPath))
+              println(apiReq)
+              userAPI.routes.apply(apiReq).getOrElseF(NotFound())
+            case None => connectionError
 
     val adminRoute: AuthedRoutes[DB.User, IO] = AuthedRoutes.of:
       case req @ GET -> Root / "admin" as user =>
@@ -135,6 +139,10 @@ object ServerContent:
     case request@GET -> Root / "img" / path =>
       val f = new File(webapp, s"img/$path")
       StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
+
+
+  def ok(jsCall: String) =
+    Ok.apply(ServerContent.someHtml(jsCall).render).map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
   def someHtml(jsCall: String) =
     import scalatags.Text.all.*
