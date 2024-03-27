@@ -25,7 +25,7 @@ object UserPanel {
   @JSExportTopLevel("user")
   def user(): Unit =
 
-    val currentUser: Var[Option[UserData]] = Var(None)
+    //val currentUser: Var[Option[UserData]] = Var(None)
 
     def getUser = UserAPIClient.user(()).future
     //      Post[UserApi].user().call().foreach { u =>
@@ -37,11 +37,11 @@ object UserPanel {
     //        currentUser() = u
     //      }
 
-    getUser.foreach(u => println("user " + u))
+    //getUser.foreach(u => println("user " + u))
 
     lazy val userPanel = div(
-      child <-- currentUser.signal.map:
-        case Some(uu)=>
+      child <-- Signal.fromFuture(getUser).map:
+        case Some(uu) =>
           val panel = editableData(
             uu.name,
             uu.email,
@@ -63,12 +63,11 @@ object UserPanel {
               panel
             )
           )
-        case None=> div()
+        case None => div()
     )
 
-    renderOnDomContentLoaded(dom.document.body, userPanel)
-    getUser
-
+    lazy val appContainer = dom.document.querySelector("#appContainer")
+    render(appContainer, userPanel)
 
 
   def editableData(userName: String = "",

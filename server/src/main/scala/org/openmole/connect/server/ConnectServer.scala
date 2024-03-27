@@ -7,16 +7,20 @@ import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import dev.profunktor.auth.*
 import dev.profunktor.auth.jwt.*
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.HttpClients
 import org.http4s.*
 import org.http4s.blaze.server.*
 import org.http4s.dsl.io.*
 import org.http4s.headers.*
 import org.http4s.implicits.*
 import org.http4s.server.*
+import org.openmole.connect.server.ServerContent.connectionError
 import org.openmole.connect.shared.Data
 import pdi.jwt.*
 
 import java.io.File
+import scala.concurrent.duration.Duration
 
 //object ConnectServer:
 //
@@ -32,6 +36,8 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(secret)
+
+  val httpClient = HttpClients.createDefault()
 
 
   //def dataFile = new File(data)
@@ -63,17 +69,17 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
     // curl -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.ezEyM30.aK9o7JLIL1aMpvhCq7tY5FNoG7mdfJ1bm2paUFM6L2k" --cookie "USER_TOKEN=Yes" localhost:8080/admin
     // https://blog.rockthejvm.com/scala-http4s-authentication/
 
-
-    val connectionError =
-      Forbidden.apply(ServerContent.someHtml("connection(true);").render)
-        .map(_.withContentType(`Content-Type`(MediaType.text.html)))
-
     val openRoute: HttpRoutes[IO] =
       HttpRoutes.of:
         case req @ GET -> Root =>
+          Authentication.authenticatedUser(req) match
+            case Some(user) => ServerContent.ok("user();")
+            case None =>
+              val uri = Uri.unsafeFromString(s"/${Data.connectionRoute}")
+              TemporaryRedirect(Location(uri))
+        case req @ GET -> Root / Data.connectionRoute =>
           //println("auth " + Authentication.isAuthenticated(req) + " " + Authentication.isAdmin(req))
           ServerContent.ok("connection(false);")
-
         case req @ POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
@@ -83,19 +89,26 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
                     val token = JWT.TokenData(email)
                     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
                     ServerContent.ok("user();").map(_.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate))))
-                  case None => connectionError
-              case None => connectionError
-            //.map(_.addCookie(ResponseCookie("name", "test")))
+                  case None => ServerContent.connectionError
+              case None => ServerContent.connectionError
 
-        case req if req.uri.path.startsWith(Root / "user") =>
-          Authentication.authenticatedUser(req) match
-            case Some(user) =>
-              val userAPI = new UserAPIImpl(kubeOff, DB.User.toUserData(user))
-              val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
-              val apiReq = req.withUri(req.uri.withPath(apiPath))
-              println(apiReq)
-              userAPI.routes.apply(apiReq).getOrElseF(NotFound())
-            case None => connectionError
+        case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
+          ServerContent.authenticated(req): user =>
+            val userAPI = new UserAPIImpl(kubeOff, DB.User.toUserData(user))
+            val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
+            val apiReq = req.withUri(req.uri.withPath(apiPath))
+            userAPI.routes.apply(apiReq).getOrElseF(NotFound())
+
+        case req if req.uri.path.startsWith(Root / "openmole") =>
+          ServerContent.authenticated(req): user =>
+            import org.typelevel.ci.*
+
+            val response =
+              val httpGet = new HttpGet("http://mirrors.lug.mtu.edu/debian-cd/12.5.0/amd64/jigdo-dvd/debian-12.5.0-amd64-DVD-10.jigdo")
+              val forwardResponse = httpClient.execute(httpGet)
+
+              Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240))
+            response
 
     val adminRoute: AuthedRoutes[DB.User, IO] = AuthedRoutes.of:
       case req @ GET -> Root / "admin" as user =>
@@ -122,6 +135,8 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
       BlazeServerBuilder[IO]
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(httpApp)
+        .withIdleTimeout(Duration.Inf)
+        .withResponseHeaderTimeout(Duration.Inf)
         .resource.allocated.unsafeRunSync()._2
 
     server
@@ -140,6 +155,16 @@ object ServerContent:
       val f = new File(webapp, s"img/$path")
       StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
 
+  val connectionError =
+    Forbidden.apply(ServerContent.someHtml("connection(true);").render)
+      .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+
+  def authenticated[T](req: Request[IO])(using JWT.Secret)(f: DB.User => T) =
+    Authentication.authenticatedUser(req) match
+      case Some(user) => f(user)
+      case None =>
+        Forbidden.apply(ServerContent.someHtml("connection(false);").render)
+          .map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
   def ok(jsCall: String) =
     Ok.apply(ServerContent.someHtml(jsCall).render).map(_.withContentType(`Content-Type`(MediaType.text.html)))

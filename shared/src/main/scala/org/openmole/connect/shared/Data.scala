@@ -2,6 +2,7 @@ package org.openmole.connect.shared
 
 object Data:
   val connectionRoute = "connection"
+  val userAPIRoute = "user"
   val adminRoutePrefix = "shared/AdminApi"
   val userRoutePrefix = "shared/UserApi"
 

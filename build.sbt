@@ -79,6 +79,7 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
   libraryDependencies ++= Seq(
     "org.endpoints4s" %% "http4s-server" % "10.3.1" excludeAll(ExclusionRule(organization = "com.lihaoyi")),
     "org.http4s" %% "http4s-blaze-server" % "0.23.16",
+    //"org.http4s" %% "http4s-blaze-client" % "0.23.16",
     "io.circe" %% "circe-parser" % circeVersion,
     //"com.raquo" %% "domtypes" % "18.0.0",
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
