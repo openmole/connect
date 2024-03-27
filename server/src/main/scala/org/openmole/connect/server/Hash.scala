@@ -1,4 +1,4 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
 
 import org.apache.commons.codec.digest.DigestUtils
 

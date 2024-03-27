@@ -1,13 +1,13 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
 
-import org.openmoleconnect.server.DB._
+import org.openmole.connect.server.DB.*
+import shared.*
+import slick.jdbc.H2Profile.api.*
 import slick.lifted.Query
-import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
-import shared._
+import scala.concurrent.duration.Duration
 
 object DBQueries {
   type UserQuery = Query[Users, (UUID, String, Email, Password, Role, Version, Storage, Long), Seq]

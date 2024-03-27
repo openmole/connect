@@ -1,18 +1,17 @@
-package org.openmoleconnect.client
+package org.openmole.connect.client
+
+import com.raquo.laminar.api.L.*
+import org.openmole.connect.client.ConnectUtils.*
+import org.openmole.connect.shared.{AdminAPI, Data}
+import org.scalajs.dom
+import org.scalajs.dom.raw.HTMLInputElement
+import scaladget.bootstrapnative.*
+import scaladget.bootstrapnative.Selector.Options
+import scaladget.bootstrapnative.bsn.*
+import org.openmole.connect.shared.Data.*
 
 import java.nio.ByteBuffer
-import org.scalajs.dom
-
 import scala.scalajs.js.annotation.JSExportTopLevel
-import shared.{AdminAPI, Data}
-import scaladget.bootstrapnative._
-import shared.Data._
-
-import scaladget.bootstrapnative.bsn._
-import ConnectUtils._
-import org.scalajs.dom.raw.HTMLInputElement
-import scaladget.bootstrapnative.Selector.Options
-import com.raquo.laminar.api.L._
 
 
 object AdminPanel {

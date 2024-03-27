@@ -1,11 +1,11 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
 
 import org.json4s.DefaultFormats
-import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader, JwtTime}
+import org.openmole.connect.server.DB.*
+import org.openmole.connect.server.JWT.TokenData.inOneMonth
+import pdi.jwt.*
 
 import java.time.Clock
-import DB.*
-import org.openmoleconnect.server.JWT.TokenData.inOneMonth
 
 object JWT:
 

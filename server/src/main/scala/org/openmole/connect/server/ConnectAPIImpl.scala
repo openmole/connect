@@ -1,8 +1,11 @@
-package shared
+package org.openmole.connect.server
 
-import endpoints4s.{algebra, circe}
+import cats.effect.IO
+import endpoints4s.http4s.server
+import org.http4s.*
+import org.openmole.connect.shared.ConnectAPI
 
-/*
+ /*
  * Copyright (C) 2024 Romain Reuillon
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,13 +22,16 @@ import endpoints4s.{algebra, circe}
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-trait ConnectAPI
-  extends algebra.Endpoints
-    with algebra.circe.JsonEntitiesFromCodecs
-    with circe.JsonSchemas:
+class ConnectAPIImpl
+  extends server.Endpoints[IO]
+  with ConnectAPI
+  with server.JsonEntitiesFromCodecs:
 
-  val connect: Endpoint[(String, String), Unit] =
-    endpoint(
-      post(path / "connect", jsonRequest[(String, String)]),
-      ok(jsonResponse[Unit])
-    )
+  val connectRoute =
+    connect.implementedBy { _ =>
+      println("test")
+    }.andThen(_.map(_.addCookie(ResponseCookie("name", "plouf"))))
+
+  val routes: HttpRoutes[IO] = HttpRoutes.of(
+    routesFromEndpoints(connectRoute)
+  )

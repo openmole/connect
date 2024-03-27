@@ -1,4 +1,4 @@
-package shared
+package org.openmole.connect.shared
 
 object Data:
   val connectionRoute = "connection"

@@ -1,25 +1,24 @@
-package org.openmoleconnect.client
+package org.openmole.connect.client
+
+import com.raquo.laminar.api.L.*
+import org.openmole.connect
+import org.openmole.connect.client.ConnectUtils.*
+import org.openmole.connect.shared.{AdminAPI, Data, UserAPI}
+import org.openmoleconnect.client.*
+import org.scalajs.dom
+import scaladget.bootstrapnative.*
+import scaladget.bootstrapnative.bsn.*
+import org.openmole.connect.shared.Data.*
 
 import java.nio.ByteBuffer
-
-import org.scalajs.dom
-
 import scala.scalajs.js.annotation.JSExportTopLevel
-import shared.{AdminAPI, UserAPI}
-import scaladget.bootstrapnative._
-import shared.Data._
-import com.raquo.laminar.api.L._
-
-import scaladget.bootstrapnative.bsn._
-
-import ConnectUtils._
 
 object UserPanel {
 
   lazy val rowFlex = Seq(display.flex, flexDirection.row, justifyContent.spaceAround)
   lazy val columnFlex = Seq(display.flex, flexDirection.column, justifyContent.center, alignItems.flexStart)
 
-  lazy val roles = Seq(shared.Data.user, shared.Data.admin)
+  lazy val roles = Seq(Data.user, connect.shared.Data.admin)
   lazy val roleFilter = (r: Role) => r == admin
 
   @JSExportTopLevel("user")

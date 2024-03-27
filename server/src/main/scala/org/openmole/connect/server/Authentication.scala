@@ -1,11 +1,10 @@
-package org.openmoleconnect.server
-
+package org.openmole.connect.server
 
 //import javax.servlet.http.{Cookie, HttpServletRequest}
-import org.openmoleconnect.server.JWT._
-import org.http4s.headers.Cookie
-import org.http4s.Request
 import cats.effect.IO
+import org.http4s.Request
+import org.http4s.headers.Cookie
+import org.openmole.connect.server.JWT.*
 
 object Authentication:
 

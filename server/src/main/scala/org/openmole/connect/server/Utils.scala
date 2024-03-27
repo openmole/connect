@@ -1,10 +1,10 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
+
+import org.apache.http.impl.EnglishReasonPhraseCatalog
 
 import java.io.{PrintWriter, StringWriter}
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-import org.apache.http.impl.EnglishReasonPhraseCatalog
 
 object Utils:
 

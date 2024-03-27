@@ -1,10 +1,9 @@
-package shared
-
-import shared.Data.UserData
+package org.openmole.connect.shared
 
 import endpoints4s.{algebra, circe}
-import io.circe._
-import io.circe.generic.auto._
+import io.circe.*
+import io.circe.generic.auto.*
+import org.openmole.connect.shared.Data.UserData
 
 
 trait UserAPI

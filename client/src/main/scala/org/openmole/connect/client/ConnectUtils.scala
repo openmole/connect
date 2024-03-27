@@ -1,10 +1,8 @@
-package org.openmoleconnect.client
+package org.openmole.connect.client
 
-
-import scaladget.bootstrapnative.bsn._
-import scaladget.tools._
 import com.raquo.laminar.api.L.*
-
+import scaladget.bootstrapnative.bsn.*
+import scaladget.tools.*
 
 import scala.scalajs.js.Date
 

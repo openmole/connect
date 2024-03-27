@@ -1,8 +1,8 @@
 package org.openmoleconnect.application
 
-import org.openmoleconnect.server.*
-import java.io.File
+import org.openmole.connect.server.*
 
+import java.io.File
 import scopt.*
 
 @main def application(args: String*) =

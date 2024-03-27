@@ -1,27 +1,22 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
 
+import cats.*
+import cats.data.*
 import cats.effect.*
-import org.http4s.blaze.server.*
-import org.http4s.implicits.*
-import org.http4s.server.Router
-
-import java.io.File
-import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import dev.profunktor.auth.*
 import dev.profunktor.auth.jwt.*
-import pdi.jwt.*
 import org.http4s.*
+import org.http4s.blaze.server.*
+import org.http4s.dsl.io.*
 import org.http4s.headers.*
-import org.http4s.dsl.io.*
-import cats.effect.unsafe.IORuntime
-import cats.*
-import cats.effect.*
-import cats.implicits.*
-import cats.data.*
-import org.http4s.*
-import org.http4s.dsl.io.*
+import org.http4s.implicits.*
 import org.http4s.server.*
+import org.openmole.connect.shared.Data
+import pdi.jwt.*
+
+import java.io.File
 
 //object ConnectServer:
 //
@@ -82,7 +77,7 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
           Ok.apply(ServerContent.someHtml("connection(false);").render)
             .map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
-        case req @ POST -> Root / shared.Data.connectionRoute =>
+        case req @ POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>

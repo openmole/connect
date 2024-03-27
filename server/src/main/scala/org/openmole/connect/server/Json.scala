@@ -1,9 +1,9 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
 
 import org.json4s.*
 import org.json4s.JsonAST.JValue
-import org.json4s.jackson.JsonMethods.*
 import org.json4s.JsonDSL.*
+import org.json4s.jackson.JsonMethods.*
 
 object Json:
 

@@ -1,13 +1,13 @@
-package org.openmoleconnect.client
+package org.openmole.connect.client
 
-import org.scalajs.dom
-import scaladget.bootstrapnative.bsn._
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.features.unitArrows
+import org.openmoleconnect.client.Css
+import org.scalajs.dom
+import scaladget.bootstrapnative.bsn.*
+import org.openmole.connect.shared.Data.*
 
 import scala.scalajs.js.annotation.JSExportTopLevel
-
-import shared.Data._
-import com.raquo.laminar.api.features.unitArrows
 
 /*
  * Copyright (C) 11/07/19 // mathieu.leclaire@openmole.org

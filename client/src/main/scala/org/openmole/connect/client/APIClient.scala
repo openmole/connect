@@ -1,4 +1,4 @@
-package org.openmoleconnect.client
+package org.openmole.connect.client
 
 /*
  * Copyright (C) 2024 Romain Reuillon

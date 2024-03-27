@@ -1,17 +1,17 @@
-package org.openmoleconnect.server
+package org.openmole.connect.server
+
+import org.openmole.connect.server.DBQueries.*
+import org.openmole.connect.shared.Data
+import shared.*
+import org.openmole.connect.shared.Data.UserData
+import slick.jdbc.H2Profile.api.*
+import slick.model.ForeignKey
 
 import java.text.SimpleDateFormat
 import java.util
-
-import shared.Data.UserData
-
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
-import slick.jdbc.H2Profile.api.*
-import DBQueries._
-import shared._
-import slick.model.ForeignKey
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 object DB:
   // USERS
