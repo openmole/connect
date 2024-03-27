@@ -29,7 +29,7 @@ import com.raquo.laminar.api.features.unitArrows
 object Connection:
 
   @JSExportTopLevel("connection")
-  def connect() =
+  def connect(error: Boolean) =
     lazy val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
     //lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
@@ -64,7 +64,8 @@ object Connection:
         div(Css.connectionTabOverlay,
           div(
             img(src := "img/logo.png", Css.openmoleLogo),
-            div(Css.connectionFormStyle, connectionForm)
+            div(Css.connectionFormStyle, connectionForm),
+            if error then div("Wrong email or password") else div()
           )
         )
       )

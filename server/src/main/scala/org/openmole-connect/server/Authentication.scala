@@ -9,36 +9,57 @@ import cats.effect.IO
 
 object Authentication:
 
-  def cookie(request: Request[IO], tokenType: TokenType) = request.headers.get[org.http4s.headers.Cookie]
+  def authorizationCookieKey = "authorized_openmole_cookie"
 
-  def isValid(request: Request[IO], tokenType: TokenType)(implicit secret: Secret): Boolean =
-    cookie(request, tokenType) match
-      case None =>
-//        val authFailure = AuthenticationFailure(request.getHeader("User-Agent"),
-//          request.getRequestURL.toString,
-//          request.getRemoteAddr)
+  def authorizationToken(req: Request[IO])(using JWT.Secret) =
+    val cookie =
+      req.headers.get[org.http4s.headers.Cookie].flatMap: c =>
+        c.values.find(_.name == authorizationCookieKey).flatMap: c =>
+          JWT.TokenData.fromTokenContent(c.content)
 
-        //println(s"Error: cookie not found")
-        //println("More information:")
-        //println(authFailure.toString)
-        false
-      case Some(c: Cookie) => JWT.isTokenValid(c.values.head.renderString)
+    cookie
 
-//  def tokenData(request: HttpServletRequest, tokenType: TokenType)(implicit secret: Secret): Option[TokenData] = {
-//    cookie(request, tokenType).flatMap { c =>
-//      JWT.TokenData.fromTokenContent(c.getValue, tokenType)
-//    }
-//  }
+  def isAuthenticated(request: Request[IO])(using JWT.Secret) =
+    authorizationToken(request) match
+      case Some(t) => DB.get(t.email).isDefined
+      case _ => false
 
+  def isAdmin(request: Request[IO])(using JWT.Secret) =
+    authorizationToken(request) match
+      case Some(t) => DB.get(t.email).exists(_.role == DB.admin)
+      case _ => false
 
-case class AuthenticationFailure(
-  userAgent: String,
-  url: String,
-  remoteAddr: String):
-
-  override def toString =
-    "AuthenticationFailure(\n" +
-      "  User-Agent: " + userAgent + "\n" +
-      "  Request URL: " + url + "\n" +
-      "  Remote Address: " + remoteAddr + "\n" +
-      ")"
+//
+//  def cookie(request: Request[IO]) = request.headers.get[org.http4s.headers.Cookie]
+//
+//  def isValid(request: Request[IO])(using JWT.Secret): Boolean =
+//    cookie(request) match
+//      case None =>
+////        val authFailure = AuthenticationFailure(request.getHeader("User-Agent"),
+////          request.getRequestURL.toString,
+////          request.getRemoteAddr)
+//
+//        //println(s"Error: cookie not found")
+//        //println("More information:")
+//        //println(authFailure.toString)
+//        false
+//      case Some(c: Cookie) => JWT.isTokenValid(c.values.head.renderString)
+//
+////  def tokenData(request: HttpServletRequest, tokenType: TokenType)(implicit secret: Secret): Option[TokenData] = {
+////    cookie(request, tokenType).flatMap { c =>
+////      JWT.TokenData.fromTokenContent(c.getValue, tokenType)
+////    }
+////  }
+//
+//
+//case class AuthenticationFailure(
+//  userAgent: String,
+//  url: String,
+//  remoteAddr: String):
+//
+//  override def toString =
+//    "AuthenticationFailure(\n" +
+//      "  User-Agent: " + userAgent + "\n" +
+//      "  Request URL: " + url + "\n" +
+//      "  Remote Address: " + remoteAddr + "\n" +
+//      ")"

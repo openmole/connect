@@ -100,8 +100,10 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "com.h2database" % "h2" % h2Version,
 //    "io.suzaku" %% "boopickle" % boopickleVersion,
 //    "com.lihaoyi" %% "autowire" % autowireVersion,
-    "dev.profunktor" %% "http4s-jwt-auth" % "1.2.2"
-  ) 
+    "dev.profunktor" %% "http4s-jwt-auth" % "1.2.2",
+    "com.github.pathikrit" %% "better-files" % "3.9.2",
+    "commons-codec" % "commons-codec" % "1.16.1"
+  )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
 
 //lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn(server) enablePlugins (JavaServerAppPackaging)
@@ -114,6 +116,7 @@ lazy val application = project.in(file("application")) settings (defaultSettings
 //  dockerChmodType := DockerChmodType.UserGroupWriteExecute,
 //  dockerAdditionalPermissions += (DockerChmodType.UserGroupPlusExecute, "/opt/docker/bin/application"),
 //  dockerAdditionalPermissions += (DockerChmodType.UserGroupWriteExecute, "/home/demiourgos728/.openmole-connect"),
+  libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
   Docker / mappings ++=
     Seq(
       (dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",

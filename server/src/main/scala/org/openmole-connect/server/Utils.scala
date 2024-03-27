@@ -18,3 +18,5 @@ object Utils:
       throwable.printStackTrace(new PrintWriter(sw))
       sw.toString
 
+
+  def now = System.currentTimeMillis()

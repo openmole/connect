@@ -9,6 +9,7 @@ object Json:
 
   object key:
     val email = "email"
+
     val uuid = "uuid"
     val hostIP = "hostIP"
 

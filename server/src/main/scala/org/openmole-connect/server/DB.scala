@@ -13,10 +13,10 @@ import DBQueries._
 import shared._
 import slick.model.ForeignKey
 
-object DB {
-
-
+object DB:
   // USERS
+
+  def randomUUID = java.util.UUID.randomUUID().toString
 
   type UUID = String
   type Email = String
@@ -81,80 +81,65 @@ object DB {
           actions: _*
         ).transactionally), Duration.Inf)
 
-  def initDB =
+  def initDB(salt: String) =
     runTransaction(userTable.schema.createIfNotExists)
     if DB.users.isEmpty
-    then DB.addUser("admin", "admin@admin.com", "admin", Utils.openmoleversion.stable, "0Gi", JWT.now, DB.admin, "admin-123-567-admin")
+    then DB.addUser("admin", "admin@admin.com", "admin", Utils.openmoleversion.stable, "0Gi", Utils.now, DB.admin, randomUUID, salt = salt)
 //      DB.addUser("foo", DB.Email("foo@foo.com"), DB.Password("foo"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("bar-123-567-bar"))
 //      DB.addUser("toto", DB.Email("toto@toto.com"), DB.Password("toto"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("openmole-toto")
 
 
-  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser): Unit =
+  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, salt: String): Unit =
     if !exists(email)
     then addUser(name, email, password, omVersion, storage, lastAccess, role, util.UUID.randomUUID().toString)
 
-  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role, uuid: UUID): Unit = {
-    if (!exists(email)) {
+  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role, uuid: UUID, salt: String): Unit =
+    if !exists(email)
+    then
       runTransaction(
-        userTable += (uuid, name, email, password, role, omVersion, storage, lastAccess)
+        userTable += (uuid, name, email, Hash.hash(password, salt), role, omVersion, storage, lastAccess)
       )
-    }
-  }
 
-  def upsert(user: User) = {
+  def upsert(user: User, salt: String) =
     runTransaction(
-      userTable.insertOrUpdate(user.uuid, user.name, user.email, user.password, user.role, user.omVersion, user.storage, user.lastAccess)
+      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
     )
-  }
 
   def setLastAccess(email: Email, lastAccess: Long) =
     runTransaction {
       getLastAccesQuery(email).update(lastAccess)
     }
 
-  def delete(user: User) = {
+  def delete(user: User) =
     runTransaction(
       userTable.filter {
         _.uuid === user.uuid
       }.delete
     )
-  }
 
   //QUERIES
   // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
-  def uuid(email: Email): Option[UUID] = users.find(_.email == email).map {
-    _.uuid
-  }
+  def uuid(email: Email): Option[UUID] = users.find(_.email == email).map { _.uuid }
 
-  def uuid(email: Email, password: Password): Option[UUID] = users.find(u => u.email == email && u.password == password).map {
-    _.uuid
-  }
+  def uuid(email: Email, password: Password, salt: String): Option[UUID] = users.find(u => u.email == email && u.password == Hash.hash(password, salt)).map { _.uuid }
 
-  def uuids = users.map {
-    _.uuid
-  }
+  def uuids = users.map { _.uuid }
+  def email(uuid: UUID) = users.find(u => u.uuid == uuid).map { _.email }
 
-  def email(uuid: UUID) = users.find(u => u.uuid == uuid).map {
-    _.email
-  }
-
-  def get(email: Email) = {
+  def get(email: Email) =
     runQuery(
       getQuery(email)
     ).headOption
-  }
 
   def users = runQuery(
     for {
       u <- userTable
-    } yield (u)
+    } yield u
   )
-
   def exists(email: Email) = get(email).isDefined
 
-  def isAdmin(email: Email) = get(email).map {
-    _.role
-  } == Some(admin)
-}
+  def isAdmin(email: Email) = get(email).map { _.role }.contains(admin)
+
+
