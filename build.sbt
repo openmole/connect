@@ -22,9 +22,12 @@ val h2Version = "1.4.200"
 val autowireVersion = "0.3.3"
 val boopickleVersion = "1.4.0"
 def laminarVersion = "0.14.2"
-lazy val circeVersion = "0.14.5"
-lazy val endpoints4SVersion = "1.11.1"
-lazy val endpointCirceVersion = "2.5.1"
+
+def circeVersion = "0.14.6"
+def endpoints4SVersion = "1.11.1"
+def endpointCirceVersion = "2.5.1"
+def endpointHTT4ServerVersion = "10.3.1"
+def http4sVersion = "0.23.16"
 
 val Resolvers = Seq(
   Resolver.sonatypeRepo("snapshots"),
@@ -77,8 +80,8 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
 
 lazy val server = project.in(file("server")) settings (defaultSettings) settings (
   libraryDependencies ++= Seq(
-    "org.endpoints4s" %% "http4s-server" % "10.3.1" excludeAll(ExclusionRule(organization = "com.lihaoyi")),
-    "org.http4s" %% "http4s-blaze-server" % "0.23.16",
+    "org.endpoints4s" %% "http4s-server" % endpointHTT4ServerVersion excludeAll(ExclusionRule(organization = "com.lihaoyi")),
+    "org.http4s" %% "http4s-blaze-server" % http4sVersion,
     //"org.http4s" %% "http4s-blaze-client" % "0.23.16",
     "io.circe" %% "circe-parser" % circeVersion,
     //"com.raquo" %% "domtypes" % "18.0.0",
@@ -103,7 +106,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
 //    "com.lihaoyi" %% "autowire" % autowireVersion,
     "dev.profunktor" %% "http4s-jwt-auth" % "1.2.2",
     "com.github.pathikrit" %% "better-files" % "3.9.2",
-    "commons-codec" % "commons-codec" % "1.16.1"
+    "commons-codec" % "commons-codec" % "1.16.1",
+    "org.apache.commons" % "commons-lang3" % "3.14.0"
   )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
 

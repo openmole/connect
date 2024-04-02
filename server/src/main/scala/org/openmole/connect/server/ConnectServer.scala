@@ -7,21 +7,27 @@ import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import dev.profunktor.auth.*
 import dev.profunktor.auth.jwt.*
-import org.apache.http.client.methods.HttpGet
+import org.apache.commons.io.IOUtils
+import org.apache.commons.lang3.exception.ExceptionUtils
+import org.apache.http.client.config.RequestConfig
+import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.entity.InputStreamEntity
 import org.apache.http.impl.client.HttpClients
 import org.http4s.*
 import org.http4s.blaze.server.*
 import org.http4s.dsl.io.*
 import org.http4s.headers.*
 import org.http4s.implicits.*
+import org.http4s.multipart.Multipart
 import org.http4s.server.*
 import org.openmole.connect.server.ServerContent.connectionError
 import org.openmole.connect.shared.Data
+import org.typelevel.ci.CIString
 import pdi.jwt.*
 
-import java.io.File
+import java.io.{BufferedOutputStream, File, FileOutputStream}
 import scala.concurrent.duration.Duration
-
+import scala.jdk.CollectionConverters.*
 //object ConnectServer:
 //
 //  case class Config(salt: String, kubeOff: Boolean)
@@ -32,43 +38,15 @@ import scala.concurrent.duration.Duration
 
 
 
-class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
+class ConnectServer(salt: String, secret: String,  kubeOff: Boolean, openmoleURL: String):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(secret)
 
-  val httpClient = HttpClients.createDefault()
+  val httpClient = HttpClients.custom().disableAutomaticRetries().disableRedirectHandling().build()
 
-
-  //def dataFile = new File(data)
 
   def start() =
-    case class AuthUser(id: Long, name: String)
-//
-//    enum TokenType:
-//      case access, refresh
-
-    //case class TokenData(email: DB.Email, host: String, issued: Long, expirationTime: Long, tokenType: TokenType)
-
-
-    //JWT.TokenData.accessToken("test.org", "test@test.org")
-
-
-    // i.e. retrieve user from database
-//    val authenticate: JwtToken => JwtClaim => IO[Option[AuthUser]] =
-//      token => claim =>
-//        println(token)
-//        println(claim)
-//        AuthUser(123L, "joe").some.pure[IO]
-//
-//    val jwtAuth = JwtAuth.hmac("53cr3t", JwtAlgorithm.HS256)
-//    val middleware = JwtAuthMiddleware[IO, AuthUser](jwtAuth, authenticate)
-
-//    println(jwtAuth.secretKey.value)
-//    println(Jwt.encode(JwtClaim("{123}"), jwtAuth.secretKey.value, jwtAuth.jwtAlgorithms.head))
-    // curl -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.ezEyM30.aK9o7JLIL1aMpvhCq7tY5FNoG7mdfJ1bm2paUFM6L2k" --cookie "USER_TOKEN=Yes" localhost:8080/admin
-    // https://blog.rockthejvm.com/scala-http4s-authentication/
-
     val openRoute: HttpRoutes[IO] =
       HttpRoutes.of:
         case req @ GET -> Root =>
@@ -99,16 +77,89 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
             val apiReq = req.withUri(req.uri.withPath(apiPath))
             userAPI.routes.apply(apiReq).getOrElseF(NotFound())
 
-        case req if req.uri.path.startsWith(Root / "openmole") =>
-          ServerContent.authenticated(req): user =>
-            import org.typelevel.ci.*
+        case req if req.uri.path.startsWith(Root / "openmole") && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
+          val openmoleURI = java.net.URI(openmoleURL)
 
-            val response =
-              val httpGet = new HttpGet("http://mirrors.lug.mtu.edu/debian-cd/12.5.0/amd64/jigdo-dvd/debian-12.5.0-amd64-DVD-10.jigdo")
-              val forwardResponse = httpClient.execute(httpGet)
+          def authority =
+            Uri.Authority(host = Uri.Host.unsafeFromString(openmoleURI.getHost), port = Some(openmoleURI.getPort))
 
-              Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240))
-            response
+          val uri =
+            def path = Path(req.uri.path.segments.drop(1))
+            def scheme = Uri.Scheme.unsafeFromString(openmoleURI.getScheme)
+            req.uri.copy(authority = Some(authority), scheme = Some(scheme)).withPath(path).toString
+
+          val filteredHeaders = Set(CIString("Content-Length"))
+
+          req.method match
+            case p @ POST =>
+              val res = fs2.io.toInputStreamResource(req.body).use: is =>
+                val post = new HttpPost(uri)
+                post.setEntity(new InputStreamEntity(is))
+
+                req.headers.headers.filter(h => !filteredHeaders.contains(h.name)).foreach: h =>
+                  post.setHeader(h.name.toString, h.value)
+
+                val forwardResponse = httpClient.execute(post)
+                def forwardStatus = Status.fromInt(forwardResponse.getStatusLine.getStatusCode).toTry.get
+
+                Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240)).map: r =>
+                  val hs: Seq[Header.ToRaw] = forwardResponse.getAllHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
+                  r.putHeaders(hs: _*).withStatus(forwardStatus)
+
+              res
+            case p @ GET =>
+              val get = new HttpGet(uri)
+              req.headers.headers.filter(h => !filteredHeaders.contains(h.name)).foreach: h =>
+                get.setHeader(h.name.toString, h.value)
+
+              val forwardResponse = httpClient.execute(get)
+
+              def forwardStatus = Status.fromInt(forwardResponse.getStatusLine.getStatusCode).toTry.get
+
+              Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240)).map: r =>
+                val hs: Seq[Header.ToRaw] = forwardResponse.getAllHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
+                r.putHeaders(hs: _*).withStatus(forwardStatus)
+            case _ => ???
+
+        case req @ GET -> Root / "openmole" => SeeOther(Location(Uri.unsafeFromString("openmole/")))
+//                    println("copy")
+//                    val f = new File("/tmp/test.txt")
+//                    val os = new BufferedOutputStream(new FileOutputStream(f))
+//                    try IOUtils.copy(is, os, 10240)
+//                    finally os.close()
+
+                  //fs2.io.readInputStream[IO](req.body.in.widen[InputStream], DefaultChunkSize)
+
+                  //val inputStream = fs2.io.readInputStream(req.body.chunkAll)
+
+//
+//                  as[java.io.InputStream].flatMap: is =>
+//                    ???
+
+
+//                  req.decode[Multipart[IO]]: parts =>
+//                    val stream = fs2.io.toInputStreamResource(parts.body)
+//                    stream.use { st =>
+//                      IO:
+//                        st.copy(destination)
+//                        destination.setExecutable(true)
+//                    }.unsafeRunSync()
+
+
+
+//            val config = RequestConfig()
+//            config.get
+//            proxyRequest.setConfig()
+//            proxyRequest.
+//
+//            val response =
+//              val httpGet = new HttpGet("http://mirrors.lug.mtu.edu/debian-cd/12.5.0/amd64/jigdo-dvd/debian-12.5.0-amd64-DVD-10.jigdo")
+//              val forwardResponse = httpClient.execute(httpGet)
+//
+//              Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240))
+//            response
+
+            //Ok()
 
     val adminRoute: AuthedRoutes[DB.User, IO] = AuthedRoutes.of:
       case req @ GET -> Root / "admin" as user =>
@@ -131,12 +182,18 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean):
 
     val httpApp = Router("/" -> routes).orNotFound
 
+
+    def errorHandler: ServiceErrorHandler[IO] = r => t =>
+      def stack = ExceptionUtils.getStackTrace(t)
+      InternalServerError("Error in openmole-connect:\n" + stack)
+
     val server =
       BlazeServerBuilder[IO]
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(httpApp)
         .withIdleTimeout(Duration.Inf)
         .withResponseHeaderTimeout(Duration.Inf)
+        .withServiceErrorHandler(errorHandler)
         .resource.allocated.unsafeRunSync()._2
 
     server

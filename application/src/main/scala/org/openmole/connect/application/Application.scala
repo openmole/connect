@@ -10,7 +10,8 @@ import scopt.*
   case class Config(
     salt: String = "",
     secret: String = "",
-    kubeOff: Boolean = false)
+    kubeOff: Boolean = false,
+    openmoleTest: Option[String] = None)
 
   val builder = OParser.builder[Config]
   val parser =
@@ -21,13 +22,14 @@ import scopt.*
       opt[String]("salt").action((x, c) => c.copy(salt = x)).required().text("salt value"),
       opt[String]("secret").action((x, c) => c.copy(secret = x)).required().text("secret value"),
       opt[Unit]("kube-off").action((x, c) => c.copy(kubeOff = true)).text("disable kube"),
+      opt[String]("openmole-test").action((x, c) => c.copy(openmoleTest = Some(x))).required(),
     )
 
   OParser.parse(parser, args, Config()) match
     case Some(config) =>
       if (!Settings.location.exists) Settings.location.mkdirs()
       DB.initDB(config.salt)
-      val server = new ConnectServer(config.salt, config.secret, config.kubeOff)
+      val server = new ConnectServer(config.salt, config.secret, config.kubeOff, config.openmoleTest.get)
       server.start()
     case _ =>
       // arguments are bad, error message will have been displayed
