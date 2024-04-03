@@ -5,7 +5,7 @@ import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
 import org.openmole.connect.shared.*
 
-class UserAPIImpl(kubeOff: Boolean, userData: Data.UserData) extends server.Endpoints[IO]
+class UserAPIImpl(userData: Data.UserData) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
 

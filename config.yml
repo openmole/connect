@@ -1,0 +1,3 @@
+salt: "some-salt"
+kube-off: false
+secret: "some-secret"

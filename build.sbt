@@ -84,6 +84,7 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.http4s" %% "http4s-blaze-server" % http4sVersion,
     //"org.http4s" %% "http4s-blaze-client" % "0.23.16",
     "io.circe" %% "circe-parser" % circeVersion,
+    "io.circe" % "circe-yaml_3" % "1.15.0",
     //"com.raquo" %% "domtypes" % "18.0.0",
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
 //    "org.scalatra" %% "scalatra" % scalatraVersion,

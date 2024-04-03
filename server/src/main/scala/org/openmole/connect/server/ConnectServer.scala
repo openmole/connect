@@ -29,25 +29,29 @@ import java.io.{BufferedOutputStream, File, FileOutputStream}
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 import fs2.io.*
-//object ConnectServer:
-//
-//  case class Config(salt: String, kubeOff: Boolean)
-//  def read(file: File): Config =
-//    import better.files.*
-//    yaml.parser.parse(file.toScala.contentAsString).toTry.get.as[Config].toTry.get
+import io.circe.yaml
+import io.circe.generic.auto.*
+
+object ConnectServer:
+
+  case class Config(salt: String, secret: String, kubeOff: Option[Boolean] = None)
+  def read(file: File): Config =
+    import better.files.*
+    yaml.parser.parse(file.toScala.contentAsString).toTry.get.as[Config].toTry.get
 
 
-
-
-class ConnectServer(salt: String, secret: String,  kubeOff: Boolean, openmoleURL: String):
+class ConnectServer(config: ConnectServer.Config):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
-  given jwtSecret: JWT.Secret = JWT.Secret(secret)
+  given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
 
   val httpClient = HttpClients.custom().disableAutomaticRetries().disableRedirectHandling().build()
 
 
   def start() =
+    //println(K8sService.listPods)
+
+
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
         case req @ GET -> Root =>
@@ -63,7 +67,7 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean, openmoleURL
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>
-                DB.uuid(email, password, salt) match
+                DB.uuid(email, password, config.salt) match
                   case Some(uuid) =>
                     val token = JWT.TokenData(email)
                     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
@@ -73,12 +77,13 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean, openmoleURL
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
-            val userAPI = new UserAPIImpl(kubeOff, DB.User.toUserData(user))
+            val userAPI = new UserAPIImpl(DB.User.toUserData(user))
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))
             userAPI.routes.apply(apiReq).getOrElseF(NotFound())
 
         case req if req.uri.path.startsWith(Root / "openmole") && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
+          val openmoleURL = "http://openmole:8080"
           val openmoleURI = java.net.URI(openmoleURL)
 
           def authority =

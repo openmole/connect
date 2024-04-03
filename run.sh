@@ -12,7 +12,12 @@ kubectl delete pod openmole-connect
 
 OPENMOLE_IP=`kubectl get pod openmole --template '{{.status.podIP}}'`
 
-kubectl run openmole-connect --port 8080 --image=openmole-connect:0.6-SNAPSHOT -- --salt some-salt --kube-off --secret some-secret --openmole-test="http://$OPENMOLE_IP:8080/"
+kubectl delete -f manifest.yml
+kubectl delete configmap connect-config
+kubectl create configmap connect-config --from-file=config.yml 
+kubectl create -f manifest.yml
+
+#kubectl run openmole-connect --port 8080 --image=openmole-connect:0.6-SNAPSHOT -- --salt some-salt --kube-off --secret some-secret --openmole-test="http://$OPENMOLE_IP:8080/"
 sleep 3
 
 
