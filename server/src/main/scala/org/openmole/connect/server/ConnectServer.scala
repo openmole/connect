@@ -10,7 +10,7 @@ import dev.profunktor.auth.jwt.*
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.http.client.config.RequestConfig
-import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.client.methods.{CloseableHttpResponse, HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.InputStreamEntity
 import org.apache.http.impl.client.HttpClients
 import org.http4s.*
@@ -28,6 +28,7 @@ import pdi.jwt.*
 import java.io.{BufferedOutputStream, File, FileOutputStream}
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
+import fs2.io.*
 //object ConnectServer:
 //
 //  case class Config(salt: String, kubeOff: Boolean)
@@ -47,7 +48,7 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean, openmoleURL
 
 
   def start() =
-    val openRoute: HttpRoutes[IO] =
+    val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
         case req @ GET -> Root =>
           Authentication.authenticatedUser(req) match
@@ -88,97 +89,39 @@ class ConnectServer(salt: String, secret: String,  kubeOff: Boolean, openmoleURL
             def scheme = Uri.Scheme.unsafeFromString(openmoleURI.getScheme)
             req.uri.copy(authority = Some(authority), scheme = Some(scheme)).withPath(path).toString
 
-          val filteredHeaders = Set(CIString("Content-Length"))
+          def forwadedHeaders(req: Request[IO]) =
+            val filteredHeaders = Set(CIString("Content-Length"))
+
+            req.headers.headers.filter(h => !filteredHeaders.contains(h.name))
+
+          def response(forwardResponse: CloseableHttpResponse) =
+            def forwardStatus = Status.fromInt(forwardResponse.getStatusLine.getStatusCode).toTry.get
+
+            Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240).onFinalize(IO(forwardResponse.close()))).map: r =>
+              val hs: Seq[Header.ToRaw] = forwardResponse.getAllHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
+              r.putHeaders(hs: _*).withStatus(forwardStatus)
 
           req.method match
             case p @ POST =>
               val res = fs2.io.toInputStreamResource(req.body).use: is =>
                 val post = new HttpPost(uri)
                 post.setEntity(new InputStreamEntity(is))
-
-                req.headers.headers.filter(h => !filteredHeaders.contains(h.name)).foreach: h =>
-                  post.setHeader(h.name.toString, h.value)
-
-                val forwardResponse = httpClient.execute(post)
-                def forwardStatus = Status.fromInt(forwardResponse.getStatusLine.getStatusCode).toTry.get
-
-                Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240)).map: r =>
-                  val hs: Seq[Header.ToRaw] = forwardResponse.getAllHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
-                  r.putHeaders(hs: _*).withStatus(forwardStatus)
-
+                forwadedHeaders(req).foreach(h => post.setHeader(h.name.toString, h.value))
+                response(httpClient.execute(post))
               res
             case p @ GET =>
               val get = new HttpGet(uri)
-              req.headers.headers.filter(h => !filteredHeaders.contains(h.name)).foreach: h =>
-                get.setHeader(h.name.toString, h.value)
-
-              val forwardResponse = httpClient.execute(get)
-
-              def forwardStatus = Status.fromInt(forwardResponse.getStatusLine.getStatusCode).toTry.get
-
-              Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240)).map: r =>
-                val hs: Seq[Header.ToRaw] = forwardResponse.getAllHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
-                r.putHeaders(hs: _*).withStatus(forwardStatus)
-            case _ => ???
+              forwadedHeaders(req).foreach(h => get.setHeader(h.name.toString, h.value))
+              response(httpClient.execute(get))
+            case p @ DELETE =>
+              val delete = new HttpDelete(uri)
+              forwadedHeaders(req).foreach(h => delete.setHeader(h.name.toString, h.value))
+              response(httpClient.execute(delete))
+            case r => NotImplemented(s"Method ${r.method.name} is not supported by openmole-connect yet")
 
         case req @ GET -> Root / "openmole" => SeeOther(Location(Uri.unsafeFromString("openmole/")))
-//                    println("copy")
-//                    val f = new File("/tmp/test.txt")
-//                    val os = new BufferedOutputStream(new FileOutputStream(f))
-//                    try IOUtils.copy(is, os, 10240)
-//                    finally os.close()
 
-                  //fs2.io.readInputStream[IO](req.body.in.widen[InputStream], DefaultChunkSize)
-
-                  //val inputStream = fs2.io.readInputStream(req.body.chunkAll)
-
-//
-//                  as[java.io.InputStream].flatMap: is =>
-//                    ???
-
-
-//                  req.decode[Multipart[IO]]: parts =>
-//                    val stream = fs2.io.toInputStreamResource(parts.body)
-//                    stream.use { st =>
-//                      IO:
-//                        st.copy(destination)
-//                        destination.setExecutable(true)
-//                    }.unsafeRunSync()
-
-
-
-//            val config = RequestConfig()
-//            config.get
-//            proxyRequest.setConfig()
-//            proxyRequest.
-//
-//            val response =
-//              val httpGet = new HttpGet("http://mirrors.lug.mtu.edu/debian-cd/12.5.0/amd64/jigdo-dvd/debian-12.5.0-amd64-DVD-10.jigdo")
-//              val forwardResponse = httpClient.execute(httpGet)
-//
-//              Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240))
-//            response
-
-            //Ok()
-
-    val adminRoute: AuthedRoutes[DB.User, IO] = AuthedRoutes.of:
-      case req @ GET -> Root / "admin" as user =>
-        println("cookies " + req.req.headers.get[org.http4s.headers.Cookie])
-        println(user)
-        Ok(s"$user")
-
-
-//    val middleware: AuthMiddleware[IO, DB.User] =
-//      type PartialOptionT[T] = OptionT[IO, T]
-//      def authUser: Kleisli[PartialOptionT, Request[IO], DB.User] =
-//        Kleisli: r =>
-//          OptionT.liftF(IO(???))
-//
-//      AuthMiddleware(authUser)
-
-
-
-    val routes = openRoute <+> ServerContent.contentRoutes
+    val routes = serverRoutes <+> ServerContent.contentRoutes
 
     val httpApp = Router("/" -> routes).orNotFound
 
