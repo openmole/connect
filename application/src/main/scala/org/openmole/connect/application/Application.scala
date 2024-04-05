@@ -25,7 +25,6 @@ import scopt.*
     case Some(config) =>
       if (!Settings.location.exists) Settings.location.mkdirs()
       val configuration = ConnectServer.read(config.configFile.get)
-      DB.initDB(configuration.salt)
       val server = new ConnectServer(configuration)
       server.start()
     case _ =>

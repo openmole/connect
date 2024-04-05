@@ -14,8 +14,14 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
 object DB:
-  // USERS
+  object Salt:
+    def apply(s: String): Salt = s
+    def value(s: Salt): String = s
 
+  opaque type Salt = String
+
+  // USERS
+  def dbVersion = "1.0"
   def randomUUID = java.util.UUID.randomUUID().toString
 
   type UUID = String
@@ -39,8 +45,12 @@ object DB:
         u.storage.value,
         u.lastAccess.value)
 
+    def fromTuple(t: (UUID, String, Email, Password, Role, Version, Storage, Long)) =
+      val (uuid, name, email, password, role, version, storage, access) = t
+      User(name, email, password, version, storage, access, role, uuid)
 
-  case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, uuid: UUID = "")
+
+  case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, uuid: UUID = randomUUID)
 
 
 
@@ -58,18 +68,25 @@ object DB:
 //    uuid
 //  )
 
-  class Users(tag: Tag) extends Table[(UUID, String, Email, Password, Role, Version, Storage, Long)](tag, "USERS"):
+  class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
     def name = column[String]("NAME")
-    def email = column[Email]("EMAIL")
+    def email = column[Email]("EMAIL", O.Unique)
     def password = column[Password]("PASSWORD")
     def role = column[Role]("ROLE")
     def omVersion = column[Version]("OMVERSION")
     def storage = column[Storage]("STORAGE")
     def lastAccess = column[Long]("LASTACCESS")
-    def * = (uuid, name, email, password, role, omVersion, storage, lastAccess)
+    def * = (name, email, password, omVersion, storage, lastAccess, role, uuid).mapTo[User]
 
   val userTable = TableQuery[Users]
+
+
+  class DatabaseInfo(tag: Tag) extends Table[(String)](tag, "DATABASEINFO"):
+    def version = column[String]("VERSION")
+    def * = (version)
+
+  val databaseInfo = TableQuery[DatabaseInfo]
 
   val db: Database = Database.forDriver(
     driver = new org.h2.Driver,
@@ -84,41 +101,40 @@ object DB:
           actions: _*
         ).transactionally), Duration.Inf)
 
-  def initDB(salt: String) =
-    runTransaction(userTable.schema.createIfNotExists)
-    if DB.users.isEmpty
-    then DB.addUser("admin", "admin@admin.com", "admin", Utils.openmoleversion.stable, "0Gi", Utils.now, DB.admin, randomUUID, salt = salt)
-//      DB.addUser("foo", DB.Email("foo@foo.com"), DB.Password("foo"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("bar-123-567-bar"))
-//      DB.addUser("toto", DB.Email("toto@toto.com"), DB.Password("toto"), Utils.openmoleversion.stable, JWT.now, DB.simpleUser, UUID("openmole-toto")
+  def initDB()(using Salt) =
+    val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
+    runTransaction(create)
 
+    val admin = User("admin", "admin@admin.com", "admin", Utils.openmoleversion.stable, "0Gi", Utils.now, DB.admin, randomUUID)
+    runTransaction:
+      for
+        e <- userTable.result
+        if e.isEmpty
+      yield userTable += admin
 
-  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, salt: String): Unit =
-    if !exists(email)
-    then addUser(name, email, password, omVersion, storage, lastAccess, role, util.UUID.randomUUID().toString)
+  def addUser(user: User)(using salt: Salt): Unit =
+    runTransaction:
+      for
+        e <- userTable.filter(u => u.email === user.email).result
+        if e.isEmpty
+      yield userTable += user
 
-  def addUser(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role, uuid: UUID, salt: String): Unit =
-    if !exists(email)
-    then
-      runTransaction(
-        userTable += (uuid, name, email, Hash.hash(password, salt), role, omVersion, storage, lastAccess)
-      )
-
-  def upsert(user: User, salt: String) =
-    runTransaction(
-      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
-    )
-
-  def setLastAccess(email: Email, lastAccess: Long) =
-    runTransaction {
-      getLastAccesQuery(email).update(lastAccess)
-    }
-
-  def delete(user: User) =
-    runTransaction(
-      userTable.filter {
-        _.uuid === user.uuid
-      }.delete
-    )
+//  def upsert(user: User, salt: String) =
+//    runTransaction(
+//      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
+//    )
+//
+//  def setLastAccess(email: Email, lastAccess: Long) =
+//    runTransaction {
+//      getLastAccesQuery(email).update(lastAccess)
+//    }
+//
+//  def delete(user: User) =
+//    runTransaction(
+//      userTable.filter {
+//        _.uuid === user.uuid
+//      }.delete
+//    )
 
   //QUERIES
   // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
@@ -132,11 +148,11 @@ object DB:
   def email(uuid: UUID) = users.find(u => u.uuid == uuid).map { _.email }
 
   def get(email: Email) =
-    runQuery(
-      getQuery(email)
+    runUserQuery(
+      queryUser(email)
     ).headOption
 
-  def users = runQuery(
+  def users = runUserQuery(
     for {
       u <- userTable
     } yield u

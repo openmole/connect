@@ -1,7 +1,63 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: openmole
+  labels:
+    name: openmole
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openmole-admin-sa
+  namespace: openmole
+---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openmole-admin-role
+  namespace: openmole
+rules:
+- apiGroups:
+  - "*"
+  resources: 
+  - "*" #["pods", "deployments" ]
+  verbs: 
+  - "*" #["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openmole-role-binding
+  namespace: openmole
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openmole-admin-role
+subjects:
+- kind: ServiceAccount
+  name: openmole-admin-sa
+  namespace: openmole
+---
+apiVersion: v1
+data:
+  config.yml: |
+    salt: "some-salt"
+    secret: "some-secret"
+    kube:
+      off: false
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: connect-config
+  namespace: openmole
+---
+apiVersion: v1
 kind: Pod
 metadata:
   name: openmole-connect
+  namespace: openmole
 spec:
   containers:
   - name: openmole-connect
@@ -19,6 +75,7 @@ spec:
     - name: connect-config
       configMap:
         name: connect-config
+  serviceAccountName: openmole-admin-sa
 
 #kubectl run openmole-connect --port 8080 --image=openmole-connect:0.6-SNAPSHOT -- --salt some-salt --kube-off --secret some-secret --openmole-test="http://$OPENMOLE_IP:8080/"
 #sleep 3

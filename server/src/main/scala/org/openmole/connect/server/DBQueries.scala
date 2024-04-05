@@ -9,25 +9,27 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-object DBQueries {
-  type UserQuery = Query[Users, (UUID, String, Email, Password, Role, Version, Storage, Long), Seq]
+object DBQueries:
+  type UserQuery = Query[Users, User, Seq]
 
-  def runQuery(query: UserQuery) =
-    Await.result(
-      db.run(
-        query.result
-      ), Duration.Inf
-    ).map { case (u, n, e, p, r, v, s, l) => User(n, e, p, v, s, l, r, u) }
+  def runUserQuery(query: UserQuery): Seq[User] =
+    await:
+      db.run(query.result)
+    
+   // .map { case (u, n, e, p, r, v, s, l) => User(n, e, p, v, s, l, r, u) }
+
+  def await[A](f: concurrent.Future[A]) =
+    Await.result(f, Duration.Inf)
+
 
   // Query statements
-  def getQuery(email: Email) =
-    for {
-      u <- userTable if (u.email === email)
-    } yield (u)
+  def queryUser(email: Email): UserQuery =
+    for
+      u <- userTable if u.email === email
+    yield u
 
   def getLastAccesQuery(email: Email) =
     for {
       u <- userTable if (u.email === email)
     } yield (u.lastAccess)
 
-}

@@ -34,7 +34,10 @@ import io.circe.generic.auto.*
 
 object ConnectServer:
 
-  case class Config(salt: String, secret: String, kubeOff: Option[Boolean] = None)
+  object Config:
+    case class Kube(off: Option[Boolean] = None, storageClassName: Option[String] = None)
+
+  case class Config(salt: String, secret: String, kube: Config.Kube)
   def read(file: File): Config =
     import better.files.*
     yaml.parser.parse(file.toScala.contentAsString).toTry.get.as[Config].toTry.get
@@ -44,13 +47,16 @@ class ConnectServer(config: ConnectServer.Config):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
+  given salt: DB.Salt = DB.Salt(config.salt)
 
   val httpClient = HttpClients.custom().disableAutomaticRetries().disableRedirectHandling().build()
 
 
   def start() =
-    //println(K8sService.listPods)
+    DB.initDB()
 
+    println(K8sService.listPods)
+    println(K8sService.deployOpenMOLE("8888888", "latest", "5Gi", config.kube.storageClassName))
 
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
