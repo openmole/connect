@@ -95,29 +95,28 @@ object DB:
 
   // TRANSACTIONS
   def runTransaction[E <: Effect](actions: DBIOAction[_, NoStream, E]*) =
-    Await.result(
-      db.run(
-        DBIO.seq(
-          actions: _*
-        ).transactionally), Duration.Inf)
+    Await.result(db.run(DBIO.seq(actions: _*).transactionally), Duration.Inf)
 
   def initDB()(using Salt) =
     val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
     runTransaction(create)
 
-    val admin = User("admin", "admin@admin.com", "admin", Utils.openmoleversion.stable, "0Gi", Utils.now, DB.admin, randomUUID)
+    val admin = User("admin", "admin@admin.com", salted("admin"), Utils.openmoleversion.stable, "0Gi", Utils.now, DB.admin, randomUUID)
+
     runTransaction:
       for
         e <- userTable.result
         if e.isEmpty
-      yield userTable += admin
+        _ <- userTable += admin
+      yield ()
 
   def addUser(user: User)(using salt: Salt): Unit =
     runTransaction:
       for
         e <- userTable.filter(u => u.email === user.email).result
         if e.isEmpty
-      yield userTable += user
+        _ <- userTable += user
+      yield ()
 
 //  def upsert(user: User, salt: String) =
 //    runTransaction(
@@ -142,23 +141,19 @@ object DB:
 
   def uuid(email: Email): Option[UUID] = users.find(_.email == email).map { _.uuid }
 
-  def uuid(email: Email, password: Password, salt: String): Option[UUID] = users.find(u => u.email == email && u.password == Hash.hash(password, salt)).map { _.uuid }
+  def salted(password: Password)(using salt: Salt) = Hash.hash(password, Salt.value(salt))
+
+  def uuid(email: Email, password: Password)(using salt: Salt): Option[UUID] = users.find(u => u.email == email && u.password == salted(password)).map { _.uuid }
 
   def uuids = users.map { _.uuid }
   def email(uuid: UUID) = users.find(u => u.uuid == uuid).map { _.email }
 
-  def get(email: Email) =
-    runUserQuery(
-      queryUser(email)
-    ).headOption
+  def userSaltedPassword(email: Email, salted: Password): Option[User] = users.find(u => u.email == email && u.password == salted)
 
-  def users = runUserQuery(
-    for {
-      u <- userTable
-    } yield u
-  )
-  def exists(email: Email) = get(email).isDefined
+  def users: Seq[User] = runUserQuery(userTable)
 
-  def isAdmin(email: Email) = get(email).map { _.role }.contains(admin)
+  def exists(email: Email) = users.exists(_.email == email)
+
+  //def isAdmin(email: Email) = users.find(_.email == email).map { _.role }.contains(admin)
 
 

@@ -58,22 +58,16 @@ object JWT:
     def fromTokenContent(content: String)(using secret: Secret) =
       Jwt.decode(content, secret, Seq(JWT.algorithm)).map: jwtClaim =>
         val email: Email = Json.fromJson(jwtClaim.content, Json.key.email)
-//        val host =
-//          val uuid: UUID = Json.fromJson(jwtClaim.content, Json.key.uuid)
-//          val hostIP: String = Json.fromJson(jwtClaim.content, Json.key.hostIP)
-//          val hip =
-//            if hostIP.isEmpty
-//            then None
-//            else Some(hostIP)
-//
-//          Host(uuid, hip)
-
-        TokenData(email, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
+        val password: Password = Json.fromJson(jwtClaim.content, Json.key.password)
+        TokenData(email, password, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
       .toOption.filter { t => !hasExpired(t) }
 
     def toContent(token: TokenData)(using secret: Secret) =
-      import token.*
-      val claims = Seq(Json.key.email -> email)
+      val claims =
+        Seq(
+          Json.key.email -> token.email,
+          Json.key.password -> token.password
+        )
 
       val expandedClaims =
         claims.map: (k, v) =>
@@ -82,11 +76,10 @@ object JWT:
 
       Jwt.encode(
         JwtHeader(algorithm),
-        JwtClaim(s"{$expandedClaims}".stripMargin)
-          .issuedNow.expiresAt(expirationTime / 1000),
+        JwtClaim(s"{$expandedClaims}".stripMargin).issuedNow.expiresAt(token.expirationTime / 1000),
         secret
       )
 
 
-  case class TokenData(email: Email, issued: Long = Utils.now, expirationTime: Long = inOneMonth)
+  case class TokenData(email: Email, password: Password, issued: Long = Utils.now, expirationTime: Long = inOneMonth)
 

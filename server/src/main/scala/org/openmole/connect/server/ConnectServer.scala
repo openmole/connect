@@ -55,8 +55,8 @@ class ConnectServer(config: ConnectServer.Config):
   def start() =
     DB.initDB()
 
-    println(K8sService.listPods)
-    println(K8sService.deployOpenMOLE("8888888", "latest", "5Gi", config.kube.storageClassName))
+    //println(K8sService.listPods)
+    //println(K8sService.deployOpenMOLE("8888888", "latest", "5Gi", config.kube.storageClassName))
 
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
@@ -73,9 +73,10 @@ class ConnectServer(config: ConnectServer.Config):
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>
-                DB.uuid(email, password, config.salt) match
+
+                DB.uuid(email, password) match
                   case Some(uuid) =>
-                    val token = JWT.TokenData(email)
+                    val token = JWT.TokenData(email, DB.salted(password))
                     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
                     ServerContent.ok("user();").map(_.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate))))
                   case None => ServerContent.connectionError

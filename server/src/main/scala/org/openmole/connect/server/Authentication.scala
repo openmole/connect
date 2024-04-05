@@ -20,17 +20,17 @@ object Authentication:
 
   def authenticatedUser[T](request: Request[IO])(using JWT.Secret): Option[DB.User] =
     authorizationToken(request) match
-      case Some(t) => DB.get(t.email)
+      case Some(t) => DB.userSaltedPassword(t.email, t.password)
       case _ => None
 
   def isAuthenticated(request: Request[IO])(using JWT.Secret) =
     authorizationToken(request) match
-      case Some(t) => DB.get(t.email).isDefined
+      case Some(t) => DB.userSaltedPassword(t.email, t.password).isDefined
       case _ => false
 
   def isAdmin(request: Request[IO])(using JWT.Secret) =
     authorizationToken(request) match
-      case Some(t) => DB.get(t.email).exists(_.role == DB.admin)
+      case Some(t) => DB.userSaltedPassword(t.email, t.password).exists(_.role == DB.admin)
       case _ => false
 
 //

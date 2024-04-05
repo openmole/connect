@@ -219,11 +219,10 @@ object K8sService {
 
   def deleteOpenMOLE(uuid: UUID) =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
-    withK8s { k8s =>
+    withK8s: k8s =>
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
       k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
       k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](s"pvc-${uuid.value}")
-    }
 
   def deployIfNotDeployedYet(uuid: UUID, omVersion: String, storage: String, storageClassName: Option[String]) =
     if !isDeploymentExists(uuid) then deployOpenMOLE(uuid, omVersion, storage, storageClassName)
@@ -232,38 +231,28 @@ object K8sService {
     podList.find { _.name.contains(uuid.value) }
 
   // This method was kept to test the LabelSelector method. Is works but requires more API requests => longer
-  private def podInfo(uuid: UUID): Option[PodInfo] = {
+  private def podInfo(uuid: UUID): Option[PodInfo] =
     println("podInfo: " + uuid)
-    withK8s {
-      k8s =>
-        val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
-        println("PODINFO select for " + uuid.value)
-        pods.map { list =>
-          println("podinfo for " + uuid.value + " - " + list.items.size)
-          list.items.flatMap { pod => toPodInfoList(pod) }.headOption
-        }
-    }
-  }
+    withK8s: k8s =>
+      val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
+      println("PODINFO select for " + uuid.value)
+      pods.map { list =>
+        println("podinfo for " + uuid.value + " - " + list.items.size)
+        list.items.flatMap { pod => toPodInfoList(pod) }.headOption
+      }
 
-  def isServiceUp(uuid: UUID): Boolean = {
-    podInfo(uuid).map {
-      _.status
-    } == Some(Running)
-  }
+  def isServiceUp(uuid: UUID): Boolean =
+    podInfo(uuid).map { _.status }.contains(Running)
 
   def isDeploymentExists(uuid: UUID) = podInfo(uuid).isDefined
 
-  def podInfos: Seq[PodInfo] = {
+  def podInfos: Seq[PodInfo] =
     val pods = listPods
     for {
       uuid <- DB.uuids
       podInfo <- podInfo(uuid, pods)
-    } yield (podInfo)
-  }
+    } yield podInfo
 
-  def hostIP(uuid: UUID) = {
-    podInfo(uuid).map {
-      _.podIP
-    }
-  }
+  def hostIP(uuid: UUID) = podInfo(uuid).map { _.podIP }
+
 }
