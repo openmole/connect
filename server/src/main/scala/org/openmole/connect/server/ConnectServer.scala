@@ -49,12 +49,19 @@ class ConnectServer(config: ConnectServer.Config):
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
   given salt: DB.Salt = DB.Salt(config.salt)
 
-  val httpClient = HttpClients.custom().disableAutomaticRetries().disableRedirectHandling().build()
+  val httpClient =
+    HttpClients.
+      custom().
+      disableAutomaticRetries().
+      disableRedirectHandling().
+      setDefaultSocketConfig(Utils.socketConfig()).
+      build()
 
 
   def start() =
     DB.initDB()
 
+    println(Utils.availableOpenMOLEVersions(stable = false))
     //println(K8sService.listPods)
     //println(K8sService.deployOpenMOLE("8888888", "latest", "5Gi", config.kube.storageClassName))
 

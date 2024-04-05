@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
-object K8sService {
+object K8sService:
 
   object Namespace:
     val openmole = "openmole"
@@ -109,6 +109,7 @@ object K8sService {
       command = List("bin/bash", "-c", "openmole-docker --port 80 --password password --remote --mem 1G --workspace /var/openmole/.openmole"),
       volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/")),
       securityContext = Some(SecurityContext(privileged = Some(true))),
+      imagePullPolicy = Container.PullPolicy.Always
     ).exposePort(80)
 
   def createPersistentVolumeClaim(pvcName: String, storage: String, storageClassName: Option[String]) =
@@ -137,7 +138,6 @@ object K8sService {
       val pvc = createPersistentVolumeClaim(pvcName, storage, storageClassName)
 
       val openMOLESelector: LabelSelector = LabelSelector.IsEqualRequirement("app", "openmole")
-
       val openMOLEContainer = createOpenMOLEContainer(omVersion)
 
       val openMOLELabel = "app" -> "openmole"
@@ -155,16 +155,21 @@ object K8sService {
       val desiredCount = 1
 
       // https://kubernetes.io/docs/tasks/run-application/run-single-instance-stateful-application/
-      val openMOLEDeployment = new Deployment(
-        metadata=ObjectMeta(name=podName),
-        spec=Some(Deployment.Spec(
-          replicas = Some(desiredCount),
-          selector = openMOLESelector,
-          template=openMOLETemplate,
-          strategy = Some(Deployment.Strategy.Recreate))))
-//        .withReplicas(desiredCount)
-//        .withTemplate(openMOLETemplate)
-//        .withLabelSelector(openMOLESelector)
+      val openMOLEDeployment =
+        Deployment(
+          metadata = ObjectMeta(name=podName),
+          spec = Some(
+            Deployment.Spec(
+              replicas = Some(desiredCount),
+              selector = openMOLESelector,
+              template = openMOLETemplate,
+              strategy = Some(Deployment.Strategy.Recreate)
+            )
+          )
+        )
+  //        .withReplicas(desiredCount)
+  //        .withTemplate(openMOLETemplate)
+  //        .withLabelSelector(openMOLESelector)
 
       // Creating the openmole deployment
       k8s.usingNamespace(Namespace.openmole) create pvc
@@ -255,4 +260,4 @@ object K8sService {
 
   def hostIP(uuid: UUID) = podInfo(uuid).map { _.podIP }
 
-}
+

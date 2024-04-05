@@ -101,7 +101,7 @@ object DB:
     val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
     runTransaction(create)
 
-    val admin = User("admin", "admin@admin.com", salted("admin"), Utils.openmoleversion.stable, "0Gi", Utils.now, DB.admin, randomUUID)
+    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "0Gi", Utils.now, DB.admin, randomUUID)
 
     runTransaction:
       for
@@ -141,7 +141,7 @@ object DB:
 
   def uuid(email: Email): Option[UUID] = users.find(_.email == email).map { _.uuid }
 
-  def salted(password: Password)(using salt: Salt) = Hash.hash(password, Salt.value(salt))
+  def salted(password: Password)(using salt: Salt) = Utils.hash(password, Salt.value(salt))
 
   def uuid(email: Email, password: Password)(using salt: Salt): Option[UUID] = users.find(u => u.email == email && u.password == salted(password)).map { _.uuid }
 
