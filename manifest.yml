@@ -11,8 +11,6 @@ metadata:
   name: openmole-admin-sa
   namespace: openmole
 ---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -58,6 +56,8 @@ kind: Pod
 metadata:
   name: openmole-connect
   namespace: openmole
+  labels:
+    app.kubernetes.io/name: openmole-connect
 spec:
   containers:
   - name: openmole-connect
@@ -76,6 +76,42 @@ spec:
       configMap:
         name: connect-config
   serviceAccountName: openmole-admin-sa
-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openmole-connect-service
+  namespace: openmole
+spec:
+  selector:
+    app.kubernetes.io/name: openmole-connect
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openmole-connect-ingress
+  namespace: openmole
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  defaultBackend:
+    service:
+      name: openmole-connect-service
+      port:
+        number: 8080
+#    - host: online.openmole.org
+#      http:
+#        paths:
+#          - path: /
+#            pathType: Prefix
+#            backend:
+#              service:
+#                name: openmole-connect-service
+#                port:
+#                  number: 8080
 #kubectl run openmole-connect --port 8080 --image=openmole-connect:0.6-SNAPSHOT -- --salt some-salt --kube-off --secret some-secret --openmole-test="http://$OPENMOLE_IP:8080/"
 #sleep 3
