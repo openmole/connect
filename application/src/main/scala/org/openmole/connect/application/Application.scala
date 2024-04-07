@@ -25,7 +25,7 @@ import scopt.*
     case Some(config) =>
       if (!Settings.location.exists) Settings.location.mkdirs()
       val configuration = ConnectServer.read(config.configFile.get)
-      val server = new ConnectServer(configuration)
+      val server = ConnectServer(configuration)
       server.start()
     case _ =>
       // arguments are bad, error message will have been displayed

@@ -3,7 +3,7 @@ package org.openmole.connect.shared
 import endpoints4s.{algebra, circe}
 import io.circe.*
 import io.circe.generic.auto.*
-import org.openmole.connect.shared.Data.UserData
+import org.openmole.connect.shared.Data.User
 
 
 trait UserAPI
@@ -11,10 +11,22 @@ trait UserAPI
     with algebra.circe.JsonEntitiesFromCodecs
     with circe.JsonSchemas:
 
-  val user: Endpoint[Unit, UserData] =
+  val user: Endpoint[Unit, Data.User] =
     endpoint(
       post(path / "user", jsonRequest[Unit]),
-      ok(jsonResponse[UserData])
+      ok(jsonResponse[Data.User])
+    )
+
+  val instance: Endpoint[Unit, Option[Data.PodInfo]] =
+    endpoint(
+      post(path / "instance", jsonRequest[Unit]),
+      ok(jsonResponse[Option[Data.PodInfo]])
+    )
+
+  val launch: Endpoint[Unit, Unit] =
+    endpoint(
+      post(path / "launch", jsonRequest[Unit]),
+      ok(jsonResponse[Unit])
     )
 
 //  val userWithData: Endpoint[Option[UserData], Option[UserData]] =

@@ -2,8 +2,6 @@ package org.openmole.connect.server
 
 import org.openmole.connect.server.DBQueries.*
 import org.openmole.connect.shared.Data
-import shared.*
-import org.openmole.connect.shared.Data.UserData
 import slick.jdbc.H2Profile.api.*
 import slick.model.ForeignKey
 
@@ -32,11 +30,11 @@ object DB:
   type Storage = String
 
   val admin = "Admin"
-  val simpleUser = "User"
+  val user = "User"
 
   object User:
-    def toUserData(u: User): Data.UserData =
-      Data.UserData(
+    def toUserData(u: User): Data.User =
+      Data.User(
         u.name.value,
         u.email.value,
         //u.password.value,
@@ -50,7 +48,7 @@ object DB:
       User(name, email, password, version, storage, access, role, uuid)
 
 
-  case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = simpleUser, uuid: UUID = randomUUID)
+  case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = user, uuid: UUID = randomUUID)
 
 
 
@@ -102,12 +100,13 @@ object DB:
     runTransaction(create)
 
     val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "0Gi", Utils.now, DB.admin, randomUUID)
+    val user = User("user", "user@user.com", salted("user"), "latest", "10Gi", Utils.now, DB.user, randomUUID)
 
     runTransaction:
       for
         e <- userTable.result
         if e.isEmpty
-        _ <- userTable += admin
+        _ <- userTable ++= Seq(admin, user)
       yield ()
 
   def addUser(user: User)(using salt: Salt): Unit =
@@ -139,6 +138,7 @@ object DB:
   // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
+  def user(uuid: UUID) = users.find(u => u.uuid == uuid)
   def uuid(email: Email): Option[UUID] = users.find(_.email == email).map { _.uuid }
 
   def salted(password: Password)(using salt: Salt) = Utils.hash(password, Salt.value(salt))
@@ -146,7 +146,6 @@ object DB:
   def uuid(email: Email, password: Password)(using salt: Salt): Option[UUID] = users.find(u => u.email == email && u.password == salted(password)).map { _.uuid }
 
   def uuids = users.map { _.uuid }
-  def email(uuid: UUID) = users.find(u => u.uuid == uuid).map { _.email }
 
   def userSaltedPassword(email: Email, salted: Password): Option[User] = users.find(u => u.email == email && u.password == salted)
 

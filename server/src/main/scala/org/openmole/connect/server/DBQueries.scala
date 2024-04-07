@@ -1,7 +1,6 @@
 package org.openmole.connect.server
 
 import org.openmole.connect.server.DB.*
-import shared.*
 import slick.jdbc.H2Profile.api.*
 import slick.lifted.Query
 

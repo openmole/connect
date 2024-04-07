@@ -12,22 +12,32 @@ object Data:
   val admin: Role = "Admin"
   val user: Role = "User"
 
-  trait Status:
-    def value: String
+  object PodInfo:
+    object Status:
+      extension (s: Status)
+        def value =
+          s match
+            case Running => "Running"
+            case _: Waiting => "Waiting"
+            case _: Terminated => "Terminated"
 
-  case class Waiting(message: String, value: String = "Waiting") extends Status
-  case class Terminated(message: String, finishedAt: Long, value: String = "Terminated") extends Status
-  case class Running(value: String = "Running") extends Status
+    enum Status:
+      case Running
+      case Waiting(message: String) extends Status
+      case Terminated(message: String, finishedAt: Long) extends Status
+
+
+
 
   case class PodInfo(
     name: String,
-    status: String,
-    restarts: Int,
-    createTime: Long,
-    podIP: String,
+    status: Option[PodInfo.Status],
+    restarts: Option[Int],
+    createTime: Option[Long],
+    podIP: Option[String],
     userEmail: Option[String])
 
-  case class UserData(name: String, email: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
+  case class User(name: String, email: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
 
 
   trait K8ActionResult

@@ -19,7 +19,7 @@ object AdminPanel {
   @JSExportTopLevel("admin")
   def admin() = {
 
-    implicit def userDataSeqToRows(userData: Seq[UserData]): Seq[EmailRow] = userData.map { u =>
+    implicit def userDataSeqToRows(userData: Seq[User]): Seq[EmailRow] = userData.map { u =>
       EmailRow("stub")
       //      buildExpandable(u.name, u.email, u.password, u.role, u.omVersion, u.storage, u.lastAccess, podInfos.now().filter {
       //        _.userEmail == Some(u.email)
@@ -40,7 +40,7 @@ object AdminPanel {
     lazy val podInfos: Var[Seq[PodInfo]] = Var(Seq())
 
 
-    def save(userData: UserData): Unit = {
+    def save(userData: User): Unit = {
       //  if (userData.name.isEmpty)
       //   rows.update(rows.now().filterNot(_.expandableRow == expandableRow))
       //  else {

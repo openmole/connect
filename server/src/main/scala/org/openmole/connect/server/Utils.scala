@@ -47,11 +47,11 @@ object Utils:
     finally httpClient.close()
 
 
-  def availableOpenMOLEVersions(stable: Boolean, history: Int = 3): Seq[String] =
+  def availableOpenMOLEVersions(withSnapshot: Boolean = true, history: Int = 3): Seq[String] =
     val versionPattern = "[0-9]*\\.[0-9]*"
 
     val tags = Utils.tags("openmole", "openmole")
-    val snapshot: Seq[String] = if !stable then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()
+    val snapshot: Seq[String] = if withSnapshot then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()
     val majors = tags.filter(_.matches(versionPattern)).flatMap(_.split('.').headOption).distinct
 
     val lastMajors: Seq[String] =

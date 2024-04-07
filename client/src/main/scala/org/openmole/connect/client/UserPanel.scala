@@ -1,5 +1,6 @@
 package org.openmole.connect.client
 
+import com.raquo.airstream.core
 import com.raquo.laminar.api.L.*
 import org.openmole.connect
 import org.openmole.connect.client.ConnectUtils.*
@@ -28,11 +29,8 @@ object UserPanel {
     //val currentUser: Var[Option[UserData]] = Var(None)
 
     def getUser = UserAPIClient.user(()).future
-    //      Post[UserApi].user().call().foreach { u =>
-    //        currentUser() = u
-    //      }
-    //
-    def upsert(userData: UserData) = ???
+
+    def upsert(userData: User) = ???
     //      Post[UserApi].upserted(userData).call().foreach { u =>
     //        currentUser() = u
     //      }
@@ -53,15 +51,30 @@ object UserPanel {
             uu.lastAccess,
             editableEmail = false,
             editableRole = false,
-            upserting = (userData: UserData) => upsert(userData))
+            upserting = (userData: User) => upsert(userData))
+
+          val podInfo: Var[Option[PodInfo]] = Var(None)
 
           div(maxWidth := "1000", margin := "40px auto",
             img(src := "img/logo.png", Css.adminLogoStyle),
             ConnectUtils.logoutItem.amend(display.flex, flexDirection.row, justifyContent.flexEnd),
-            div(display.flex, flexDirection.row, justifyContent.flexStart, marginLeft := "50", marginBottom := "20", marginTop := "80",
-              //  div(width := 350, margin.auto, paddingTop := 200 )(
-              panel
-            )
+            div(display.flex, flexDirection.row, justifyContent.flexStart, marginLeft := "50", marginBottom := "20", marginTop := "80", panel),
+            EventStream.periodic(5000).toObservable -->
+              Observer: _ =>
+                UserAPIClient.instance(()).future.foreach(podInfo.set),
+            child <--
+              podInfo.signal.map:
+                case None =>
+                  div(
+                    "launch OpenMOLE",
+                    onClick --> { _ => UserAPIClient.launch(()).future },
+                    cursor.pointer
+                  )
+                case Some(podInfo) =>
+                  podInfo.podIP match
+                    case Some(_) => a("go to OpenMOLE", href := "/openmole")
+                    case None => "OpenMOLE is launching"
+
           )
         case None => div()
     )
@@ -82,7 +95,7 @@ object UserPanel {
                    editableRole: Boolean,
                    expanded: Boolean = false,
                    editing: Boolean = false,
-                   upserting: (UserData) => Unit = (u: UserData) => ()
+                   upserting: (User) => Unit = (u: User) => ()
                   ) = {
 
     def roleStyle(s: Role) =

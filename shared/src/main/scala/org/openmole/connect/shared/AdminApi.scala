@@ -3,7 +3,7 @@ package org.openmole.connect.shared
 import endpoints4s.{algebra, circe}
 import io.circe.*
 import io.circe.generic.auto.*
-import org.openmole.connect.shared.Data.{PodInfo, UserData}
+import org.openmole.connect.shared.Data.{PodInfo, User}
 
 
 trait AdminAPI
@@ -11,46 +11,46 @@ trait AdminAPI
     with algebra.circe.JsonEntitiesFromCodecs
     with circe.JsonSchemas {
 
-  val users: Endpoint[Unit, Seq[UserData]] =
+  val users: Endpoint[Unit, Seq[User]] =
     endpoint(
       post(path / "users", jsonRequest[Unit]),
-      ok(jsonResponse[Seq[UserData]])
+      ok(jsonResponse[Seq[User]])
     )
 
-  val upserted: Endpoint[UserData, Seq[UserData]] =
+  val upserted: Endpoint[User, Seq[User]] =
     endpoint(
-      post(path / "upserted", jsonRequest[UserData]),
-      ok(jsonResponse[Seq[UserData]])
+      post(path / "upserted", jsonRequest[User]),
+      ok(jsonResponse[Seq[User]])
     )
 
-  val delete: Endpoint[UserData, Seq[UserData]] =
+  val delete: Endpoint[User, Seq[User]] =
     endpoint(
-      post(path / "delete", jsonRequest[UserData]),
-      ok(jsonResponse[Seq[UserData]])
+      post(path / "delete", jsonRequest[User]),
+      ok(jsonResponse[Seq[User]])
     )
 
-  val startOpenMOLE: Endpoint[UserData, Seq[UserData]] =
+  val startOpenMOLE: Endpoint[User, Seq[User]] =
     endpoint(
-      post(path / "start-openmole", jsonRequest[UserData]),
-      ok(jsonResponse[Seq[UserData]])
+      post(path / "start-openmole", jsonRequest[User]),
+      ok(jsonResponse[Seq[User]])
     )
 
-  val stopOpenMOLE: Endpoint[UserData, Seq[UserData]] =
+  val stopOpenMOLE: Endpoint[User, Seq[User]] =
     endpoint(
-      post(path / "stop-openmole", jsonRequest[UserData]),
-      ok(jsonResponse[Seq[UserData]])
+      post(path / "stop-openmole", jsonRequest[User]),
+      ok(jsonResponse[Seq[User]])
     )
 
-  val updateOpenMOLE: Endpoint[UserData, Seq[UserData]] =
+  val updateOpenMOLE: Endpoint[User, Seq[User]] =
     endpoint(
-      post(path / "update-openmole", jsonRequest[UserData]),
-      ok(jsonResponse[Seq[UserData]])
+      post(path / "update-openmole", jsonRequest[User]),
+      ok(jsonResponse[Seq[User]])
     )
 
-  val updateOpenMOLEStorage: Endpoint[UserData, Seq[UserData]] =
+  val updateOpenMOLEStorage: Endpoint[User, Seq[User]] =
     endpoint(
-      post(path / "update-openmole-storage", jsonRequest[UserData]),
-      ok(jsonResponse[Seq[UserData]])
+      post(path / "update-openmole-storage", jsonRequest[User]),
+      ok(jsonResponse[Seq[User]])
     )
 
   val podInfo: Endpoint[Unit, Seq[PodInfo]] =
