@@ -29,6 +29,12 @@ trait UserAPI
       ok(jsonResponse[Unit])
     )
 
+  val availableVersions: Endpoint[(Option[Int], Boolean), Seq[String]] =
+    endpoint(
+      post(path / "versions", jsonRequest[(Option[Int], Boolean)]),
+      ok(jsonResponse[Seq[String]])
+    )
+
 //  val userWithData: Endpoint[Option[UserData], Option[UserData]] =
 //    endpoint(
 //      post(path / "user-with-data", jsonRequest[Option[UserData]]),

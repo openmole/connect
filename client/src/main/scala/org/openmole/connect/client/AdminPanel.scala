@@ -20,6 +20,7 @@ object AdminPanel:
   def admin() =
 
     AdminAPIClient.users(()).future.foreach(println)
+    UserAPIClient.availableVersions((Some(10), false)).future.foreach(println)
 
     implicit def userDataSeqToRows(userData: Seq[User]): Seq[EmailRow] = userData.map { u =>
       EmailRow("stub")
