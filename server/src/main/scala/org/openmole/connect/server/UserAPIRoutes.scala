@@ -22,7 +22,7 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService)(using salt: Salt):
   def stop = K8sService.stopOpenMOLEPod(user.uuid)
 
   def availableVersions(history: Option[Int], lastMajors: Boolean) =
-    Utils.availableOpenMOLEVersions(withSnapshot = true, history = history, lastMajors = lastMajors)
+    OpenMOLE.availableVersions(withSnapshot = true, history = history, lastMajors = lastMajors)
 
 class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI

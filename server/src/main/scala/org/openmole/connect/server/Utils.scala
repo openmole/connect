@@ -47,24 +47,3 @@ object Utils:
     finally httpClient.close()
 
 
-  def availableOpenMOLEVersions(withSnapshot: Boolean = true, history: Option[Int], lastMajors: Boolean): Seq[String] =
-    val versionPattern = "[0-9]*\\.[0-9]*"
-    val tags = Utils.tags("openmole", "openmole")
-    val snapshot: Seq[String] = if withSnapshot then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()
-
-    val wellFormed = tags.filter(_.matches(versionPattern))
-
-    val majors: Seq[String] =
-      val ms = wellFormed.flatMap(_.split('.').headOption).distinct
-      val majors =
-        history match
-          case Some(h) => ms.take(h)
-          case None => ms
-
-      majors.flatMap: m =>
-        if lastMajors
-        then wellFormed.find(_.startsWith(m))
-        else wellFormed.filter(_.startsWith(m))
-
-    snapshot ++ majors
-
