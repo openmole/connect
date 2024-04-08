@@ -102,7 +102,20 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             val apiReq = req.withUri(req.uri.withPath(apiPath))
             userAPI.routes.apply(apiReq).getOrElseF(NotFound())
 
-        case req if req.uri.path.startsWith(Root / "openmole") && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
+        case req if req.uri.path.startsWith(Root / Data.adminAPIRoute) =>
+          ServerContent.authenticated(req): user =>
+            if DB.User.isAdmin(user)
+            then
+              val impl = AdminAPIImpl(k8s)
+              val adminAPI = new AdminAPIRoutes(impl)
+              val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
+              val apiReq = req.withUri(req.uri.withPath(apiPath))
+              adminAPI.routes.apply(apiReq).getOrElseF(NotFound())
+            else
+              Forbidden(s"User ${user.name} is not admin")
+
+
+        case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req): user =>
             K8sService.podInfo(user.uuid).flatMap(_.podIP) match
               case Some(ip) =>
@@ -194,6 +207,7 @@ object ServerContent:
       case None =>
         Forbidden.apply(ServerContent.someHtml("connection(false);").render)
           .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+
 
   def ok(jsCall: String) =
     Ok.apply(ServerContent.someHtml(jsCall).render).map(_.withContentType(`Content-Type`(MediaType.text.html)))

@@ -1,14 +1,16 @@
-//package org.openmoleconnect.server
-//
-//import endpoints4s.http4s.server
-//import shared.Data.{PodInfo, UserData}
-//import DB._
-//import cats.effect._
-//import org.http4s._
-//
-//class AdminApiImpl(kubeOff: Boolean) extends server.Endpoints[IO] with shared.AdminAPI with server.JsonEntitiesFromCodecs {
-//
-//  val usersRoute = users.implementedBy { _ => DB.users }
+package org.openmole.connect.server
+
+import endpoints4s.http4s.server
+import org.openmole.connect.shared.*
+import cats.effect._
+import org.http4s._
+
+class AdminAPIImpl(k8sService: K8sService):
+  def users: Seq[Data.User] = DB.users.map(DB.User.toUserData)
+
+class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
+
+  val usersRoute = users.implementedBy { _ =>  impl.users }
 //
 //  val upsertedRoute = upserted.implementedBy { userData => Services.upserted(userData, kubeOff) }
 //
@@ -58,8 +60,8 @@
 //    K8sService.podInfos
 //  }
 //
-//  val routes: HttpRoutes[IO] = HttpRoutes.of(
-//    routesFromEndpoints(usersRoute, upsertedRoute, deleteRoute, stopOpenMOLERoute, startOpenMOLERoute, updateOpenMOLERoute, updateOpenMOLEPersistentVolumeStorageRoute, podInfosRoute)
-//  )
+  val routes: HttpRoutes[IO] = HttpRoutes.of(
+    routesFromEndpoints(usersRoute)
+  )
 //
 //}

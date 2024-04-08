@@ -33,6 +33,8 @@ object DB:
   val user = "User"
 
   object User:
+    def isAdmin(u: User) = u.role == admin
+
     def toUserData(u: User): Data.User =
       Data.User(
         u.name.value,
@@ -99,7 +101,7 @@ object DB:
     val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
     runTransaction(create)
 
-    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "0Gi", Utils.now, DB.admin, randomUUID)
+    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "10Gi", Utils.now, DB.admin, randomUUID)
     val user = User("user", "user@user.com", salted("user"), "latest", "10Gi", Utils.now, DB.user, randomUUID)
 
     runTransaction:

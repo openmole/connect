@@ -3,10 +3,8 @@ package org.openmole.connect.shared
 object Data:
   val connectionRoute = "connection"
   val userAPIRoute = "user"
-  val adminRoutePrefix = "shared/AdminApi"
-  val userRoutePrefix = "shared/UserApi"
-
-  val openMOLEVersions = List("16.0-RC1","15.5","15.4","15.3","15.2","15.1","15.0")
+  val adminAPIRoute = "admin"
+  val openMOLERoute = "openmole"
 
   type Role = String
   val admin: Role = "Admin"

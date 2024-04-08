@@ -12,12 +12,14 @@ import org.openmole.connect.shared.Data.*
 
 import java.nio.ByteBuffer
 import scala.scalajs.js.annotation.JSExportTopLevel
+import scala.concurrent.ExecutionContext.Implicits.global
 
-
-object AdminPanel {
+object AdminPanel:
 
   @JSExportTopLevel("admin")
-  def admin() = {
+  def admin() =
+
+    AdminAPIClient.users(()).future.foreach(println)
 
     implicit def userDataSeqToRows(userData: Seq[User]): Seq[EmailRow] = userData.map { u =>
       EmailRow("stub")
@@ -134,8 +136,8 @@ object AdminPanel {
       val aVar = Var(expanded)
       val editing = false //edited.getOrElse(isEditing(userEmail))
       val selectedOMVersion = Var(userOMVersion)
-      val index = Data.openMOLEVersions.indexOf(userOMVersion)
-      println(s"userOMVersion = ${userOMVersion} at index ${Data.openMOLEVersions.indexOf(userOMVersion)}")
+      //val index = Data.openMOLEVersions.indexOf(userOMVersion)
+      //println(s"userOMVersion = ${userOMVersion} at index ${Data.openMOLEVersions.indexOf(userOMVersion)}")
       //        lazy val optionDropDown: Options[String] = Selector.options[String](
       //          contents = Data.openMOLEVersions,
       //          defaultIndex = if (index < 0) 0 else index,
@@ -145,7 +147,7 @@ object AdminPanel {
       //            val res: String = optionDropDown.content.now().get
       //            selectedOMVersion.update(res)
       //            println(s"selected is ${selectedOMVersion.now()}")
-      //          }
+      //          }/home/reuillon/Projects/openmole-connect/client/src/main/scala/org/openmole/connect/client/AdminPanel.scala
       //        )
       val inputStorage = Var(userStorage)
       println(s"userOMStorage = ${userStorage}")
@@ -244,10 +246,12 @@ object AdminPanel {
     //      }
     //    )
 
-    dom.document.body.appendChild(div().ref)
-  }
 
-}
+    lazy val appContainer = dom.document.querySelector("#appContainer")
+    render(appContainer, div())
+
+
+
 
 
 //object Post extends autowire.Client[ByteBuffer, Pickler, Pickler] {

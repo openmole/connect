@@ -26,3 +26,10 @@ object UserAPIClient
     with xhr.future.Endpoints
     with xhr.JsonEntitiesFromCodecs:
   lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some("user"))
+
+object AdminAPIClient
+  extends AdminAPI
+    with xhr.future.Endpoints
+    with xhr.JsonEntitiesFromCodecs:
+  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some("admin"))
+
