@@ -97,6 +97,9 @@ object DB:
   def runTransaction[E <: Effect](actions: DBIOAction[_, NoStream, E]*) =
     Await.result(db.run(DBIO.seq(actions: _*).transactionally), Duration.Inf)
 
+  def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
+    Await.result(db.run(action), Duration.Inf)
+
   def initDB()(using Salt) =
     val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
     runTransaction(create)
@@ -154,6 +157,12 @@ object DB:
   def users: Seq[User] = runUserQuery(userTable)
 
   def exists(email: Email) = users.exists(_.email == email)
+
+  def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =
+    runTransaction:
+      val q = for { user <- userTable if user.uuid === uuid && user.password === salted(old) } yield user.password
+      q.update(salted(password)).map(_ > 0)
+
 
   //def isAdmin(email: Email) = users.find(_.email == email).map { _.role }.contains(admin)
 

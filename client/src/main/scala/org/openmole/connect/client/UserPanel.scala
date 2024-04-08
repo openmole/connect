@@ -25,7 +25,6 @@ object UserPanel {
 
   @JSExportTopLevel("user")
   def user(): Unit =
-
     //val currentUser: Var[Option[UserData]] = Var(None)
 
     def getUser = UserAPIClient.user(()).future
