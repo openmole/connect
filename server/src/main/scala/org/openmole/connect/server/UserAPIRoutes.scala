@@ -14,6 +14,10 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService):
     then K8sService.startOpenMOLEPod(user.uuid)
     else K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.storage)
 
+    instanceStatus
+  
+  def stop = K8sService.stopOpenMOLEPod(user.uuid)
+
   def availableVersions(history: Option[Int], lastMajors: Boolean) =
     Utils.availableOpenMOLEVersions(withSnapshot = true, history = history, lastMajors = lastMajors)
 
@@ -24,8 +28,9 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   val userRoute = user.implementedBy { _ => impl.userData }
   val instanceRoute = instance.implementedBy { _ => impl.instanceStatus }
   val launchRoute = launch.implementedBy { _ => impl.launch }
+  val stopRoute = stop.implementedBy { _ => impl.stop }
   val availableVersionsRoute = availableVersions.implementedBy { (h, m) => impl.availableVersions(h, m) }
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(userRoute, instanceRoute, launchRoute, availableVersionsRoute) //, userWithDataRoute, upsertedRoute, upsertedWithDataRoute)
+    routesFromEndpoints(userRoute, instanceRoute, launchRoute, stopRoute, availableVersionsRoute) //, userWithDataRoute, upsertedRoute, upsertedWithDataRoute)
   )

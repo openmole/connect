@@ -23,9 +23,15 @@ trait UserAPI
       ok(jsonResponse[Option[Data.PodInfo]])
     )
 
-  val launch: Endpoint[Unit, Unit] =
+  val launch: Endpoint[Unit, Option[Data.PodInfo]] =
     endpoint(
       post(path / "launch", jsonRequest[Unit]),
+      ok(jsonResponse[Option[Data.PodInfo]])
+    )
+
+  val stop: Endpoint[Unit, Unit] =
+    endpoint(
+      post(path / "stop", jsonRequest[Unit]),
       ok(jsonResponse[Unit])
     )
 

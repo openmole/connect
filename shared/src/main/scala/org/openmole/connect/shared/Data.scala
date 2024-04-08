@@ -15,17 +15,14 @@ object Data:
       extension (s: Status)
         def value =
           s match
-            case Running => "Running"
+            case _: Running => "Running"
             case _: Waiting => "Waiting"
             case _: Terminated => "Terminated"
 
     enum Status:
-      case Running
+      case Running(startedAt: Long) extends Status
       case Waiting(message: String) extends Status
       case Terminated(message: String, finishedAt: Long) extends Status
-
-
-
 
   case class PodInfo(
     name: String,
@@ -36,7 +33,6 @@ object Data:
     userEmail: Option[String])
 
   case class User(name: String, email: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
-
 
   trait K8ActionResult
 

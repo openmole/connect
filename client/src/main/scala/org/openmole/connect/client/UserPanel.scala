@@ -43,7 +43,6 @@ object UserPanel {
           val panel = editableData(
             uu.name,
             uu.email,
-            "",//uu.password,
             uu.role,
             None,
             uu.omVersion,
@@ -66,14 +65,30 @@ object UserPanel {
               podInfo.signal.map:
                 case None =>
                   div(
-                    "launch OpenMOLE",
-                    onClick --> { _ => UserAPIClient.launch(()).future },
+                    "Launch OpenMOLE",
+                    onClick --> { _ =>
+                      UserAPIClient.launch(()).future.foreach(podInfo.set)
+                    },
                     cursor.pointer
                   )
                 case Some(podInfo) =>
-                  podInfo.podIP match
-                    case Some(_) => a("go to OpenMOLE", href := "/openmole")
-                    case None => "OpenMOLE is launching"
+                  podInfo.status match
+                    case Some(t: PodInfo.Status.Terminated) =>
+                      s"OpenMOLE is stopping since ${t.finishedAt}: ${t.message}"
+                    case Some(t: PodInfo.Status.Waiting) =>
+                      s"OpenMOLE is waiting ${t.message}"
+                    case _ =>
+                      podInfo.podIP match
+                        case Some(_) =>
+                          div(
+                            a("Go to OpenMOLE", href := "/openmole"),
+                            div(
+                              "Stop OpenMOLE",
+                              onClick --> { _ => UserAPIClient.stop(()).future },
+                              cursor.pointer
+                            )
+                          )
+                        case None => "OpenMOLE is launching"
 
           )
         case None => div()
@@ -85,7 +100,6 @@ object UserPanel {
 
   def editableData(userName: String = "",
                    userEmail: String = "",
-                   userPassword: String = "",
                    userRole: Role = "",
                    podInfo: Option[PodInfo] = None,
                    userOMVersion: String,
@@ -105,7 +119,6 @@ object UserPanel {
     div(columnFlex, width := "300",
       div(userName, padding := "10"),
       div(userEmail,padding := "10"),
-      div(userPassword, padding := "10"),
       div(userRole, padding := "10"),
       span(rowFlex, marginTop := "50",
         //FIXME
