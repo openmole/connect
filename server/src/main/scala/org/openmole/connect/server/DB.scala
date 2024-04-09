@@ -171,6 +171,11 @@ object DB:
       val q = userTable.filter(_.uuid === uuid).map(_.lastAccess)
       q.update(Utils.now)
 
+  def updadeOMVersion(uuid: UUID, version: String) =
+    runTransaction:
+      val q = userTable.filter(_.uuid === uuid).map(_.omVersion)
+      q.update(version)
+
   def users: Seq[User] = runUserQuery(userTable)
 
   def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =

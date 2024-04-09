@@ -44,7 +44,9 @@ data:
     salt: "some-salt"
     secret: "some-secret"
     kube:
-      off: false
+     storageClassName: null
+    openmole:
+      versionHistory: 3
 kind: ConfigMap
 metadata:
   creationTimestamp: null
