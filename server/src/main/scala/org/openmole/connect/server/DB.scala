@@ -77,7 +77,9 @@ object DB:
     def omVersion = column[Version]("OMVERSION")
     def storage = column[Storage]("STORAGE")
     def lastAccess = column[Long]("LASTACCESS")
+    // creation du compte
     def * = (name, email, password, omVersion, storage, lastAccess, role, uuid).mapTo[User]
+    def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
 
@@ -143,20 +145,27 @@ object DB:
   // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
-  def user(uuid: UUID) = users.find(u => u.uuid == uuid)
-  def uuid(email: Email): Option[UUID] = users.find(_.email == email).map { _.uuid }
+  def userFromUUID(uuid: UUID) =
+    runUserQuery:
+      userTable.filter(u => u.uuid === uuid)
+    .headOption  
 
-  def salted(password: Password)(using salt: Salt) = Utils.hash(password, Salt.value(salt))
+  def user(email: Email, password: Password)(using salt: Salt): Option[User] =
+    runUserQuery:
+      userTable.filter(u => u.email === email && u.password === salted(password))
+    .headOption
 
-  def uuid(email: Email, password: Password)(using salt: Salt): Option[UUID] = users.find(u => u.email == email && u.password == salted(password)).map { _.uuid }
+  def userFromSaltedPassword(email: Email, salted: Password): Option[User] =
+    runUserQuery:
+      userTable.filter(u => u.email === email && u.password === salted)
+    .headOption
 
-  def uuids = users.map { _.uuid }
-
-  def userSaltedPassword(email: Email, salted: Password): Option[User] = users.find(u => u.email == email && u.password == salted)
+  def updadeLastAccess(uuid: UUID) =
+    runTransaction:
+      val q = userTable.filter(_.uuid === uuid).map(_.lastAccess)
+      q.update(Utils.now)
 
   def users: Seq[User] = runUserQuery(userTable)
-
-  def exists(email: Email) = users.exists(_.email == email)
 
   def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =
     runTransaction:
@@ -164,6 +173,8 @@ object DB:
       q.update(salted(password)).map(_ > 0)
 
 
-  //def isAdmin(email: Email) = users.find(_.email == email).map { _.role }.contains(admin)
+  def salted(password: Password)(using salt: Salt) = Utils.hash(password, Salt.value(salt))
+
+//def isAdmin(email: Email) = users.find(_.email == email).map { _.role }.contains(admin)
 
 

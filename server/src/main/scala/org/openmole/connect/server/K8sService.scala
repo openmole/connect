@@ -45,7 +45,7 @@ object K8sService:
       containerStatus.map(_.restartCount),
       pod.metadata.creationTimestamp.map(_.toEpochSecond),
       pod.status.flatMap(_.podIP),
-      DB.user(pod.metadata.labels.getOrElse("podName", "")).map(_.email)
+      DB.userFromUUID(pod.metadata.labels.getOrElse("podName", "")).map(_.email)
     )
 
   def listPods = withK8s: k8s =>
@@ -164,49 +164,32 @@ object K8sService:
       k8s.usingNamespace(Namespace.openmole) create pvc
       val createdDeploymentFut = k8s.usingNamespace(Namespace.openmole) create openMOLEDeployment
 
-      createdDeploymentFut recoverWith {
-        case ex: K8SException if (ex.status.code.contains(409)) =>
-          k8s.get[Deployment](openMOLEDeployment.name).flatMap { curr =>
+      createdDeploymentFut.recoverWith:
+        case ex: K8SException if ex.status.code.contains(409) =>
+          k8s.get[Deployment](openMOLEDeployment.name).flatMap: curr =>
             val updated = openMOLEDeployment.withResourceVersion(curr.metadata.resourceVersion)
             k8s update updated
-          }
-      }
-
 
   def stopOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
-    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
+    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
-    }
 
+  def startOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
+    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
+      k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
 
-  def startOpenMOLEPod(uuid: UUID) =
-    withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
-        k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
-      }
-    }
-
-  def updateOpenMOLEPod(uuid: UUID, newVersion: String) =
-    withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
-        val container = createOpenMOLEContainer(newVersion)
-        k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
-      }
-    }
+  def updateOpenMOLEPod(uuid: UUID, newVersion: String) = withK8s: k8s =>
+    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
+      val container = createOpenMOLEContainer(newVersion)
+      k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
 
 
   // FIXME test with no pv name
-  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: String, storageClassName: Option[String]) =
-    withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").map{pvc=>
-        pvc.spec.map {spec=>
-          spec.volumeName.map{ pvName=>
-            println(s"updating openmole spec with ${uuid.value} and ${pvName} for ${newStorage}")
-            k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
-          }
-        }
-      }
-    }
+  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: String, storageClassName: Option[String]) = withK8s: k8s =>
+    k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").map: pvc=>
+      pvc.spec.map: spec =>
+        spec.volumeName.map: pvName=>
+          k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
 
   def deleteOpenMOLE(uuid: UUID) =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
@@ -234,10 +217,10 @@ object K8sService:
 
   def podInfos: Seq[PodInfo] =
     val pods = listPods
-    for {
-      uuid <- DB.uuids
+    for
+      uuid <- DB.users.map(_.uuid)
       podInfo <- podInfo(uuid, pods)
-    } yield podInfo
+    yield podInfo
 
   //def hostIP(uuid: UUID) = podInfo(uuid).flatMap { _.podIP }
 

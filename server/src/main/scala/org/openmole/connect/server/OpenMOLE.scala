@@ -23,7 +23,7 @@ object OpenMOLE:
 
   def wellFormedVersion(v: String) =
     v.matches(versionPattern) || v.matches(snapshotPattern)
-  
+
   def availableVersions(withSnapshot: Boolean = true, history: Option[Int], lastMajors: Boolean): Seq[String] =
     val tags = Utils.tags("openmole", "openmole")
     val snapshot: Seq[String] = if withSnapshot then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()

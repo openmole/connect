@@ -28,8 +28,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 
 object Connection:
 
-  @JSExportTopLevel("connection")
-  def connect(error: Boolean) =
+  lazy val connectionForm =
     lazy val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
     //lazy val cookieButton = tags.button("Cookuie", btn_default, onclick := { () => println("COOKIES: " + dom.document.cookie) }).render
@@ -51,13 +50,17 @@ object Connection:
         marginBottom := "15"
       )
 
-    val connectionForm = form(
+    form(
       method := "POST",
       action := connectionRoute,
       emailInput,
       passwordInput,
       connectButton
     )
+
+
+  @JSExportTopLevel("connection")
+  def connect(error: Boolean) =
 
     val renderContent =
       div(

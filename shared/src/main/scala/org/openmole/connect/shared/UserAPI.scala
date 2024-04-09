@@ -46,6 +46,11 @@ trait UserAPI
       post(path / "password", jsonRequest[(String, String)]),
       ok(jsonResponse[Boolean])
     )
+    
+//  val setVersion: Endpoint[String, Unit] =
+//    endpoint(
+//      post(path / )
+//    )  
 
 //  val userWithData: Endpoint[Option[UserData], Option[UserData]] =
 //    endpoint(
