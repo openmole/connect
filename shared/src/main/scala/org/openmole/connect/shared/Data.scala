@@ -5,6 +5,7 @@ object Data:
   val userAPIRoute = "user"
   val adminAPIRoute = "admin"
   val openMOLERoute = "openmole"
+  val disconnectRoute = "disconnect"
 
   type Role = String
   val admin: Role = "Admin"

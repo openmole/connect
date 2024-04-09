@@ -89,7 +89,10 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                   case Some(_) => ServerContent.ok("user();").map(ServerContent.addJWTToken(email, DB.salted(password)))
                   case None => ServerContent.connectionError
               case None => ServerContent.connectionError
-
+        case req @ GET -> Root / Data.disconnectRoute =>
+          val uri = Uri.unsafeFromString(s"/${Data.connectionRoute}")
+          val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
+          TemporaryRedirect(Location(uri)).map(_.addCookie(cookie))
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
             val impl = UserAPIImpl(user, k8s)
@@ -229,6 +232,8 @@ object ServerContent:
     val token = JWT.TokenData(email, hashedPassword)
     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
     response.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate)))
+
+
 
 
 //package org.openmoleconnect.server

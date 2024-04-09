@@ -37,6 +37,8 @@ object UserPanel {
     //getUser.foreach(u => println("user " + u))
 
     lazy val userPanel = div(
+      a("disconnect", href := s"/${Data.disconnectRoute}"),
+      br(),
       child <-- Signal.fromFuture(getUser).map:
         case Some(uu) =>
           val panel = editableData(
@@ -80,7 +82,7 @@ object UserPanel {
                       podInfo.podIP match
                         case Some(_) =>
                           div(
-                            a("Go to OpenMOLE", href := "/openmole"),
+                            a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/"),
                             div(
                               "Stop OpenMOLE",
                               onClick --> { _ => UserAPIClient.stop(()).future },
