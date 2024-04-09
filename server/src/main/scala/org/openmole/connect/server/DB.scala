@@ -37,20 +37,25 @@ object DB:
 
     def toUserData(u: User): Data.User =
       Data.User(
-        u.name.value,
-        u.email.value,
-        //u.password.value,
-        u.role.value,
-        u.omVersion.value,
-        u.storage.value,
-        u.lastAccess.value)
-
-    def fromTuple(t: (UUID, String, Email, Password, Role, Version, Storage, Long)) =
-      val (uuid, name, email, password, role, version, storage, access) = t
-      User(name, email, password, version, storage, access, role, uuid)
+        u.name,
+        u.email,
+        u.role,
+        u.omVersion,
+        u.storage,
+        u.lastAccess,
+        u.created)
 
 
-  case class User(name: String, email: Email, password: Password, omVersion: Version, storage: Storage, lastAccess: Long, role: Role = user, uuid: UUID = randomUUID)
+  case class User(
+    name: String,
+    email: Email,
+    password: Password,
+    omVersion: Version,
+    storage: Storage,
+    lastAccess: Long,
+    created: Long,
+    role: Role = user,
+    uuid: UUID = randomUUID)
 
 
 
@@ -77,8 +82,8 @@ object DB:
     def omVersion = column[Version]("OMVERSION")
     def storage = column[Storage]("STORAGE")
     def lastAccess = column[Long]("LASTACCESS")
-    // creation du compte
-    def * = (name, email, password, omVersion, storage, lastAccess, role, uuid).mapTo[User]
+    def created = column[Long]("CREATED")
+    def * = (name, email, password, omVersion, storage, lastAccess, created, role, uuid).mapTo[User]
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
@@ -106,8 +111,9 @@ object DB:
     val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
     runTransaction(create)
 
-    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "10Gi", Utils.now, DB.admin, randomUUID)
-    val user = User("user", "user@user.com", salted("user"), "latest", "10Gi", Utils.now, DB.user, randomUUID)
+    val now = Utils.now
+    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "10Gi", now, now, DB.admin, randomUUID)
+    val user = User("user", "user@user.com", salted("user"), "latest", "10Gi", now, now, DB.user, randomUUID)
 
     runTransaction:
       for
@@ -148,7 +154,7 @@ object DB:
   def userFromUUID(uuid: UUID) =
     runUserQuery:
       userTable.filter(u => u.uuid === uuid)
-    .headOption  
+    .headOption
 
   def user(email: Email, password: Password)(using salt: Salt): Option[User] =
     runUserQuery:

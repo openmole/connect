@@ -32,7 +32,7 @@ object Data:
     podIP: Option[String],
     userEmail: Option[String])
 
-  case class User(name: String, email: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
+  case class User(name: String, email: String, role: Role, omVersion: String, storage: String, lastAccess: Long, created: Long)
 
   trait K8ActionResult
 
