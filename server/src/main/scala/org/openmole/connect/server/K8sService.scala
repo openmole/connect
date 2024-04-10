@@ -91,13 +91,13 @@ object K8sService:
       }
     }
 
-  def createOpenMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Int) =
+  def createOpenMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
     // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
     val limits: Resource.ResourceList =
       Map() ++
         Some(memoryLimit).filter(_ == -1).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
-        Some(cpuLimit).filter(_ == -1).map(m => Resource.cpu -> Resource.Quantity(s"${cpuLimit}"))
+        Some(cpuLimit).filter(_ == -1).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
 
 
     Container(
@@ -131,7 +131,7 @@ object K8sService:
         )
     )
 
-  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Int, storageRequirement: Int) =
+  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, storageRequirement: Int) =
     withK8s: k8s =>
       val podName = uuid.value
       val pvcName = s"pvc-${podName}"
@@ -191,7 +191,7 @@ object K8sService:
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
 
-  def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Int) = withK8s: k8s =>
+  def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
       k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)

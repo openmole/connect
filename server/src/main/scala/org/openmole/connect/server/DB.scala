@@ -58,7 +58,7 @@ object DB:
     omVersion: Version,
     storage: Storage,
     memory: Memory,
-    cpu: Int,
+    cpu: Double,
     openMOLEMemory: Memory,
     lastAccess: Long,
     created: Long,
@@ -91,7 +91,7 @@ object DB:
 
     def storage = column[Storage]("STORAGE_REQUIREMENT")
     def memory = column[Storage]("MEMORY_LIMIT")
-    def cpu = column[Int]("CPU_LIMIT")
+    def cpu = column[Double]("CPU_LIMIT")
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
 
     def lastAccess = column[Long]("LASTACCESS")

@@ -40,7 +40,7 @@ object Data:
     omVersion: String,
     storage: Int,
     memory: Int,
-    cpu: Int,
+    cpu: Double,
     openMOLEMemory: Int,
     lastAccess: Long, created: Long)
 
