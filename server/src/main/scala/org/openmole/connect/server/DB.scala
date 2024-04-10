@@ -19,7 +19,7 @@ object DB:
   opaque type Salt = String
 
   // USERS
-  def dbVersion = "1.0"
+  def dbVersion = 1
   def randomUUID = java.util.UUID.randomUUID().toString
 
   type UUID = String
@@ -27,7 +27,9 @@ object DB:
   type Password = String
   type Role = String
   type Version = String
-  type Storage = String
+
+  type Storage = Int
+  type Memory = Int
 
   val admin = "Admin"
   val user = "User"
@@ -42,6 +44,9 @@ object DB:
         u.role,
         u.omVersion,
         u.storage,
+        u.memory,
+        u.cpu,
+        u.openMOLEMemory,
         u.lastAccess,
         u.created)
 
@@ -52,6 +57,9 @@ object DB:
     password: Password,
     omVersion: Version,
     storage: Storage,
+    memory: Memory,
+    cpu: Int,
+    openMOLEMemory: Memory,
     lastAccess: Long,
     created: Long,
     role: Role = user,
@@ -80,40 +88,41 @@ object DB:
     def password = column[Password]("PASSWORD")
     def role = column[Role]("ROLE")
     def omVersion = column[Version]("OMVERSION")
-    def storage = column[Storage]("STORAGE")
+
+    def storage = column[Storage]("STORAGE_REQUIREMENT")
+    def memory = column[Storage]("MEMORY_LIMIT")
+    def cpu = column[Int]("CPU_LIMIT")
+    def omMemory = column[Storage]("OPENMOLE_MEMORY")
+
     def lastAccess = column[Long]("LASTACCESS")
     def created = column[Long]("CREATED")
-    def * = (name, email, password, omVersion, storage, lastAccess, created, role, uuid).mapTo[User]
+    def * = (name, email, password, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
 
 
-  class DatabaseInfo(tag: Tag) extends Table[(String)](tag, "DATABASEINFO"):
-    def version = column[String]("VERSION")
+  class DatabaseInfo(tag: Tag) extends Table[(Int)](tag, "DATABASEINFO"):
+    def version = column[Int]("VERSION")
     def * = (version)
 
-  val databaseInfo = TableQuery[DatabaseInfo]
+  val databaseInfoTable = TableQuery[DatabaseInfo]
 
   val db: Database = Database.forDriver(
     driver = new org.h2.Driver,
     url = s"jdbc:h2:/${Settings.location}/db"
   )
 
-  // TRANSACTIONS
-  def runTransaction[E <: Effect](actions: DBIOAction[_, NoStream, E]*) =
-    Await.result(db.run(DBIO.seq(actions: _*).transactionally), Duration.Inf)
-
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
 
   def initDB()(using Salt) =
-    val create = DBIO.seq(databaseInfo.schema.createIfNotExists, userTable.schema.createIfNotExists)
+    val create = DBIO.seq(databaseInfoTable.schema.createIfNotExists, userTable.schema.createIfNotExists)
     runTransaction(create)
 
     val now = Utils.now
-    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", "10Gi", now, now, DB.admin, randomUUID)
-    val user = User("user", "user@user.com", salted("user"), "latest", "10Gi", now, now, DB.user, randomUUID)
+    val admin = User("admin", "admin@admin.com", salted("admin"), "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
+    val user = User("user", "user@user.com", salted("user"), "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
 
     runTransaction:
       for
@@ -121,6 +130,14 @@ object DB:
         if e.isEmpty
         _ <- userTable ++= Seq(admin, user)
       yield ()
+
+    runTransaction:
+      for
+        e <- databaseInfoTable.result
+        if e.isEmpty
+        _ <- databaseInfoTable += (dbVersion)
+      yield ()
+
 
   def addUser(user: User)(using salt: Salt): Unit =
     runTransaction:

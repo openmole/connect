@@ -104,7 +104,7 @@ object UserPanel {
                    userRole: Role = "",
                    podInfo: Option[PodInfo] = None,
                    userOMVersion: String,
-                   userStorage: String,
+                   userStorage: Int,
                    userLastAccess: Long,
                    editableEmail: Boolean,
                    editableRole: Boolean,

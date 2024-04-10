@@ -13,7 +13,7 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using sal
   def launch =
     if K8sService.deploymentExists(user.uuid)
     then K8sService.startOpenMOLEPod(user.uuid)
-    else K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.storage)
+    else K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu, user.storage)
 
     instanceStatus
 
