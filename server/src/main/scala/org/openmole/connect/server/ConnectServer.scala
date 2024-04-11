@@ -35,9 +35,11 @@ import io.circe.generic.auto.*
 object ConnectServer:
 
   object Config:
-    case class Kube(off: Option[Boolean] = None, storageClassName: Option[String] = None)
+    case class Kube(storageClassName: Option[String] = None)
+    case class OpenMOLE(versionHistory: Int)
 
-  case class Config(salt: String, secret: String, kube: Config.Kube)
+  case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE)
+
   def read(file: File): Config =
     import better.files.*
     yaml.parser.parse(file.toScala.contentAsString).toTry.get.as[Config].toTry.get
@@ -73,30 +75,31 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       HttpRoutes.of:
         case req @ GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) if user.role == DB.admin => ServerContent.ok("admin();")
-            case Some(user) => ServerContent.ok("user();")
+            case Some(user) if user.role == DB.admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.email, user.password))
+            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.email, user.password))
             case None =>
               val uri = Uri.unsafeFromString(s"/${Data.connectionRoute}")
               TemporaryRedirect(Location(uri))
-        case req @ GET -> Root / Data.connectionRoute =>
-          //println("auth " + Authentication.isAuthenticated(req) + " " + Authentication.isAdmin(req))
-          ServerContent.ok("connection(false);")
+
+        case req @ GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
+
         case req @ POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>
-
-                DB.uuid(email, password) match
-                  case Some(uuid) =>
-                    val token = JWT.TokenData(email, DB.salted(password))
-                    val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
-                    ServerContent.ok("user();").map(_.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate))))
+                DB.user(email, password) match
+                  case Some(_) => ServerContent.ok("user();").map(ServerContent.addJWTToken(email, DB.salted(password)))
                   case None => ServerContent.connectionError
               case None => ServerContent.connectionError
 
+        case req @ GET -> Root / Data.disconnectRoute =>
+          val uri = Uri.unsafeFromString(s"/${Data.connectionRoute}")
+          val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
+          TemporaryRedirect(Location(uri)).map(_.addCookie(cookie))
+
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
-            val impl = UserAPIImpl(user, k8s)
+            val impl = UserAPIImpl(user, k8s, config.openmole.versionHistory)
             val userAPI = new UserAPIRoutes(impl)
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))
@@ -113,7 +116,6 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               adminAPI.routes.apply(apiReq).getOrElseF(NotFound())
             else
               Forbidden(s"User ${user.name} is not admin")
-
 
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req): user =>
@@ -229,51 +231,9 @@ object ServerContent:
       )
     )
 
-//package org.openmoleconnect.server
-//
-//import java.net.URI
-//import java.util
-//
-//import javax.servlet.ServletContext
-//import org.eclipse.jetty.server.{Server, ServerConnector}
-//import org.eclipse.jetty.webapp.WebAppContext
-//import org.scalatra.LifeCycle
-//import org.scalatra.servlet.ScalatraListener
-//
-//object ConnectServer {
-//  val servletArguments = "servletArguments"
-//
-//  case class ServletArguments(secret: String, resourceBase: java.io.File, kubeOff: Boolean)
-//
-//}
-//
-//class ConnectBootstrap extends LifeCycle {
-//  override def init(context: ServletContext) = {
-//    val args = context.get(ConnectServer.servletArguments).get.asInstanceOf[ConnectServer.ServletArguments]
-//    context mount(new ConnectServlet(args), "/*")
-//  }
-//}
-//
-//class ConnectServer(secret: String, kubeOff: Boolean) {
-//
-//
-//  def start() = {
-//
-//    val server = new Server()
-//    val connector = new ServerConnector(server)
-//    connector.setPort(8080)
-//    server.addConnector(connector)
-//
-//    val startingContext = new WebAppContext()
-//    startingContext.setResourceBase("application/target/webapp")
-//    startingContext.setAttribute(ConnectServer.servletArguments, ConnectServer.ServletArguments(secret, new java.io.File(new URI(startingContext.getResourceBase)), kubeOff))
-//    startingContext.setInitParameter(ScalatraListener.LifeCycleKey, classOf[ConnectBootstrap].getCanonicalName)
-//    startingContext.setContextPath("/")
-//    startingContext.addEventListener(new ScalatraListener)
-//    server.setHandler(startingContext)
-//
-//    server.stop()
-//    server.setHandler(startingContext)
-//    server.start()
-//  }
-//}
+  def addJWTToken(email: DB.Email, hashedPassword: DB.Password)(response: Response[IO])(using JWT.Secret) =
+    val token = JWT.TokenData(email, hashedPassword)
+    val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
+    response.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate)))
+
+

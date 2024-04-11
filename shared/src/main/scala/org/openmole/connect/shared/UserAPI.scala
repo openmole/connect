@@ -35,9 +35,9 @@ trait UserAPI
       ok(jsonResponse[Unit])
     )
 
-  val availableVersions: Endpoint[(Option[Int], Boolean), Seq[String]] =
+  val availableVersions: Endpoint[Unit, Seq[String]] =
     endpoint(
-      post(path / "versions", jsonRequest[(Option[Int], Boolean)]),
+      post(path / "openmole-versions", jsonRequest[Unit]),
       ok(jsonResponse[Seq[String]])
     )
 
@@ -45,6 +45,12 @@ trait UserAPI
     endpoint(
       post(path / "password", jsonRequest[(String, String)]),
       ok(jsonResponse[Boolean])
+    )
+    
+  val setOpenMOLEVersion: Endpoint[String, Unit] =
+    endpoint(
+      post(path / "set-openmole-version", jsonRequest[String]),
+      ok(jsonResponse[Unit])
     )
 
 //  val userWithData: Endpoint[Option[UserData], Option[UserData]] =

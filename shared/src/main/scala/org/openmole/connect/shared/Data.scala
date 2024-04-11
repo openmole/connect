@@ -5,6 +5,7 @@ object Data:
   val userAPIRoute = "user"
   val adminAPIRoute = "admin"
   val openMOLERoute = "openmole"
+  val disconnectRoute = "disconnect"
 
   type Role = String
   val admin: Role = "Admin"
@@ -35,11 +36,22 @@ object Data:
     createTime: Option[Long],
     podIP: Option[String],
     userEmail: Option[String])
-    
-  case class User(name: String, email: String, institution: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
+
+  case class User(
+    name: String,
+    email: String,
+    institution: String,
+    role: Role,
+    omVersion: String,
+    storage: Int,
+    memory: Int,
+    cpu: Int,
+    openMOLEMemory: Int,
+    lastAccess: Long, created: Long)
+
   case class Register(ame: String, email: String, institution: String, emailStatus: EmailStatus)
-  
-  trait K8ActionResult
+
+trait K8ActionResult
 
   case class K8Success(message: String) extends K8ActionResult
   case class K8Failure(message: String, stackTrace: String) extends K8ActionResult

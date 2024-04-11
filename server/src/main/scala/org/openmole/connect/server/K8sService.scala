@@ -8,6 +8,7 @@ import org.openmole.connect.shared.Data.*
 import skuber.LabelSelector.dsl.*
 import skuber.PersistentVolume.AccessMode
 import skuber.*
+import skuber.Resource.Requirements
 import skuber.api.client.KubernetesClient
 import skuber.apps.v1.Deployment
 import skuber.json.format.*
@@ -18,6 +19,7 @@ import scala.collection.immutable.List
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
+import squants.information.*
 
 object K8sService:
 
@@ -45,7 +47,7 @@ object K8sService:
       containerStatus.map(_.restartCount),
       pod.metadata.creationTimestamp.map(_.toEpochSecond),
       pod.status.flatMap(_.podIP),
-      DB.user(pod.metadata.labels.getOrElse("podName", "")).map(_.email)
+      DB.userFromUUID(pod.metadata.labels.getOrElse("podName", "")).map(_.email)
     )
 
   def listPods = withK8s: k8s =>
@@ -89,19 +91,26 @@ object K8sService:
       }
     }
 
-  def createOpenMOLEContainer(version: String) =
+  def createOpenMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
     // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    val limits: Resource.ResourceList =
+      Map() ++
+        Some(memoryLimit).filter(_ == -1).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
+        Some(cpuLimit).filter(_ == -1).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
+
+
     Container(
       name = "openmole",
       image = s"openmole/openmole:${version}",
-      command = List("bin/bash", "-c", "openmole-docker --port 80 --password password --remote --mem 1G --workspace /var/openmole/.openmole"),
+      command = List("bin/bash", "-c", s"openmole-docker --port 80 --password password --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole"),
       volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/")),
       securityContext = Some(SecurityContext(privileged = Some(true))),
-      imagePullPolicy = Container.PullPolicy.Always
+      imagePullPolicy = Container.PullPolicy.Always,
+      resources = Some(Resource.Requirements(limits = limits))
     ).exposePort(80)
 
-  def createPersistentVolumeClaim(pvcName: String, storage: String, storageClassName: Option[String]) =
+  def createPersistentVolumeClaim(pvcName: String, storage: Int, storageClassName: Option[String]) =
     def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map("app" -> Namespace.openmole))
 
     PersistentVolumeClaim(
@@ -112,22 +121,26 @@ object K8sService:
             //volumeName = Some(pvName),
             storageClassName = storageClassName,
             accessModes = List(AccessMode.ReadWriteOnce),
-            resources = Some(Resource.Requirements(requests = Map("storage" -> storage))
-            ),//"20Gi"
+            resources =
+              Some(
+                Resource.Requirements(
+                  requests = Map(Resource.storage -> s"${storage}Mi")
+                )
+            )
           )
         )
     )
 
-  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, storage: String) =
+  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, storageRequirement: Int) =
     withK8s: k8s =>
       val podName = uuid.value
       val pvcName = s"pvc-${podName}"
       //val pvName = s"pv-${podName}"
 
-      val pvc = createPersistentVolumeClaim(pvcName, storage, k8sService.storageClassName)
+      val pvc = createPersistentVolumeClaim(pvcName, storageRequirement, k8sService.storageClassName)
 
       val openMOLESelector: LabelSelector = LabelSelector.IsEqualRequirement("app", "openmole")
-      val openMOLEContainer = createOpenMOLEContainer(omVersion)
+      val openMOLEContainer = createOpenMOLEContainer(omVersion, openMOLEMemory, memoryLimit, cpuLimit)
 
       val openMOLELabel = "app" -> "openmole"
 
@@ -164,49 +177,31 @@ object K8sService:
       k8s.usingNamespace(Namespace.openmole) create pvc
       val createdDeploymentFut = k8s.usingNamespace(Namespace.openmole) create openMOLEDeployment
 
-      createdDeploymentFut recoverWith {
-        case ex: K8SException if (ex.status.code.contains(409)) =>
-          k8s.get[Deployment](openMOLEDeployment.name).flatMap { curr =>
+      createdDeploymentFut.recoverWith:
+        case ex: K8SException if ex.status.code.contains(409) =>
+          k8s.get[Deployment](openMOLEDeployment.name).flatMap: curr =>
             val updated = openMOLEDeployment.withResourceVersion(curr.metadata.resourceVersion)
             k8s update updated
-          }
-      }
-
 
   def stopOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
-    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
+    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
-    }
 
+  def startOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
+    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
+      k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
 
-  def startOpenMOLEPod(uuid: UUID) =
-    withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
-        k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
-      }
-    }
-
-  def updateOpenMOLEPod(uuid: UUID, newVersion: String) =
-    withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value) map { d =>
-        val container = createOpenMOLEContainer(newVersion)
-        k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
-      }
-    }
-
+  def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double) = withK8s: k8s =>
+    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
+      val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
+      k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
 
   // FIXME test with no pv name
-  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: String, storageClassName: Option[String]) =
-    withK8s { k8s =>
-      k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").map{pvc=>
-        pvc.spec.map {spec=>
-          spec.volumeName.map{ pvName=>
-            println(s"updating openmole spec with ${uuid.value} and ${pvName} for ${newStorage}")
-            k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
-          }
-        }
-      }
-    }
+  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: Int, storageClassName: Option[String]) = withK8s: k8s =>
+    k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").map: pvc=>
+      pvc.spec.map: spec =>
+        spec.volumeName.map: pvName=>
+          k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
 
   def deleteOpenMOLE(uuid: UUID) =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
@@ -234,10 +229,10 @@ object K8sService:
 
   def podInfos: Seq[PodInfo] =
     val pods = listPods
-    for {
-      uuid <- DB.uuids
+    for
+      uuid <- DB.users.map(_.uuid)
       podInfo <- podInfo(uuid, pods)
-    } yield podInfo
+    yield podInfo
 
   //def hostIP(uuid: UUID) = podInfo(uuid).flatMap { _.podIP }
 
