@@ -8,7 +8,7 @@ import org.openmole.connect.shared.*
 
 
 class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using salt: Salt):
-  def userData = DB.User.toUserData(user)
+  def userData = DB.User.toData(user)
   def instanceStatus = K8sService.podInfo(user.uuid)
   def launch =
     if K8sService.deploymentExists(user.uuid)

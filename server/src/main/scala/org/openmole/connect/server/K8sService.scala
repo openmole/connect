@@ -19,7 +19,6 @@ import scala.collection.immutable.List
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
-import squants.information.*
 
 object K8sService:
 

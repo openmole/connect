@@ -12,6 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import org.openmole.connect.server.Utils._
+import io.github.arainko.ducktape.*
 
 object DB:
   object Salt:
@@ -44,20 +45,7 @@ object DB:
 
   object User:
     def isAdmin(u: User) = u.role == admin
-
-    def toUserData(u: User): Data.User =
-      Data.User(
-        u.name,
-        u.email,
-        u.institution,
-        u.role,
-        u.omVersion,
-        u.storage,
-        u.memory,
-        u.cpu,
-        u.openMOLEMemory,
-        u.lastAccess,
-        u.created)
+    def toData(u: User): Data.User = u.to[Data.User]
 
   case class User(
    name: String,
@@ -73,6 +61,9 @@ object DB:
    created: Long,
    role: Role = user,
    uuid: UUID = randomUUID)
+
+  object RegisteringUser:
+    def toData(r: RegisteringUser): Data.Register = r.to[Data.Register]
 
   case class RegisteringUser(
    name: String,

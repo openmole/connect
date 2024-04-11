@@ -6,7 +6,7 @@ import cats.effect._
 import org.http4s._
 
 class AdminAPIImpl(k8sService: K8sService):
-  def users: Seq[Data.User] = DB.users.map(DB.User.toUserData)
+  def users: Seq[Data.User] = DB.users.map(DB.User.toData)
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
 

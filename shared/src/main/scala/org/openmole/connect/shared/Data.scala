@@ -49,9 +49,8 @@ object Data:
     openMOLEMemory: Int,
     lastAccess: Long, created: Long)
 
-  case class Register(ame: String, email: String, institution: String, emailStatus: EmailStatus)
+  case class Register(name: String, email: String, institution: String, emailStatus: EmailStatus)
 
-trait K8ActionResult
-
-  case class K8Success(message: String) extends K8ActionResult
-  case class K8Failure(message: String, stackTrace: String) extends K8ActionResult
+enum K8ActionResult:
+  case K8Success(message: String) extends K8ActionResult
+  case K8Failure(message: String, stackTrace: String) extends K8ActionResult
