@@ -55,7 +55,7 @@ object DB:
    omVersion: Version,
    storage: Storage,
    memory: Memory,
-   cpu: Int,
+   cpu: Double,
    openMOLEMemory: Memory,
    lastAccess: Long,
    created: Long,
@@ -155,8 +155,8 @@ object DB:
     Await.result(db.run(action), Duration.Inf)
 
   def initDB()(using Salt) =
-    val create = DBIO.seq(databaseInfoTable.schema.createIfNotExists, userTable.schema.createIfNotExists, registeringUserTable.schema.createIfNotExists)
-    runTransaction(create)
+    val schema = databaseInfoTable.schema ++ userTable.schema ++ registeringUserTable.schema
+    runTransaction(schema.createIfNotExists)
 
     val admin = User("admin", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
     val user = User("user", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
