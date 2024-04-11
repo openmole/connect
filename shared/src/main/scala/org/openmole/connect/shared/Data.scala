@@ -10,6 +10,10 @@ object Data:
   val admin: Role = "Admin"
   val user: Role = "User"
 
+  type EmailStatus = String
+  val checked: EmailStatus = "Checked"
+  val unchecked: EmailStatus = "Unchecked"
+
   object PodInfo:
     object Status:
       extension (s: Status)
@@ -31,9 +35,10 @@ object Data:
     createTime: Option[Long],
     podIP: Option[String],
     userEmail: Option[String])
-
-  case class User(name: String, email: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
-
+    
+  case class User(name: String, email: String, institution: String, role: Role, omVersion: String, storage: String, lastAccess: Long)
+  case class Register(ame: String, email: String, institution: String, emailStatus: EmailStatus)
+  
   trait K8ActionResult
 
   case class K8Success(message: String) extends K8ActionResult
