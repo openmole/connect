@@ -54,6 +54,19 @@ metadata:
   namespace: openmole
 ---
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: connect-pv-claim
+  namespace: openmole
+spec:
+  #storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
 kind: Pod
 metadata:
   name: openmole-connect
@@ -73,10 +86,15 @@ spec:
       - name: connect-config
         mountPath: "/etc/connect-config"
         readOnly: true
+      - mountPath: "/home/demiourgos728"
+        name: connect-pv-storage
   volumes:
     - name: connect-config
       configMap:
         name: connect-config
+    - name: connect-pv-storage
+      persistentVolumeClaim:
+        claimName: connect-pv-claim
   serviceAccountName: openmole-admin-sa
 ---
 apiVersion: v1
