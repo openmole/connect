@@ -95,8 +95,8 @@ object K8sService:
     // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
     val limits: Resource.ResourceList =
       Map() ++
-        Some(memoryLimit).filter(_ == -1).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
-        Some(cpuLimit).filter(_ == -1).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
+        Some(memoryLimit).filter(_ > 0).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
+        Some(cpuLimit).filter(_ > 0).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
 
 
     Container(
