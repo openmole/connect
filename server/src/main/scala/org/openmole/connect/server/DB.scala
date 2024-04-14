@@ -133,24 +133,23 @@ object DB:
     scala.util.Try:
       runTransaction(schema.createIfNotExists)
 
-    val admin = User("admin", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
-    val user = User("user", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
-    val newUser = RegisteringUser("user2", "user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
-
     runTransaction:
+      val admin = User("admin", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
       for
         e <- userTable.result
-        _ = if e.isEmpty then userTable += admin else DBIO.successful(())
+        _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
       yield ()
 
     // TODO remove for testing only
+    val user = User("user", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
+    val newUser = RegisteringUser("user2", "user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
     addUser(user)
     addRegisteringUser(newUser)
 
     runTransaction:
       for
         e <- databaseInfoTable.result
-        _ = if e.isEmpty then databaseInfoTable += DatabaseInfo.Data(dbVersion) else DBIO.successful(())
+        _ <- if e.isEmpty then databaseInfoTable += DatabaseInfo.Data(dbVersion) else DBIO.successful(())
       yield ()
 
 
@@ -158,7 +157,7 @@ object DB:
     runTransaction:
       for
         e <- userTable.filter(u => u.email === user.email).result
-        _ = if e.isEmpty then userTable += user else DBIO.successful(())
+        _ <- if e.isEmpty then userTable += user else DBIO.successful(())
       yield ()
 
   def addRegisteringUser(registeringUser: RegisteringUser)(using salt: Salt): Unit =
