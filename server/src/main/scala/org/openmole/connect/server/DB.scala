@@ -11,8 +11,11 @@ import java.util
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import org.openmole.connect.server.Utils._
+import org.openmole.connect.server.Utils.*
 import io.github.arainko.ducktape.*
+import better.files.*
+
+import java.sql.DriverManager
 
 object DB:
   object Salt:
@@ -73,110 +76,81 @@ object DB:
    emailStatus: EmailStatus = unchecked,
    UUID: UUID = randomUUID)
 
-
-  //  implicit def optionUserToOptionUserData(auser: Option[User]): Option[UserData] =
-  //    auser.flatMap { u => userToUserData(Seq(u)).headOption }
-
-  //  def toUser(uuid: UUID, userData: UserData): User = User(
-  //    userData.name,
-  //    userData.email,
-  //    userData.password,
-  //    userData.omVersion,
-  //    userData.storage,
-  //    userData.lastAccess,
-  //    userData.role,
-  //    uuid
-  //  )
-
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
-
     def name = column[String]("NAME")
-
     def email = column[Email]("EMAIL", O.Unique)
-
     def password = column[Password]("PASSWORD")
-
     def institution = column[Institution]("INSTITUTION")
-
     def role = column[Role]("ROLE")
-
     def omVersion = column[Version]("OMVERSION")
-
     def storage = column[Storage]("STORAGE_REQUIREMENT")
-
     def memory = column[Storage]("MEMORY_LIMIT")
-
     def cpu = column[Double]("CPU_LIMIT")
-
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
-
     def lastAccess = column[Long]("LASTACCESS")
-
     def created = column[Long]("CREATED")
-
     def * = (name, email, password, institution, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
-
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
 
-  class RegisteringUsers(tag: Tag) extends Table[RegisteringUser](tag, "REGISTERINGUSERS"):
-
+  class RegisteringUsers(tag: Tag) extends Table[RegisteringUser](tag, "REGISTERING_USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
-
     def name = column[String]("NAME")
-
     def email = column[Email]("EMAIL", O.Unique)
-
     def password = column[Password]("PASSWORD")
-
     def institution = column[Institution]("INSTITUTION")
-
     def emailStatus = column[EmailStatus]("EMAILSTATUS")
-
     def * = (name, email, password, institution, emailStatus, uuid).mapTo[RegisteringUser]
 
   val registeringUserTable = TableQuery[RegisteringUsers]
 
-  class DatabaseInfo(tag: Tag) extends Table[(Int)](tag, "DATABASEINFO"):
-    def version = column[Int]("VERSION")
+  object DatabaseInfo:
+    case class Data(version: Int)
 
-    def * = (version)
+  class DatabaseInfo(tag: Tag) extends Table[DatabaseInfo.Data](tag, "DB_INFO"):
+    def version = column[Int]("VERSION")
+    def * = (version).mapTo[DatabaseInfo.Data]
 
   val databaseInfoTable = TableQuery[DatabaseInfo]
 
-  val db: Database = Database.forDriver(
-    driver = new org.h2.Driver,
-    url = s"jdbc:h2:/${Settings.location}/db"
-  )
+  val dbFile = Settings.location.toScala / "db"
+
+  lazy val db: Database =
+    DriverManager.registerDriver(new org.h2.Driver())
+    Database.forURL(url = s"jdbc:h2:${dbFile.pathAsString};AUTOCOMMIT=TRUE")
 
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
 
+//  def runUnitTransaction[E <: Effect, Unit](action: DBIOAction[Unit, NoStream, E]): Unit =
+//    Await.result(db.run(action), Duration.Inf)
+
+
   def initDB()(using Salt) =
     val schema = databaseInfoTable.schema ++ userTable.schema ++ registeringUserTable.schema
-    runTransaction(schema.createIfNotExists)
+    scala.util.Try:
+      runTransaction(schema.createIfNotExists)
 
     val admin = User("admin", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
     val user = User("user", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
     val newUser = RegisteringUser("user2", "user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
 
-    //    runTransaction:
-    //      for
-    //        e <- userTable.result
-    //        if e.isEmpty
-    //        _ <- userTable ++= Seq(admin, user)
-    //      yield ()
-    addUser(admin)
+    runTransaction:
+      for
+        e <- userTable.result
+        _ = if e.isEmpty then userTable += admin else DBIO.successful(())
+      yield ()
+
+    // TODO remove for testing only
     addUser(user)
     addRegisteringUser(newUser)
 
     runTransaction:
       for
         e <- databaseInfoTable.result
-        if e.isEmpty
-        _ <- databaseInfoTable += (dbVersion)
+        _ = if e.isEmpty then databaseInfoTable += DatabaseInfo.Data(dbVersion) else DBIO.successful(())
       yield ()
 
 
@@ -184,16 +158,14 @@ object DB:
     runTransaction:
       for
         e <- userTable.filter(u => u.email === user.email).result
-        if e.isEmpty
-        _ <- userTable += user
+        _ = if e.isEmpty then userTable += user else DBIO.successful(())
       yield ()
 
   def addRegisteringUser(registeringUser: RegisteringUser)(using salt: Salt): Unit =
     runTransaction:
       for
         e <- registeringUserTable.filter(r => r.email === registeringUser.email).result
-        if e.isEmpty
-        _ <- registeringUserTable += registeringUser
+        _ = if e.isEmpty then registeringUserTable += registeringUser else DBIO.successful(())
       yield ()
 
 //  def upsert(user: User, salt: String) =
