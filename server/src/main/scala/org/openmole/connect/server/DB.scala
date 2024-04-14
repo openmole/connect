@@ -164,7 +164,7 @@ object DB:
     runTransaction:
       for
         e <- registeringUserTable.filter(r => r.email === registeringUser.email).result
-        _ = if e.isEmpty then registeringUserTable += registeringUser else DBIO.successful(())
+        _ <- if e.isEmpty then registeringUserTable += registeringUser else DBIO.successful(())
       yield ()
 
 //  def upsert(user: User, salt: String) =
