@@ -224,6 +224,7 @@ object ServerContent:
         //link(rel := "stylesheet", `type` := "text/css", href := "css/deps.css"),
         link(rel := "stylesheet", `type` := "text/css", href := "css/style-connect.css"),
         link(rel := "stylesheet", `type` := "text/css", href := "css/bootstrap.css"),
+        link(rel := "stylesheet", `type` := "text/css", href := "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css"),
         Seq(s"connect-deps.js", "connect.js").map(jf => script(`type` := "text/javascript", src := s"js/$jf "))
       ),
       body(

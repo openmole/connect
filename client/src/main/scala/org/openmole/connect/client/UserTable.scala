@@ -4,7 +4,7 @@ import scaladget.bootstrapnative.Table._
 import com.raquo.laminar.api.L.*
 
 class UserTable(headers: Seq[String],
-                userRows: Signal[Seq[BasicRow]]):
+                userRows: Signal[Seq[Row]]):
 
   val selected: Var[Option[RowID]] = Var(None)
   val expanded: Var[Seq[RowID]] = Var(Seq())
@@ -20,7 +20,7 @@ class UserTable(headers: Seq[String],
       case br: BasicRow =>
         tr(
           backgroundColor <-- selected.signal.map {
-            s => if (Some(initialRow.rowID) == s) "#f2f2f2" else ""
+            s => if (Some(initialRow.rowID) == s) "#dceffd" else ""
           },
           onClick --> (_ => selected.set(Some(initialRow.rowID))),
           children <-- rowStream.map(r => r.tds)
@@ -33,7 +33,7 @@ class UserTable(headers: Seq[String],
 
 
   val render =
-    table(cls := "table table-striped",
+    table( cls := "table",
       headerRender(Some(Header(headers))),
       tbody(
         children <-- userRows.split(_.rowID)(rowRender)
