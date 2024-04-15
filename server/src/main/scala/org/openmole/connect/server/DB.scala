@@ -43,8 +43,8 @@ object DB:
   val admin: Role = "Admin"
   val user: Role = "User"
 
-  val checked: EmailStatus = "Checked"
-  val unchecked: EmailStatus = "Unchecked"
+  val checked: EmailStatus = "Email checked"
+  val unchecked: EmailStatus = "Email unchecked"
 
   object User:
     def isAdmin(u: User) = u.role == admin
@@ -52,6 +52,7 @@ object DB:
 
   case class User(
    name: String,
+   firstName: String,
    email: Email,
    password: Password,
    institution: Institution,
@@ -70,6 +71,7 @@ object DB:
 
   case class RegisteringUser(
    name: String,
+   firstName: String,
    email: Email,
    password: Password,
    institution: Institution,
@@ -79,6 +81,7 @@ object DB:
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
     def name = column[String]("NAME")
+    def firstName = column[String]("FIRST_NAME")
     def email = column[Email]("EMAIL", O.Unique)
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
@@ -90,7 +93,9 @@ object DB:
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
     def lastAccess = column[Long]("LASTACCESS")
     def created = column[Long]("CREATED")
-    def * = (name, email, password, institution, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
+
+    def * = (name, firstName, email, password, institution, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
+
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
@@ -98,11 +103,13 @@ object DB:
   class RegisteringUsers(tag: Tag) extends Table[RegisteringUser](tag, "REGISTERING_USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
     def name = column[String]("NAME")
+    def firstName = column[String]("FIRST_NAME")
     def email = column[Email]("EMAIL", O.Unique)
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
     def emailStatus = column[EmailStatus]("EMAILSTATUS")
-    def * = (name, email, password, institution, emailStatus, uuid).mapTo[RegisteringUser]
+
+    def * = (name, firstName, email, password, institution, emailStatus, uuid).mapTo[RegisteringUser]
 
   val registeringUserTable = TableQuery[RegisteringUsers]
 
@@ -134,15 +141,15 @@ object DB:
       runTransaction(schema.createIfNotExists)
 
     runTransaction:
-      val admin = User("admin", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
+      val admin = User("admin", "Bob", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
       for
         e <- userTable.result
         _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
       yield ()
 
     // TODO remove for testing only
-    val user = User("user", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
-    val newUser = RegisteringUser("user2", "user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
+    val user = User("user", "Ali", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
+    val newUser = RegisteringUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
     addUser(user)
     addRegisteringUser(newUser)
 
@@ -167,7 +174,8 @@ object DB:
         _ <- if e.isEmpty then registeringUserTable += registeringUser else DBIO.successful(())
       yield ()
 
-//  def upsert(user: User, salt: String) =
+
+  //  def upsert(user: User, salt: String) =
 //    runTransaction(
 //      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
 //    )
@@ -214,6 +222,8 @@ object DB:
       q.update(version)
 
   def users: Seq[User] = runUserQuery(userTable)
+  
+  def registeringUsers: Seq[RegisteringUser] = runRegisteringUserQuery(registeringUserTable)
 
   def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =
     runTransaction:

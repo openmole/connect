@@ -10,11 +10,16 @@ import scala.concurrent.duration.Duration
 
 object DBQueries:
   type UserQuery = Query[Users, User, Seq]
+  type RegisteringUserQuery = Query[RegisteringUsers, RegisteringUser, Seq]
 
   def runUserQuery(query: UserQuery): Seq[User] =
     await:
       db.run(query.result)
-    
+  
+
+  def runRegisteringUserQuery(query: RegisteringUserQuery): Seq[RegisteringUser] =
+    await:
+      db.run(query.result)
    // .map { case (u, n, e, p, r, v, s, l) => User(n, e, p, v, s, l, r, u) }
 
   def await[A](f: concurrent.Future[A]) =

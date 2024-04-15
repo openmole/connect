@@ -2,3 +2,9 @@
 .label-success {
     background-color: #a6bf25;
 }
+
+.columnCenter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

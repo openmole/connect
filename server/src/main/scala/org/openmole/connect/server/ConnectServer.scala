@@ -223,11 +223,12 @@ object ServerContent:
         meta(httpEquiv := "Content-Type", content := "text/html; charset=UTF-8"),
         //link(rel := "stylesheet", `type` := "text/css", href := "css/deps.css"),
         link(rel := "stylesheet", `type` := "text/css", href := "css/style-connect.css"),
+        link(rel := "stylesheet", `type` := "text/css", href := "css/bootstrap.css"),
         Seq(s"connect-deps.js", "connect.js").map(jf => script(`type` := "text/javascript", src := s"js/$jf "))
       ),
       body(
         onload := jsCall,
-        div(id := "appContainer")
+        div(id := "appContainer", cls := "columnCenter")
       )
     )
 

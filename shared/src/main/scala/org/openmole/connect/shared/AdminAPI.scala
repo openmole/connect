@@ -3,7 +3,7 @@ package org.openmole.connect.shared
 import endpoints4s.{algebra, circe}
 import io.circe.*
 import io.circe.generic.auto.*
-import org.openmole.connect.shared.Data.{PodInfo, User}
+import org.openmole.connect.shared.Data.{PodInfo, User, Register}
 
 
 trait AdminAPI
@@ -15,6 +15,12 @@ trait AdminAPI
     endpoint(
       post(path / "users", jsonRequest[Unit]),
       ok(jsonResponse[Seq[User]])
+    )
+
+  val registeringUsers: Endpoint[Unit, Seq[Register]] =
+    endpoint(
+      post(path / "registering-users", jsonRequest[Unit]),
+      ok(jsonResponse[Seq[Register]])
     )
 
 //  val upserted: Endpoint[User, Seq[User]] =

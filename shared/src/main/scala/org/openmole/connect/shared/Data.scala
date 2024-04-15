@@ -12,8 +12,8 @@ object Data:
   val user: Role = "User"
 
   type EmailStatus = String
-  val checked: EmailStatus = "Checked"
-  val unchecked: EmailStatus = "Unchecked"
+  val checked: EmailStatus = "Email checked"
+  val unchecked: EmailStatus = "Email unchecked"
 
   object PodInfo:
     object Status:
@@ -39,6 +39,7 @@ object Data:
 
   case class User(
     name: String,
+    firstName: String,
     email: String,
     institution: String,
     role: Role,
@@ -49,7 +50,12 @@ object Data:
     openMOLEMemory: Int,
     lastAccess: Long, created: Long)
 
-  case class Register(name: String, email: String, institution: String, emailStatus: EmailStatus)
+  case class Register(
+    name: String,
+    firstName: String,
+    email: String, 
+    institution: String, 
+    emailStatus: EmailStatus)
 
 enum K8ActionResult:
   case K8Success(message: String) extends K8ActionResult

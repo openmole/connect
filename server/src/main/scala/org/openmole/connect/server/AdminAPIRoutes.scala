@@ -7,10 +7,14 @@ import org.http4s._
 
 class AdminAPIImpl(k8sService: K8sService):
   def users: Seq[Data.User] = DB.users.map(DB.User.toData)
+  
+  def registeringUsers: Seq[Data.Register] = DB.registeringUsers.map(DB.RegisteringUser.toData)
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
 
   val usersRoute = users.implementedBy { _ =>  impl.users }
+  
+  val registeringUsersRoute = registeringUsers.implementedBy { _ => impl.registeringUsers }
 //
 //  val upsertedRoute = upserted.implementedBy { userData => Services.upserted(userData, kubeOff) }
 //
@@ -61,7 +65,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
 //  }
 //
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute)
   )
 //
 //}
