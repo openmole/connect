@@ -6,8 +6,8 @@ import com.raquo.laminar.api.L.*
 object Css:
   
   lazy val columnFlex = cls := "columnFlex"
-  lazy val rowFlex = cls := "rowFlex"  
-  lazy val badgeConnect = cls := "badge badge-connect"
+  lazy val rowFlex = cls := "rowFlex"
+  lazy val badgeConnect = cls := "badge-connect"
   
   lazy val connectionTabOverlay = Seq(
     display.flex,
