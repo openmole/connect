@@ -1,10 +1,94 @@
 
+@font-face {
+    font-family: 'gi';
+    src: url('../fonts/gi.otf');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'agane';
+    src: url('../fonts/agane.ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+
 .label-success {
     background-color: #a6bf25;
 }
 
-.columnCenter {
+.columnFlex {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+.rowFlex {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.infoContent {
+    font-size: 16px;
+    font-family: gi;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.info {
+     font-size: 14px;
+     font-family: gi;
+     justify-content: center;
+     display: flex;
+}
+
+.statusBlock{
+  color: white;
+  padding: 10px;
+  margin-right:1px;
+  margin-top:1px;
+  min-height: 77px;
+  height: 120px;
+  background-color: #373f46;
+}
+
+.userBadge {
+    font-size: 15px;
+    margin:10px;
+    margin-top: 30px;
+    line-height:1.2;
+}
+
+.barBlock {
+    width:170px;
+}
+
+.stacked-bar-graph {
+  width: 100%;
+  height: 38px;
+  color:#414042;
+
+  span {
+   height: 80%;
+   box-sizing: border-box;
+   float: left;
+   font-weight: bold;
+   font-family: gi;
+   padding-top: 3px;
+   padding-left: 10px;
+   color: white;
+  }
+  .bar-1 {
+    background: #17a2b8;
+    margin-top: 15px;
+  }
+  .bar-2 {
+    background: #17a2b8;
+    margin-top: 15px;
+    opacity: 0.5;
+  }
+
 }

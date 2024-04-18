@@ -10,6 +10,7 @@ import scaladget.bootstrapnative.Table.{BasicRow, ExpandedRow}
 import scaladget.bootstrapnative.bsn.*
 import scaladget.tools.*
 import ConnectUtils.*
+import org.openmole.connect.client.UIUtils.DetailedInfo
 
 object AdminPanel:
 
@@ -21,7 +22,7 @@ object AdminPanel:
     val versions: Var[Seq[String]] = Var(Seq())
     val selected: Var[Option[String]] = Var(None)
 
-    case class UserInfo(key: String, show: BasicRow, hidden: Seq[String])
+    case class UserInfo(key: String, show: BasicRow, detailedInfo: Option[DetailedInfo])
 
     AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
     AdminAPIClient.users(()).future.foreach(us => users.set(us))
@@ -55,8 +56,8 @@ object AdminPanel:
                 div(r.institution),
                 statusElement(r),
                 triggerButton(r.email))),
-            Seq())
-          ) ++
+            None
+          )) ++
             us.map(u => UserInfo(
               u.email,
               BasicRow(
@@ -67,19 +68,22 @@ object AdminPanel:
                   div(u.institution),
                   div(u.lastAccess.toStringDate, cls := "badge", badge_info),
                   triggerButton(u.email))),
-              Seq())
+              //FIXME: is there a possible couple (storage, availble storage) ?
+              Some(DetailedInfo(u.role, u.omVersion, u.storage, 15620  ,u.memory, u.cpu, u.openMOLEMemory)))
             )
+
           userInfos.flatMap { ui =>
+            val userDetailedInfo = ui.detailedInfo.map(di=> UIUtils.userInfoBlock(di)).getOrElse(div())
             Seq(
               ui.show,
-              ExpandedRow(div(height := "500", background := "pink", "expandedContent"), selected.signal.map(s=> s == Some(ui.key)))
+              ExpandedRow(div(height := "150", userDetailedInfo), selected.signal.map(s => s == Some(ui.key)))
             )
           }
         }
       )
 
     val adminPanel =
-      div(cls := "columnCenter", width := "60%",
+      div(cls := "columnFlex", width := "60%",
         a("disconnect", href := s"/${Data.disconnectRoute}"),
         userTable.render.amend(cls := "border")
       )

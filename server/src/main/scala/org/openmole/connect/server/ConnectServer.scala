@@ -198,6 +198,9 @@ object ServerContent:
     case request@GET -> Root / "img" / path =>
       val f = new File(webapp, s"img/$path")
       StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
+    case request@GET -> Root / "fonts" / path =>
+      val f = new File(webapp, s"fonts/$path")
+      StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
 
   val connectionError =
     Forbidden.apply(ServerContent.someHtml("connection(true);").render)
@@ -229,7 +232,7 @@ object ServerContent:
       ),
       body(
         onload := jsCall,
-        div(id := "appContainer", cls := "columnCenter")
+        div(id := "appContainer", cls := "columnFlex")
       )
     )
 

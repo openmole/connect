@@ -20,7 +20,7 @@ class UserTable(headers: Seq[String],
       case br: BasicRow =>
         tr(
           backgroundColor <-- selected.signal.map {
-            s => if (Some(initialRow.rowID) == s) "#dceffd" else ""
+            s => if (Some(initialRow.rowID) == s) "#17a2b8" else ""
           },
           onClick --> (_ => selected.set(Some(initialRow.rowID))),
           children <-- rowStream.map(r => r.tds)

@@ -4,6 +4,10 @@ import scaladget.tools._
 import com.raquo.laminar.api.L.*
 
 object Css:
+  
+  lazy val columnFlex = cls := "columnFlex"
+  lazy val rowFlex = cls := "rowFlex"  
+  
   lazy val connectionTabOverlay = Seq(
     display.flex,
     flexDirection.column,

@@ -1,10 +1,11 @@
 import com.typesafe.sbt.packager.docker
 import com.typesafe.sbt.packager.docker.{Cmd, ExecCmd}
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import com.typesafe.sbt.packager.docker._
-import NativePackagerHelper._
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.*
+import com.typesafe.sbt.packager.docker.*
+import NativePackagerHelper.*
 import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport.daemonUser
 
+import java.io.File
 import scala.collection.mutable
 
 val scalatraVersion = "2.7.0"
@@ -129,7 +130,8 @@ lazy val application = project.in(file("application")) settings (defaultSettings
       (dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
       (fullOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
     ) ++ doMapping((resourceDirectory in client in Compile).value, prefix)
-      ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/"),
+      ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/")
+      ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),
   Docker / packageName := "openmole-connect",
   Docker / organization := "openmole"
 )
