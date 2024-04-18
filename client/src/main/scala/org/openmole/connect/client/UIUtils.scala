@@ -1,6 +1,6 @@
 package org.openmole.connect.client
 
-import org.openmole.connect.shared.Data.Role
+import org.openmole.connect.shared.Data.{RegisterUser, Role}
 import com.raquo.laminar.api.L.*
 import org.openmoleconnect.client.Css
 import scaladget.bootstrapnative.bsn.*

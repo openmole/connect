@@ -2,7 +2,7 @@ package org.openmole.connect.server
 
 import org.openmole.connect.server.DBQueries.*
 import org.openmole.connect.shared.Data
-import org.openmole.connect.shared.Data.EmailStatus
+import org.openmole.connect.shared.Data.{EmailStatus, RegisterUser}
 import slick.jdbc.H2Profile.api.*
 import slick.model.ForeignKey
 
@@ -49,6 +49,9 @@ object DB:
   object User:
     def isAdmin(u: User) = u.role == admin
     def toData(u: User): Data.User = u.to[Data.User]
+    def fromData(u: Data.User): Option[User] = user(u.email)
+    def default(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = DB.user) =
+      User(name, firstName, email, password, institution, "latest", 10240, 2048, 2, 1024, now, now, role, randomUUID)
 
   case class User(
    name: String,
@@ -66,17 +69,22 @@ object DB:
    role: Role = user,
    uuid: UUID = randomUUID)
 
-  object RegisteringUser:
-    def toData(r: RegisteringUser): Data.Register = r.to[Data.Register]
+  object RegisterUser:
+    def toData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
 
-  case class RegisteringUser(
-   name: String,
-   firstName: String,
-   email: Email,
-   password: Password,
-   institution: Institution,
-   emailStatus: EmailStatus = unchecked,
-   UUID: UUID = randomUUID)
+    def fromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
+
+    implicit class WrapRegisterUser(r: RegisterUser):
+      def toUser: User = User.default(r.name, r.firstName, r.email, r.password, r.institution)
+
+  case class RegisterUser(
+    name: String,
+    firstName: String,
+    email: Email,
+    password: Password,
+    institution: Institution,
+    emailStatus: EmailStatus = unchecked,
+    uuid: UUID = randomUUID)
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
@@ -100,7 +108,7 @@ object DB:
 
   val userTable = TableQuery[Users]
 
-  class RegisteringUsers(tag: Tag) extends Table[RegisteringUser](tag, "REGISTERING_USERS"):
+  class RegisteringUsers(tag: Tag) extends Table[RegisterUser](tag, "REGISTERING_USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
     def name = column[String]("NAME")
     def firstName = column[String]("FIRST_NAME")
@@ -109,9 +117,9 @@ object DB:
     def institution = column[Institution]("INSTITUTION")
     def emailStatus = column[EmailStatus]("EMAILSTATUS")
 
-    def * = (name, firstName, email, password, institution, emailStatus, uuid).mapTo[RegisteringUser]
+    def * = (name, firstName, email, password, institution, emailStatus, uuid).mapTo[RegisterUser]
 
-  val registeringUserTable = TableQuery[RegisteringUsers]
+  val registerUserTable = TableQuery[RegisteringUsers]
 
   object DatabaseInfo:
     case class Data(version: Int)
@@ -136,20 +144,20 @@ object DB:
 
 
   def initDB()(using Salt) =
-    val schema = databaseInfoTable.schema ++ userTable.schema ++ registeringUserTable.schema
+    val schema = databaseInfoTable.schema ++ userTable.schema ++ registerUserTable.schema
     scala.util.Try:
       runTransaction(schema.createIfNotExists)
 
     runTransaction:
-      val admin = User("admin", "Bob", "admin@admin.com", salted("admin"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.admin, randomUUID)
+      val admin = User.default("admin", "Bob", "admin@admin.com", salted("admin"), "CNRS", DB.admin)
       for
         e <- userTable.result
         _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
       yield ()
 
     // TODO remove for testing only
-    val user = User("user", "Ali", "user@user.com", salted("user"), "CNRS", "latest", 10240, 2048, 2, 1024, now, now, DB.user, randomUUID)
-    val newUser = RegisteringUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
+    val user = User.default("user", "Ali", "user@user.com", salted("user"), "CNRS")
+    val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked, randomUUID)
     addUser(user)
     addRegisteringUser(newUser)
 
@@ -167,12 +175,37 @@ object DB:
         _ <- if e.isEmpty then userTable += user else DBIO.successful(())
       yield ()
 
-  def addRegisteringUser(registeringUser: RegisteringUser)(using salt: Salt): Unit =
+  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Unit =
     runTransaction:
       for
-        e <- registeringUserTable.filter(r => r.email === registeringUser.email).result
-        _ <- if e.isEmpty then registeringUserTable += registeringUser else DBIO.successful(())
+        e <- registerUserTable.filter(r => r.email === registerUser.email).result
+        _ <- if e.isEmpty then registerUserTable += registerUser else DBIO.successful(())
       yield ()
+
+
+  def delete(user: Data.User) =
+    runTransaction:
+      userTable.filter {u=>
+        val uid = DB.User.fromData(user).map(_.uuid).getOrElse("")
+        u.uuid === uid
+      }.delete
+
+  def delete(registeringUser: Data.RegisterUser): Int =
+    DB.RegisterUser.fromData(registeringUser).map { ru =>
+      delete(ru)
+    }.getOrElse(0)
+
+  def delete(registeringUser: RegisterUser): Int =
+    runTransaction:
+      registerUserTable.filter { ru =>
+        ru.uuid === registeringUser.uuid
+      }.delete
+
+  def promote(rUser: Data.RegisterUser)(using salt: Salt): Unit =
+    DB.RegisterUser.fromData(rUser).map { ru =>
+      delete(ru)
+      addUser(ru.toUser)
+    }
 
 
   //  def upsert(user: User, salt: String) =
@@ -201,6 +234,11 @@ object DB:
       userTable.filter(u => u.uuid === uuid)
     .headOption
 
+  def user(email: Email): Option[User] =
+    runUserQuery:
+      userTable.filter(u => u.email === email)
+    .headOption
+
   def user(email: Email, password: Password)(using salt: Salt): Option[User] =
     runUserQuery:
       userTable.filter(u => u.email === email && u.password === salted(password))
@@ -209,6 +247,11 @@ object DB:
   def userFromSaltedPassword(email: Email, salted: Password): Option[User] =
     runUserQuery:
       userTable.filter(u => u.email === email && u.password === salted)
+    .headOption
+
+  def registerUser(email: Email): Option[RegisterUser] =
+    runRegisterUserQuery:
+      registerUserTable.filter(u => u.email === email)
     .headOption
 
   def updadeLastAccess(uuid: UUID) =
@@ -222,8 +265,8 @@ object DB:
       q.update(version)
 
   def users: Seq[User] = runUserQuery(userTable)
-  
-  def registeringUsers: Seq[RegisteringUser] = runRegisteringUserQuery(registeringUserTable)
+
+  def registerUsers: Seq[RegisterUser] = runRegisterUserQuery(registerUserTable)
 
   def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =
     runTransaction:

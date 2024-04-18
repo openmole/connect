@@ -2,19 +2,32 @@ package org.openmole.connect.server
 
 import endpoints4s.http4s.server
 import org.openmole.connect.shared.*
-import cats.effect._
-import org.http4s._
+import cats.effect.*
+import org.http4s.*
+import org.openmole.connect.server.DB.{RegisterUser, Salt, registerUsers}
 
-class AdminAPIImpl(k8sService: K8sService):
+class AdminAPIImpl(k8sService: K8sService)(using salt: Salt):
   def users: Seq[Data.User] = DB.users.map(DB.User.toData)
   
-  def registeringUsers: Seq[Data.Register] = DB.registeringUsers.map(DB.RegisteringUser.toData)
+  def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.RegisterUser.toData)
+
+  def promoteRegisterUser(register: Data.RegisterUser): (Seq[Data.User], Seq[Data.RegisterUser]) =
+    DB.promote(register)
+    (users, registeringUsers)
+
+  def deleteRegisterUser(register: Data.RegisterUser): Seq[Data.RegisterUser] =
+    DB.delete(register)
+    registeringUsers
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
 
   val usersRoute = users.implementedBy { _ =>  impl.users }
   
   val registeringUsersRoute = registeringUsers.implementedBy { _ => impl.registeringUsers }
+
+  val promoteRoute = promoteRegisteringUser.implementedBy{ r => impl.promoteRegisterUser(r)}
+
+  val deleteRegisterRoute = deleteRegisteringUser.implementedBy(r=> impl.deleteRegisterUser(r))
 //
 //  val upsertedRoute = upserted.implementedBy { userData => Services.upserted(userData, kubeOff) }
 //
@@ -65,7 +78,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
 //  }
 //
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute)
   )
 //
 //}

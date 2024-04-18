@@ -50,7 +50,7 @@ object Data:
     openMOLEMemory: Int,
     lastAccess: Long, created: Long)
 
-  case class Register(
+  case class RegisterUser(
     name: String,
     firstName: String,
     email: String, 
