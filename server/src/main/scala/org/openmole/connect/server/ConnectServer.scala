@@ -77,9 +77,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
           Authentication.authenticatedUser(req) match
             case Some(user) if user.role == DB.admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.email, user.password))
             case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.email, user.password))
-            case None =>
-              val uri = Uri.unsafeFromString(s"/${Data.connectionRoute}")
-              TemporaryRedirect(Location(uri))
+            case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
         case req @ GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
 
@@ -88,14 +86,13 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>
                 DB.user(email, password) match
-                  case Some(_) => ServerContent.ok("user();").map(ServerContent.addJWTToken(email, DB.salted(password)))
+                  case Some(_) => ServerContent.redirect("/").map(ServerContent.addJWTToken(email, DB.salted(password)))
                   case None => ServerContent.connectionError
               case None => ServerContent.connectionError
 
         case req @ GET -> Root / Data.disconnectRoute =>
-          val uri = Uri.unsafeFromString(s"/${Data.connectionRoute}")
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
-          TemporaryRedirect(Location(uri)).map(_.addCookie(cookie))
+          ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
@@ -241,4 +238,6 @@ object ServerContent:
     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
     response.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate)))
 
-
+  def redirect(to: String) =
+    val uri = Uri.unsafeFromString(to)
+    SeeOther(Location(uri))
