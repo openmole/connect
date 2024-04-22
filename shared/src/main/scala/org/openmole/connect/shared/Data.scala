@@ -1,5 +1,7 @@
 package org.openmole.connect.shared
 
+import java.util.UUID
+
 object Data:
   val connectionRoute = "connection"
   val userAPIRoute = "user"
@@ -51,11 +53,12 @@ object Data:
     lastAccess: Long, created: Long)
 
   case class RegisterUser(
+    uuid: String,
     name: String,
     firstName: String,
-    email: String, 
-    institution: String, 
-    emailStatus: EmailStatus)
+    email: String,
+    institution: String,
+    status: EmailStatus)
 
 enum K8ActionResult:
   case K8Success(message: String) extends K8ActionResult

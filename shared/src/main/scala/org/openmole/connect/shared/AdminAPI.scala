@@ -23,16 +23,16 @@ trait AdminAPI
       ok(jsonResponse[Seq[RegisterUser]])
     )
 
-  val promoteRegisteringUser: Endpoint[RegisterUser, (Seq[User], Seq[RegisterUser])] =
+  val promoteRegisteringUser: Endpoint[String, Unit] =
     endpoint(
-      post(path / "promote-registering-users", jsonRequest[RegisterUser]),
-      ok(jsonResponse[(Seq[User], Seq[RegisterUser])])
+      post(path / "promote-registering-users", jsonRequest[String]),
+      ok(jsonResponse[Unit])
     )
     
-  val deleteRegisteringUser: Endpoint[RegisterUser, Seq[RegisterUser]] =
+  val deleteRegisteringUser: Endpoint[String, Unit] =
     endpoint(
-      post(path / "delete-registering-users", jsonRequest[RegisterUser]),
-      ok(jsonResponse[Seq[RegisterUser]])
+      post(path / "delete-registering-users", jsonRequest[String]),
+      ok(jsonResponse[Unit])
     )
 
 //  val upserted: Endpoint[User, Seq[User]] =

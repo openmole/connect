@@ -25,36 +25,35 @@ object AdminPanel:
 
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
-    AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-    AdminAPIClient.users(()).future.foreach(us => users.set(us))
+    def updateUserInfo() =
+      AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
+      AdminAPIClient.users(()).future.foreach(us => users.set(us))
+
+    updateUserInfo()
     UserAPIClient.availableVersions((Some(10), false)).future.foreach(vs => versions.set(vs))
 
     def statusElement(registerinUser: RegisterUser) =
-      registerinUser.emailStatus match
+      registerinUser.status match
         case Data.checked => div(Css.badgeConnect, Data.checked)
         case Data.unchecked => div(badge_danger, Data.unchecked)
 
     def triggerButton(key: String) =
       button(cls := "btn bi-eye-fill", onClick --> { _ =>
-        selected.update(_ match
+        selected.update:
           case Some(email: String) if (email == key) => None
           case Some(email: String) => Some(key)
           case None => Some(key)
-        )
       })
 
     def registeringUserBlock(register: RegisterUser) =
       div(Css.rowFlex, padding := "10px",
         button(btn_secondary, "Validate", marginRight := "20px", onClick --> { _ =>
-          AdminAPIClient.promoteRegisteringUser(register).future.foreach { case (newUsers, newRegisteringUsers) =>
-            users.set(newUsers)
-            registering.set(newRegisteringUsers)
-          }
+          AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _=>
+            updateUserInfo()
         }),
         button(btn_danger, "Reject", onClick --> { _ =>
-          AdminAPIClient.deleteRegisteringUser(register).future.foreach { newRegisteringUsers =>
-            registering.set(newRegisteringUsers)
-          }
+          AdminAPIClient.deleteRegisteringUser(register.uuid).future.foreach: _ =>
+            updateUserInfo()
         })
       )
 
@@ -88,7 +87,7 @@ object AdminPanel:
               //FIXME: is there a possible couple (storage, availble storage) ?
               ExpandedRow(
                 div(height := "150", UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, u.storage, 15620, u.memory, u.cpu, u.openMOLEMemory))),
-                selected.signal.map(s => s == Some(u.email))
+                selected.signal.map(s => s.contains(u.email))
               )
             )
           )
