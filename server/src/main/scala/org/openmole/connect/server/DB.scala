@@ -1,6 +1,5 @@
 package org.openmole.connect.server
 
-import org.openmole.connect.server.DBQueries.*
 import org.openmole.connect.shared.Data
 import org.openmole.connect.shared.Data.{EmailStatus, RegisterUser}
 import slick.jdbc.H2Profile.api.*
@@ -228,29 +227,29 @@ object DB:
 // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
-  def userFromUUID(uuid: UUID) =
-    runUserQuery:
-      userTable.filter(u => u.uuid === uuid)
+  def userFromUUID(uuid: UUID): Option[User] =
+    runTransaction:
+      userTable.filter(u => u.uuid === uuid).result
     .headOption
 
   def user(email: Email): Option[User] =
-    runUserQuery:
-      userTable.filter(u => u.email === email)
+    runTransaction:
+      userTable.filter(u => u.email === email).result
     .headOption
 
   def user(email: Email, password: Password)(using salt: Salt): Option[User] =
-    runUserQuery:
-      userTable.filter(u => u.email === email && u.password === salted(password))
+    runTransaction:
+      userTable.filter(u => u.email === email && u.password === salted(password)).result
     .headOption
 
   def userFromSaltedPassword(email: Email, salted: Password): Option[User] =
-    runUserQuery:
-      userTable.filter(u => u.email === email && u.password === salted)
+    runTransaction:
+      userTable.filter(u => u.email === email && u.password === salted).result
     .headOption
 
   def registerUser(email: Email): Option[RegisterUser] =
-    runRegisterUserQuery:
-      registerUserTable.filter(u => u.email === email)
+    runTransaction:
+      registerUserTable.filter(u => u.email === email).result
     .headOption
 
   def updadeLastAccess(uuid: UUID) =
@@ -263,9 +262,9 @@ object DB:
       val q = userTable.filter(_.uuid === uuid).map(_.omVersion)
       q.update(version)
 
-  def users: Seq[User] = runUserQuery(userTable)
+  def users: Seq[User] = runTransaction(userTable.result)
 
-  def registerUsers: Seq[RegisterUser] = runRegisterUserQuery(registerUserTable)
+  def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 
   def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =
     runTransaction:
