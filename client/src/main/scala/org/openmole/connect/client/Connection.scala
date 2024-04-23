@@ -99,8 +99,8 @@ object Connection:
           }
         }
       )
-      (div(Css.rowFlex, div(color := "red", child <-- errorMsg.signal.map(_.getOrElse(""))), in),
-        div(Css.rowFlex, minWidth := "150 px", in2))
+      (div(Css.rowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in),
+        in2)
 
     def validEmail(email: String): Option[String] =
       if ("""^[-a-z0-9!#$%&'*+/=?^_`{|}~]+(\.[-a-z0-9!#$%&'*+/=?^_`{|}~]+)*@([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)*(aero|arpa|asia|biz|cat|com|coop|edu|gov|info|int|jobs|mil|mobi|museum|name|net|org|pro|tel|travel|[a-z][a-z])$""".r.findFirstIn(email) == None)
