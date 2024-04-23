@@ -2,6 +2,7 @@ package org.openmole.connect.server
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import io.kubernetes.client.openapi.ApiClient
 import org.openmole.connect.server.DB.UUID
 import org.openmole.connect.shared.Data
 import org.openmole.connect.shared.Data.*
@@ -16,6 +17,7 @@ import skuber.json.networking.format.*
 import skuber.networking.{Ingress, IngressList}
 
 import scala.collection.immutable.List
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
@@ -57,19 +59,14 @@ object K8sService:
 
 
   def withK8s[T](kubeAction: KubernetesClient => Future[T]) =
-
     implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
-    implicit val dispatcher: ExecutionContextExecutor = system.dispatcher
     val k8s = k8sInit
-
-    Await.result(kubeAction(k8s), Duration.Inf)
+    try Await.result(kubeAction(k8s), Duration.Inf)
+    finally k8s.close()
 
   def getIngress = withK8s: k8s =>
 
-    //println("get Ingres")
     implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
     implicit val dispatcher: ExecutionContextExecutor = system.dispatcher
 
     val allIngressMapFut: Future[ListResource[Ingress]] = k8s.listInNamespace[IngressList] ("ingress-nginx")
@@ -223,6 +220,27 @@ object K8sService:
 
 //  def isServiceUp(uuid: UUID): Boolean =
 //    podInfo(uuid).flatMap { _.status.contains() }.isDefined
+
+  def usedSpace(uuid: UUID): Option[Double] =
+    import io.kubernetes.client.openapi.*
+    import io.kubernetes.client.*
+    import io.kubernetes.client.util.*
+
+    val podName = podInfo(uuid).map(_.name)
+
+    podName.flatMap: name =>
+      val client = ClientBuilder.cluster().build()
+      val exec = new Exec(client)
+      val builder = exec.newExecutionBuilder(Namespace.openmole, name, Array("df", "-a"))
+      builder.setStdout(true)
+
+      scala.util.Try(builder.execute()).toOption.flatMap: proc =>
+        val result =
+          scala.io.Source.fromInputStream(proc.getInputStream).getLines().find(_.endsWith("/var/openmole")).map: l =>
+            val octets = l.replaceAll("  *", " ").split(' ')(2).toDouble
+            octets / (1024 * 1024)
+
+        if proc.waitFor() == 0 then result else None
 
   def deploymentExists(uuid: UUID) = podInfo(uuid).isDefined
 

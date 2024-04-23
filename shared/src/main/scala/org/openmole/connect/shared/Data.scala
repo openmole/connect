@@ -40,6 +40,7 @@ object Data:
     userEmail: Option[String])
 
   case class User(
+    uuid: String,
     name: String,
     firstName: String,
     email: String,

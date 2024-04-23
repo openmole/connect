@@ -34,6 +34,12 @@ trait UserAPI
       post(path / "stop", jsonRequest[Unit]),
       ok(jsonResponse[Unit])
     )
+    
+  val usedSpace: Endpoint[Unit, Option[Double]] =
+    endpoint(
+      post(path / "used-space", jsonRequest[Unit]),
+      ok(jsonResponse[Option[Double]])
+    )  
 
   val availableVersions: Endpoint[Unit, Seq[String]] =
     endpoint(

@@ -110,7 +110,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "com.github.pathikrit" %% "better-files" % "3.9.2",
     "commons-codec" % "commons-codec" % "1.16.1",
     "org.apache.commons" % "commons-lang3" % "3.14.0",
-    "io.github.arainko" %% "ducktape" % "0.2.0"
+    "io.github.arainko" %% "ducktape" % "0.2.0",
+    "io.kubernetes" % "client-java" % "19.0.1"
   )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
 

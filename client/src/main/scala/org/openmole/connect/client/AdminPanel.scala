@@ -60,7 +60,7 @@ object AdminPanel:
     lazy val userTable =
       new UserTable(
         Seq("Name", "First name", "Email", "Institution", "Activity"),
-        registering.signal.combineWith(users.signal).map { case (rs, us) =>
+        registering.signal.combineWith(users.signal).map: (rs, us) =>
           val userInfos = rs.map(r => UserInfo(
             BasicRow(
               Seq(
@@ -72,7 +72,7 @@ object AdminPanel:
                 triggerButton(r.email))),
             ExpandedRow(
               div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
-              selected.signal.map(s => s == Some(r.email))
+              selected.signal.map(s => s.contains(r.email))
             )
           )) ++
             us.map(u => UserInfo(
@@ -84,20 +84,26 @@ object AdminPanel:
                   div(u.institution),
                   div(u.lastAccess.toStringDate, Css.badgeConnect),
                   triggerButton(u.email))),
-              //FIXME: is there a possible couple (storage, availble storage) ?
+
               ExpandedRow(
-                div(height := "150", UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, u.storage, 15620, u.memory, u.cpu, u.openMOLEMemory))),
+                div(
+                  height := "150",
+                  child <--
+                    Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
+                      UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory))
+                ),
                 selected.signal.map(s => s.contains(u.email))
               )
             )
           )
-          userInfos.flatMap { ui =>
+
+          userInfos.flatMap: ui =>
             Seq(
               ui.show,
               ui.expandedRow
             )
-          }
-        }
+
+
       )
 
     val adminPanel =

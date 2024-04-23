@@ -5,11 +5,11 @@ import com.raquo.laminar.api.L.*
 import org.openmoleconnect.client.Css
 import scaladget.bootstrapnative.bsn.*
 
-object UIUtils {
+object UIUtils:
 
-  case class DetailedInfo(role: Role, omVersion: String, usedStorage: Int, availableStorage: Int, memory: Int, cpu: Double, openMOLEMemory: Int)
+  case class DetailedInfo(role: Role, omVersion: String, usedStorage: Option[Int], availableStorage: Int, memory: Int, cpu: Double, openMOLEMemory: Int)
 
-  implicit def toGo(size: Int): String = s"${(size.toDouble / 1024).round.toString} Go"
+  def toGB(size: Int): String = s"${(size.toDouble / 1024).round.toString} GB"
 
   def textBlock(title: String, text: String) =
     div(Css.columnFlex,
@@ -28,13 +28,12 @@ object UIUtils {
     )
 
   def memoryBar(title: String, value: Int, max: Int) =
-    val bar1 = (value.toDouble * 100 / max).toInt
+    val bar1 = ((value.toDouble / max) * 100).toInt
     val bar2 = 100 - bar1
-    val memory: String = value
     div(Css.columnFlex, cls := "statusBlock barBlock",
       div(title, cls := "info"),
       div(cls := "stacked-bar-graph", marginTop := "10px",
-        span(width := s"${bar1}%", cls := "bar-1", memory),
+        span(width := s"${bar1}%", cls := "bar-1", toGB(max)),
         span(width := s"${bar2}%", cls := "bar-2"),
       )
     )
@@ -44,9 +43,9 @@ object UIUtils {
       badgeBlock("Role", detailedInfo.role),
       textBlock("OpendMOLE version", detailedInfo.omVersion),
       textBlock("CPU", detailedInfo.cpu.toString),
-      textBlock("Memory", detailedInfo.memory),
-      textBlock("OpenMOLE memory", detailedInfo.openMOLEMemory),
-      memoryBar("Storage", detailedInfo.usedStorage, detailedInfo.availableStorage),
+      textBlock("Memory", toGB(detailedInfo.memory)),
+      textBlock("OpenMOLE memory", toGB(detailedInfo.openMOLEMemory)),
+      //FIXME use another color when used storage is not set
+      memoryBar("Storage", detailedInfo.usedStorage.getOrElse(0), detailedInfo.availableStorage),
     )
 
-}

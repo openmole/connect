@@ -35,6 +35,12 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
+  val usedSpace: Endpoint[String, Option[Double]] =
+    endpoint(
+      post(path / "used-space", jsonRequest[String]),
+      ok(jsonResponse[Option[Double]])
+    )
+
 //  val upserted: Endpoint[User, Seq[User]] =
 //    endpoint(
 //      post(path / "upserted", jsonRequest[User]),

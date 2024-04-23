@@ -30,6 +30,8 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using sal
     if versions.contains(version)
     then DB.updadeOMVersion(user.uuid, version)
 
+  def usedSpace = K8sService.usedSpace(user.uuid)
+
 class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
@@ -41,7 +43,8 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   val availableVersionsRoute = availableVersions.implementedBy { _ => impl.availableVersions }
   val changePasswordRoute = changePassword.implementedBy { (o, n) => impl.changePassword(o, n) }
   val setOpenMOLEVersionRoute = setOpenMOLEVersion.implementedBy { v => impl.setVersion(v) }
+  val usedSpaceRoute = usedSpace.implementedBy(_ => impl.usedSpace)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(userRoute, instanceRoute, launchRoute, stopRoute, availableVersionsRoute, changePasswordRoute, setOpenMOLEVersionRoute)
+    routesFromEndpoints(userRoute, instanceRoute, launchRoute, stopRoute, availableVersionsRoute, changePasswordRoute, setOpenMOLEVersionRoute, usedSpaceRoute)
   )
