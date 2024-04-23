@@ -61,6 +61,8 @@ object Data:
     institution: String,
     status: EmailStatus)
 
+  case class ConnectRegister(info1: String, info2: String)
+
 enum K8ActionResult:
   case K8Success(message: String) extends K8ActionResult
   case K8Failure(message: String, stackTrace: String) extends K8ActionResult

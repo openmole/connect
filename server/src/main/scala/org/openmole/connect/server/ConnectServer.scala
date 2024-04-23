@@ -36,6 +36,7 @@ object ConnectServer:
 
   object Config:
     case class Kube(storageClassName: Option[String] = None)
+
     case class OpenMOLE(versionHistory: Int)
 
   case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE)
@@ -54,6 +55,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
+
   given salt: DB.Salt = DB.Salt(config.salt)
 
   val httpClient =
@@ -73,22 +75,34 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
-        case req @ GET -> Root =>
+        case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
             case Some(user) if user.role == DB.admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.email, user.password))
             case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.email, user.password))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
-        case req @ GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
+        case req@GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
 
-        case req @ POST -> Root / Data.connectionRoute =>
+        case req@POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
-            r.getFirst("Email") zip r.getFirst("Password") match
-              case Some((email, password)) =>
-                DB.user(email, password) match
-                  case Some(_) => ServerContent.redirect("/").map(ServerContent.addJWTToken(email, DB.salted(password)))
+            r.getFirst("Email") zip r.getFirst("Password") zip r.getFirst("Name") zip r.getFirst("First name") zip r.getFirst("Institution") match
+              case Some(((((email: String, password: String), name: String), firstName: String), institution: String)) =>
+                println("Register match")
+                DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
+                ServerContent.ok("connection(false)")
+              case None =>
+                r.getFirst("Email") zip r.getFirst("Password") match
+                  case Some((email, password)) =>
+                    DB.user(email, password) match
+                      case Some(_) => ServerContent.redirect("/").map(ServerContent.addJWTToken(email, DB.salted(password)))
+                      case None => ServerContent.connectionError
                   case None => ServerContent.connectionError
-              case None => ServerContent.connectionError
+        //            r.getFirst("Email") zip r.getFirst("Password") match
+        //              case Some((email, password)) =>
+        //                DB.user(email, password) match
+        //                  case Some(_) => ServerContent.redirect("/").map(ServerContent.addJWTToken(email, DB.salted(password)))
+        //                  case None => ServerContent.connectionError
+        //              case None => ServerContent.connectionError
 
         case req @ GET -> Root / Data.disconnectRoute =>
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
@@ -126,7 +140,9 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
                 val uri =
                   def path = Path(req.uri.path.segments.drop(1))
+
                   def scheme = Uri.Scheme.unsafeFromString(openmoleURI.getScheme)
+
                   req.uri.copy(authority = Some(authority), scheme = Some(scheme)).withPath(path).toString
 
                 def forwadedHeaders(req: Request[IO]) =
@@ -142,25 +158,25 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                     r.putHeaders(hs: _*).withStatus(forwardStatus)
 
                 req.method match
-                  case p @ POST =>
+                  case p@POST =>
                     val res = fs2.io.toInputStreamResource(req.body).use: is =>
                       val post = new HttpPost(uri)
                       post.setEntity(new InputStreamEntity(is))
                       forwadedHeaders(req).foreach(h => post.setHeader(h.name.toString, h.value))
                       response(httpClient.execute(post))
                     res
-                  case p @ GET =>
+                  case p@GET =>
                     val get = new HttpGet(uri)
                     forwadedHeaders(req).foreach(h => get.setHeader(h.name.toString, h.value))
                     response(httpClient.execute(get))
-                  case p @ DELETE =>
+                  case p@DELETE =>
                     val delete = new HttpDelete(uri)
                     forwadedHeaders(req).foreach(h => delete.setHeader(h.name.toString, h.value))
                     response(httpClient.execute(delete))
                   case r => NotImplemented(s"Method ${r.method.name} is not supported by openmole-connect yet")
               case None => NotFound("OpenMOLE instance is not running")
 
-        case req @ GET -> Root / "openmole" => SeeOther(Location(Uri.unsafeFromString("openmole/")))
+        case req@GET -> Root / "openmole" => SeeOther(Location(Uri.unsafeFromString("openmole/")))
 
     val routes = serverRoutes <+> ServerContent.contentRoutes
 
@@ -169,6 +185,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
     def errorHandler: ServiceErrorHandler[IO] = r => t =>
       def stack = ExceptionUtils.getStackTrace(t)
+
       InternalServerError("Error in openmole-connect:\n" + stack)
 
     val server =

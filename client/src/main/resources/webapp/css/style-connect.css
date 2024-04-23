@@ -29,6 +29,10 @@
     align-items: center;
 }
 
+.rowGap10 {
+    row-gap: 10px;
+}
+
 .infoContent {
     font-size: 16px;
     font-family: gi;
@@ -105,5 +109,35 @@
     margin-top: 15px;
     opacity: 0.5;
   }
+}
 
+.linkLike {
+    border: none;
+    background: white;
+    text-decoration-line: underline;
+    color: #007bff;
+}
+
+.btnConnect {
+    border: none;
+    background: white;
+    text-decoration-line: underline;
+    color: #17a2b8;
+}
+
+.formField {
+    margin-left : "5px"
+    width : "280px";
+}
+
+.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.inputError {
+    color : red;
+    font-style: italic;
+    font-size: 13px;
+    min-width: 150px;
 }

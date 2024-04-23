@@ -112,7 +112,7 @@ object DB:
     def email = column[Email]("EMAIL", O.Unique)
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
-    def status = column[EmailStatus]("EMAIL_STATUS")
+    def status = column[EmailStatus]("STATUS")
 
     def * = (name, firstName, email, password, institution, status, uuid).mapTo[RegisterUser]
 
@@ -154,9 +154,9 @@ object DB:
 
     // TODO remove for testing only
     val user = User.withDefault("user", "Ali", "user@user.com", salted("user"), "CNRS")
-    val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
+   // val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
     addUser(user)
-    addRegisteringUser(newUser)
+    //addRegisteringUser(newUser)
 
     runTransaction:
       for

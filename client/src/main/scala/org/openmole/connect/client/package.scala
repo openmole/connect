@@ -8,21 +8,14 @@ object Css:
   lazy val columnFlex = cls := "columnFlex"
   lazy val rowFlex = cls := "rowFlex"
   lazy val badgeConnect = cls := "badge-connect"
-  
+  lazy val rowGap10 = cls := "rowGap10"
+
   lazy val connectionTabOverlay = Seq(
     display.flex,
     flexDirection.column,
-    justifyContent.center, /* center items vertically, in this case */
+    justifyContent.right, /* center items vertically, in this case */
     alignItems.center, /* center items horizontally, in this case */
     height := "300"
-  )
-
-  lazy val connectionFormStyle = Seq(
-    display.flex,
-    flexDirection.row,
-    justifyContent.flexEnd, /* center items vertically, in this case */
-    alignItems.center,
-    marginTop := "120"
   )
 
   lazy val adminLogoStyle = Seq(
