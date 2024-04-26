@@ -100,7 +100,8 @@ object Connection:
         }
       )
       (div(Css.centerRowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in),
-        in2)
+        div(Css.centerRowFlex, div(cls := "inputError", in2))
+      )
 
     def validEmail(email: String): Option[String] =
       if ("""^[-a-z0-9!#$%&'*+/=?^_`{|}~]+(\.[-a-z0-9!#$%&'*+/=?^_`{|}~]+)*@([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)*(aero|arpa|asia|biz|cat|com|coop|edu|gov|info|int|jobs|mil|mobi|museum|name|net|org|pro|tel|travel|[a-z][a-z])$""".r.findFirstIn(email) == None)
@@ -120,6 +121,7 @@ object Connection:
       form(
         method := "POST",
         action := connectionRoute,
+        onKeyDown --> {event=> if(event.keyCode == 13) event.preventDefault()},
         div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
           checkFieldBlock(0, "First name", (s: String) => validNotNullString(s, "First name")),
           checkFieldBlock(1, "Name", (s: String) => validNotNullString(s, "Name")),
@@ -129,7 +131,7 @@ object Connection:
           passwds._2,
           buttonGroup.amend(
             button("Cancel", btn_secondary, onClick --> { _ => displaySignupForm.set(false) }),
-            button("Sign up", btn_primary, `type` := "submit",
+            button("Sign up", btn_primary,
               cls.toggle("disabled") <-- signupError.signal.map(se => !se.isEmpty)
             )
           )
