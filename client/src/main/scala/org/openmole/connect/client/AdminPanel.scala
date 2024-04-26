@@ -46,7 +46,7 @@ object AdminPanel:
       })
 
     def registeringUserBlock(register: RegisterUser) =
-      div(Css.rowFlex, padding := "10px",
+      div(Css.centerRowFlex, padding := "10px",
         button(btn_secondary, "Validate", marginRight := "20px", onClick --> { _ =>
           AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _=>
             updateUserInfo()

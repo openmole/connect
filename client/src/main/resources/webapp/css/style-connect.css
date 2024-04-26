@@ -17,15 +17,23 @@
     background-color: #a6bf25;
 }
 
-.columnFlex {
+.columnFlex,
+.centerColumnFlex{
     display: flex;
     flex-direction: column;
+}
+
+.centerColumnFlex {
     align-items: center;
 }
 
-.rowFlex {
+.rowFlex,
+ .centerRowFlex {
     display: flex;
     flex-direction: row;
+}
+
+.centerRowFlex {
     align-items: center;
 }
 
@@ -87,8 +95,8 @@
 
 .stacked-bar-graph {
   width: 100%;
-  height: 38px;
   color:#414042;
+  display: flex;
 
   span {
    height: 80%;
@@ -102,11 +110,11 @@
   }
   .bar-1 {
     background: #17a2b8;
-    margin-top: 15px;
+    height: 10px;
   }
   .bar-2 {
     background: #17a2b8;
-    margin-top: 15px;
+    height: 10px;
     opacity: 0.5;
   }
 }

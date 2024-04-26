@@ -51,7 +51,7 @@ object Connection:
 
     lazy val connectionForm =
       form(
-        Css.columnFlex, alignItems.flexEnd, Css.rowGap10,
+        Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10,
         method := "POST",
         action := connectionRoute,
         buildInput("Email"),
@@ -77,7 +77,7 @@ object Connection:
             em
           }
         })
-      div(Css.rowFlex,
+      div(Css.centerRowFlex,
         div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))),
         in
       )
@@ -99,7 +99,7 @@ object Connection:
           }
         }
       )
-      (div(Css.rowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in),
+      (div(Css.centerRowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in),
         in2)
 
     def validEmail(email: String): Option[String] =
@@ -120,7 +120,7 @@ object Connection:
       form(
         method := "POST",
         action := connectionRoute,
-        div(Css.columnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
+        div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
           checkFieldBlock(0, "First name", (s: String) => validNotNullString(s, "First name")),
           checkFieldBlock(1, "Name", (s: String) => validNotNullString(s, "Name")),
           checkFieldBlock(2, "Email", (s: String) => validEmail(s)),
@@ -141,12 +141,12 @@ object Connection:
         div(Css.connectionTabOverlay,
           div(
             img(src := "img/logo.png", Css.openmoleLogo),
-            div(Css.columnFlex, Css.rowGap10, alignItems.flexEnd,
+            div(Css.centerColumnFlex, Css.rowGap10, alignItems.flexEnd,
               children <-- displaySignupForm.signal.map { su =>
                 if (su) Seq(signupForm)
                 else
                   Seq(
-                    div(marginTop := "120", Css.columnFlex, alignItems.flexEnd,
+                    div(marginTop := "120", Css.centerColumnFlex, alignItems.flexEnd,
                       connectionForm,
                       button("Sign up", cls := "linkLike", onClick --> { _ => displaySignupForm.set(true) }),
                       div(if (connectionError) "Incorrect email or password" else "", cls := "inputError")

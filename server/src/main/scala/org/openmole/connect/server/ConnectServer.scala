@@ -246,7 +246,7 @@ object ServerContent:
       ),
       body(
         onload := jsCall,
-        div(id := "appContainer", cls := "columnFlex")
+        div(id := "appContainer", cls := "centerColumnFlex")
       )
     )
 
