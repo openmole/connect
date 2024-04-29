@@ -4,6 +4,7 @@ import org.openmole.connect.shared.Data.{RegisterUser, Role}
 import com.raquo.laminar.api.L.*
 import org.openmoleconnect.client.Css
 import scaladget.bootstrapnative.bsn.*
+import org.openmole.connect.shared.Data
 
 object UIUtils:
 
@@ -42,7 +43,7 @@ object UIUtils:
     )
 
   def userInfoBlock(detailedInfo: DetailedInfo) =
-    div(Css.centerRowFlex, justifyContent.center, padding := "10px",
+    div(Css.centerRowFlex, justifyContent.center, padding := "30px",
       badgeBlock("Role", detailedInfo.role),
       textBlock("OpendMOLE version", detailedInfo.omVersion),
       textBlock("CPU", detailedInfo.cpu.toString),
@@ -50,5 +51,12 @@ object UIUtils:
       textBlock("OpenMOLE memory", toGB(detailedInfo.openMOLEMemory)),
       //FIXME use another color when used storage is not set
       memoryBar("Storage", detailedInfo.usedStorage.getOrElse(0), detailedInfo.availableStorage),
+    )
+
+  def mainPanel(panel: HtmlElement) =
+    div(margin := "40px auto",
+      img(src := "img/logo.png", Css.centerRowFlex, width := "500", margin.auto),
+      a(cls := "bi-power power", href := s"/${Data.disconnectRoute}", Css.rowFlex),
+      div(marginTop := "50px", panel)
     )
 

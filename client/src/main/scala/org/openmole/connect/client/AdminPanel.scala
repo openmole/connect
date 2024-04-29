@@ -38,7 +38,9 @@ object AdminPanel:
         case Data.unchecked => div(badge_danger, Data.unchecked)
 
     def triggerButton(key: String) =
-      button(cls := "btn bi-eye-fill", onClick --> { _ =>
+      span(cls := "bi-eye-fill",
+        cursor.pointer,
+        onClick --> { _ =>
         selected.update:
           case Some(email: String) if (email == key) => None
           case Some(email: String) => Some(key)
@@ -48,7 +50,7 @@ object AdminPanel:
     def registeringUserBlock(register: RegisterUser) =
       div(Css.centerRowFlex, padding := "10px",
         button(btn_secondary, "Validate", marginRight := "20px", onClick --> { _ =>
-          AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _=>
+          AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _ =>
             updateUserInfo()
         }),
         button(btn_danger, "Reject", onClick --> { _ =>
@@ -57,9 +59,9 @@ object AdminPanel:
         })
       )
 
-    lazy val userTable =
+    lazy val adminTable =
       new UserTable(
-        Seq("Name", "First name", "Email", "Institution", "Activity"),
+        Seq("Name", "First name", "Email", "Institution", "Activity", ""),
         registering.signal.combineWith(users.signal).map: (rs, us) =>
           val userInfos = rs.map(r => UserInfo(
             BasicRow(
@@ -87,7 +89,7 @@ object AdminPanel:
 
               ExpandedRow(
                 div(
-                  height := "150",
+                  height := "200",
                   child <--
                     Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
                       UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory))
@@ -95,7 +97,7 @@ object AdminPanel:
                 selected.signal.map(s => s.contains(u.email))
               )
             )
-          )
+            )
 
           userInfos.flatMap: ui =>
             Seq(
@@ -106,11 +108,5 @@ object AdminPanel:
 
       )
 
-    val adminPanel =
-      div(cls := "columnFlex", width := "60%",
-        a("disconnect", href := s"/${Data.disconnectRoute}"),
-        userTable.render.amend(cls := "border")
-      )
-
     lazy val appContainer = dom.document.querySelector("#appContainer")
-    render(appContainer, adminPanel)
+    render(appContainer, UIUtils.mainPanel(adminTable.render.amend(cls := "border")))

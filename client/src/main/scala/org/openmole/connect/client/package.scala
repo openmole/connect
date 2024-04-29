@@ -20,13 +20,6 @@ object Css:
     height := "300"
   )
 
-  lazy val adminLogoStyle = Seq(
-    display.flex,
-    flexDirection.row,
-    justifyContent.center, /* cent241,49er items horizontally, in this case */
-    width := "500"
-  )
-
   lazy val openmoleLogo = Seq(
     paddingTop := "300",
     width := "500",

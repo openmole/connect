@@ -149,3 +149,14 @@
     font-size: 13px;
     min-width: 150px;
 }
+
+.power {
+    color: d40000;
+    cursor: pointer;
+    font-size: 30px;
+    justify-content: flex-end;
+ }
+
+ a.power:hover {
+    text-decoration: none;
+}
