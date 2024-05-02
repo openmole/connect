@@ -61,5 +61,8 @@ object ConnectUtils {
       }
     }
   }
+  
+  enum OpenMOLEPodStatus:
+    case Running, Starting, Terminated, Terminating
 
 }

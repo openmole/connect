@@ -24,12 +24,14 @@ object Data:
           s match
             case _: Running => "Running"
             case _: Waiting => "Waiting"
+            case _: Terminating => "Terminating"
             case _: Terminated => "Terminated"
 
     enum Status:
       case Running(startedAt: Long) extends Status
       case Waiting(message: String) extends Status
       case Terminated(message: String, finishedAt: Long) extends Status
+      case Terminating() extends Status
 
   case class PodInfo(
     name: String,

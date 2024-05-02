@@ -20,7 +20,9 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using sal
   def changePassword(oldPassword: String, newPassword: String) =
     DB.updatePassword(user.uuid, oldPassword, newPassword)
 
-  def stop = K8sService.stopOpenMOLEPod(user.uuid)
+  def stop = 
+    K8sService.stopOpenMOLEPod(user.uuid)
+    instanceStatus
 
   def availableVersions =
     OpenMOLE.availableVersions(withSnapshot = true, history = Some(history), lastMajors = true)

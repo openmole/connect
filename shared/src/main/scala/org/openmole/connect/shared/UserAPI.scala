@@ -29,10 +29,10 @@ trait UserAPI
       ok(jsonResponse[Option[Data.PodInfo]])
     )
 
-  val stop: Endpoint[Unit, Unit] =
+  val stop: Endpoint[Unit, Option[Data.PodInfo]] =
     endpoint(
       post(path / "stop", jsonRequest[Unit]),
-      ok(jsonResponse[Unit])
+      ok(jsonResponse[Option[Data.PodInfo]])
     )
     
   val usedSpace: Endpoint[Unit, Option[Double]] =
