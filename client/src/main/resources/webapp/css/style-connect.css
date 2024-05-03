@@ -170,7 +170,7 @@
 }
 
 .blink_me {
-  animation: blinker 1s linear infinite;
+  animation: blinker 2s linear infinite;
 }
 
 @keyframes blinker {
@@ -285,4 +285,11 @@ input:checked + .slider:before {
 @keyframes blur-text {
   0% {filter: blur(0px);}
   100% {filter: blur(4px);}
+}
+
+.statusLine {
+    display: flex;
+    flex-direction: row ;
+    justify-content: flex-end;
+    margin-right: 30px;
 }

@@ -23,7 +23,7 @@ object Data:
         def value =
           s match
             case _: Running => "Running"
-            case _: Waiting => "Waiting"
+            case _: Waiting => "Starting"
             case _: Terminating => "Terminating"
             case _: Terminated => "Terminated"
 
