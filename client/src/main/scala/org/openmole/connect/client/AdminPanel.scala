@@ -94,7 +94,7 @@ object AdminPanel:
                     Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
                       UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
                   ),
-                  UIUtils.openmoleBoard(u.uuid)
+                  UIUtils.openmoleBoard(Some(u.uuid))
                 ),
                 selected.signal.map(s => s.contains(u.email))
               )

@@ -32,7 +32,7 @@ object UserPanel {
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
               UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
-              UIUtils.openmoleBoard(u.uuid)
+              UIUtils.openmoleBoard()
             )
           )
         case _=> UIUtils.waiter

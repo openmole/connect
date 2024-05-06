@@ -64,13 +64,18 @@ object UIUtils:
       div(marginTop := "50px", panel)
     )
 
-  class Switch(labelOn: String, labelOff: String, podInfo: Option[PodInfo]):
+  def instanceFuture(uuid: Option[String]) =
+    uuid match
+      case Some(uuid) => AdminAPIClient.instance(uuid).future
+      case None => UserAPIClient.instance(()).future
+
+  class Switch(labelOn: String, labelOff: String, uuid: Option[String]):
 
     def toBoolean(opt: Option[Boolean]): Boolean = opt.getOrElse(false)
 
     lazy val isSet: Var[Option[Boolean]] = Var(None)
 
-    UserAPIClient.instance(()).future.foreach: x =>
+    instanceFuture(uuid).foreach: x =>
           isSet.set(
             x match
             case None => None
@@ -102,8 +107,8 @@ object UIUtils:
       label(cls := "switch", in, span(cls := "slider round"))
     )
 
-  def switch(labelsOn: String, labelsOff: String, podInfo: Option[PodInfo] = None): Switch =
-    Switch(labelsOn, labelsOff, podInfo)
+  def switch(labelsOn: String, labelsOff: String, uuid: Option[String]): Switch =
+    Switch(labelsOn, labelsOff, uuid)
 
   def element(color: String) = div(cls := "statusCircle", background := color)
 
@@ -117,7 +122,7 @@ object UIUtils:
       case Some(Data.PodInfo.Status.Terminating()) => element("#D40000").amend(cls := "blink_me")
       case None => terminatedStatusElement
 
-  def openmoleBoard(uuid: String) =
+  def openmoleBoard(uuid: Option[String] = None) =
     val podInfo: Var[Option[PodInfo]] = Var(None)
 
     val statusDiv =
@@ -147,12 +152,12 @@ object UIUtils:
 
       )
 
-    val sw = switch("Stop OpenMOLE", "Start OpenMOLE")
+    val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid)
 
     div(
       EventStream.periodic(5000).toObservable -->
         Observer: _ =>
-          UserAPIClient.instance(()).future.foreach(podInfo.set),
+          instanceFuture(uuid).foreach(podInfo.set),
       div(
         sw.isSet.signal --> {
           case Some(true) => UserAPIClient.launch(()).future

@@ -41,6 +41,12 @@ trait AdminAPI
       ok(jsonResponse[Option[Double]])
     )
 
+  val instance: Endpoint[String, Option[Data.PodInfo]] =
+    endpoint(
+      post(path / "instance", jsonRequest[String]),
+      ok(jsonResponse[Option[Data.PodInfo]])
+    )
+
 //  val upserted: Endpoint[User, Seq[User]] =
 //    endpoint(
 //      post(path / "upserted", jsonRequest[User]),

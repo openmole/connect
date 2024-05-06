@@ -12,6 +12,7 @@ class AdminAPIImpl(k8sService: K8sService)(using salt: Salt):
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid)
   def deleteRegisterUser(uuid: String): Unit = DB.deleteRegistering(uuid)
   def usedSpace(uuid: String): Option[Double] = K8sService.usedSpace(uuid)
+  def instance(uuid: String): Option[Data.PodInfo] = K8sService.podInfo(uuid)
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
 
@@ -24,7 +25,9 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
   val deleteRegisterRoute = deleteRegisteringUser.implementedBy(r=> impl.deleteRegisterUser(r))
 
   val usedSpaceRoute = usedSpace.implementedBy(impl.usedSpace)
+  
+  val instanceRoute = instance.implementedBy(uuid=> impl.instance(uuid))
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute)
   )
