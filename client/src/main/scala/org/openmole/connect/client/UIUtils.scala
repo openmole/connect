@@ -68,9 +68,11 @@ object UIUtils:
 
     def toBoolean(opt: Option[Boolean]): Boolean = opt.getOrElse(false)
 
-    lazy val isSet: Var[Option[Boolean]] =
-      Var(
-        podInfo match
+    lazy val isSet: Var[Option[Boolean]] = Var(None)
+
+    UserAPIClient.instance(()).future.foreach: x =>
+      isSet.set(
+        x match
           case None => None
           case Some(pi) =>
             pi.status match
@@ -82,7 +84,7 @@ object UIUtils:
 
     val in: Input =
       input(
-        `type` := "checkbox", checked := toBoolean(isSet.now()),
+        `type` := "checkbox", checked <-- isSet.signal.map(toBoolean),
         onInput --> { _ =>
           isSet.set(Some(in.ref.checked))
         }
@@ -134,15 +136,14 @@ object UIUtils:
       div(Css.columnFlex, justifyContent.flexEnd,
         children <--
           podInfo.signal.map: pi =>
-              pi match
+            case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+            case Some(podInfo) =>
+              podInfo.status match
+                case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
+                case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
+                case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
+                case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
                 case None => statusSeq(PodInfo.Status.Terminated("", 0L))
-                case Some(podInfo) =>
-                  podInfo.status match
-                    case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
-                    case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
-                    case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
-                    case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
-                    case None => statusSeq(PodInfo.Status.Terminated("", 0L))
 
       )
 
