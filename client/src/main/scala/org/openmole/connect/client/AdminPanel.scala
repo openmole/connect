@@ -89,10 +89,13 @@ object AdminPanel:
 
               ExpandedRow(
                 div(
-                  height := "200",
-                  child <--
+                  height := "350",
+                  children <--
                     Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
-                      UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory))
+                      Seq(
+                        UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
+                        UIUtils.openmoleBoard(u.uuid)
+                      )
                 ),
                 selected.signal.map(s => s.contains(u.email))
               )
