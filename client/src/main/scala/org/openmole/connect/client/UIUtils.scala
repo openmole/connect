@@ -96,7 +96,7 @@ object UIUtils:
           else labelOff),
         height := "34px", marginRight := "10px", display.flex, flexDirection.row, alignItems.center
       ),
-      
+
       label(cls := "switch", in, span(cls := "slider round"))
     )
 
@@ -118,61 +118,61 @@ object UIUtils:
   def openmoleBoard(uuid: String) =
     val podInfo: Var[Option[PodInfo]] = Var(None)
 
-    def buildStatusDiv(status: Data.PodInfo.Status, message: Option[String] = None) =
-      (
-        div(cls := "statusLine",
-          div(
-            status.value,
-            cls := "badge"
+    val statusDiv =
+      def statusSeq(status: PodInfo.Status, message: Option[String] = None) =
+        Seq(
+          div(cls := "statusLine",
+            div(
+              status.value,
+              cls := "badge"
+            ),
+            UIUtils.statusElement(Some(status)).amend(marginLeft := "10")
           ),
-          UIUtils.statusElement(Some(status)).amend(marginLeft := "10")
-        ),
-        message.map(m => div(m, fontStyle.italic)).getOrElse(div()).amend(cls := "statusLine")
+          message.map(m => div(m, fontStyle.italic)).getOrElse(div()).amend(cls := "statusLine")
+        )
+
+      div(Css.columnFlex, justifyContent.flexEnd,
+        children <--
+          podInfo.signal.map: pi =>
+              pi match
+                case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+                case Some(podInfo) =>
+                  podInfo.status match
+                    case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
+                    case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
+                    case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
+                    case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
+                    case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+
       )
 
-    val sw = podInfo.signal.map(pi => switch("Stop OpenMOLE", "Start OpenMOLE", pi))
+    val sw = switch("Stop OpenMOLE", "Start OpenMOLE")
+
     div(
       EventStream.periodic(5000).toObservable -->
         Observer: _ =>
           UserAPIClient.instance(()).future.foreach(podInfo.set),
-      child <--
-        podInfo.signal.map: pi =>
-          div(Css.columnFlex, justifyContent.flexEnd,
-            div(
-              sw.flatMap(_.isSet.signal) --> {
-                case Some(true) => UserAPIClient.launch(()).future
-                case Some(false) => UserAPIClient.stop(()).future
-                case None =>
-              },
-              child <--
-                podInfo.signal.map: pi =>
-                  val statusDiv =
-                    pi match
-                      case None => buildStatusDiv(PodInfo.Status.Terminated("", 0L))
-                      case Some(podInfo) =>
-                        podInfo.status match
-                          case Some(t: PodInfo.Status.Terminating) => buildStatusDiv(t)
-                          case Some(t: PodInfo.Status.Terminated) => buildStatusDiv(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
-                          case Some(t: PodInfo.Status.Waiting) => buildStatusDiv(t, Some(t.message))
-                          case Some(t: PodInfo.Status.Running) => buildStatusDiv(t, Some(t.startedAt.toStringDate))
-                          case None=> buildStatusDiv(PodInfo.Status.Terminated("", 0L))
-                  div(
-                    Css.columnFlex, justifyContent.flexEnd,
-                    child <-- sw.map(_.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30")),
-                    statusDiv._1.amend(marginTop := "20"),
-                    statusDiv._2
-                  )
-            ),
-            div(Css.rowFlex, justifyContent.flexEnd,
-              child <--
-                podInfo.signal.map:
-                  case Some(podInfo) =>
-                    podInfo.status match
-                      case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting) | None => div()
-                      case _ => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
-                  case _ => a()
-            )
-          )
+      div(
+        sw.isSet.signal --> {
+          case Some(true) => UserAPIClient.launch(()).future
+          case Some(false) => UserAPIClient.stop(()).future
+          case None =>
+        },
+        div(
+          Css.columnFlex, justifyContent.flexEnd,
+          sw.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30"),
+          statusDiv.amend(marginTop := "20")
+        ),
+        div(Css.rowFlex, justifyContent.flexEnd,
+          child <--
+            podInfo.signal.map:
+              case Some(podInfo) =>
+                podInfo.status match
+                  case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting) | None => div()
+                  case _ => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+              case _ => a()
+        )
+      )
     )
 
   def waiter =
