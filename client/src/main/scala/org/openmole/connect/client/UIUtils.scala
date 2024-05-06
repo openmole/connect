@@ -7,8 +7,8 @@ import scaladget.bootstrapnative.bsn.*
 import org.openmole.connect.shared.Data
 import com.raquo.laminar.nodes.ReactiveElement.isActive
 import org.openmole.connect.client.ConnectUtils.*
-import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.UUID
 
 object UIUtils:
@@ -71,14 +71,14 @@ object UIUtils:
     lazy val isSet: Var[Option[Boolean]] = Var(None)
 
     UserAPIClient.instance(()).future.foreach: x =>
-      isSet.set(
-        x match
-          case None => None
-          case Some(pi) =>
-            pi.status match
-              case Some(_: PodInfo.Status.Running | _: PodInfo.Status.Waiting) => Some(true)
-              case _ => Some(false)
-      )
+          isSet.set(
+            x match
+            case None => None
+            case Some(pi) =>
+              pi.status match
+                case Some(_: PodInfo.Status.Running | _: PodInfo.Status.Waiting) => Some(true)
+                case _ => Some(false)
+          )
 
     //lazy val isTriggered: Var[Option[Boolean]] = Var(None)
 
@@ -135,15 +135,15 @@ object UIUtils:
 
       div(Css.columnFlex, justifyContent.flexEnd,
         children <--
-          podInfo.signal.map: pi =>
-            case None => statusSeq(PodInfo.Status.Terminated("", 0L))
-            case Some(podInfo) =>
-              podInfo.status match
-                case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
-                case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
-                case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
-                case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
-                case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+          podInfo.signal.map:
+              case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+              case Some(podInfo) =>
+                podInfo.status match
+                  case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
+                  case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
+                  case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
+                  case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
+                  case None => statusSeq(PodInfo.Status.Terminated("", 0L))
 
       )
 

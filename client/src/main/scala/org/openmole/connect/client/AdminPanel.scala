@@ -41,11 +41,11 @@ object AdminPanel:
       span(cls := "bi-eye-fill",
         cursor.pointer,
         onClick --> { _ =>
-        selected.update:
-          case Some(email: String) if (email == key) => None
-          case Some(email: String) => Some(key)
-          case None => Some(key)
-      })
+          selected.update:
+            case Some(email: String) if (email == key) => None
+            case Some(email: String) => Some(key)
+            case None => Some(key)
+        })
 
     def registeringUserBlock(register: RegisterUser) =
       div(Css.centerRowFlex, padding := "10px",
@@ -89,26 +89,22 @@ object AdminPanel:
 
               ExpandedRow(
                 div(
-                  height := "350",
-                  children <--
+                  Css.columnFlex, height := "350",
+                  div(child <--
                     Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
-                      Seq(
-                        UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
-                        UIUtils.openmoleBoard(u.uuid)
-                      )
+                      UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
+                  ),
+                  UIUtils.openmoleBoard(u.uuid)
                 ),
                 selected.signal.map(s => s.contains(u.email))
               )
             )
             )
-
           userInfos.flatMap: ui =>
             Seq(
               ui.show,
               ui.expandedRow
             )
-
-
       )
 
     lazy val appContainer = dom.document.querySelector("#appContainer")
