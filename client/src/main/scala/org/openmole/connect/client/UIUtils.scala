@@ -119,10 +119,8 @@ object UIUtils:
       case None => terminatedStatusElement
 
   def openmoleBoard(uuid: String) =
-
     val podInfo: Var[Option[PodInfo]] = Var(None)
     UserAPIClient.instance(()).future.foreach(podInfo.set)
-
 
     def buildStatusDiv(status: Data.PodInfo.Status, message: Option[String] = None) =
       (
@@ -147,11 +145,8 @@ object UIUtils:
             div(
               sw.isSet.signal --> {
                 _ match
-                  case Some(true) =>
-                    UserAPIClient.launch(()).future.foreach { pi =>
-                      podInfo.set(pi)
-                    }
-                  case Some(false) => UserAPIClient.stop(()).future.foreach(podInfo.set)
+                  case Some(true) => UserAPIClient.launch(()).future
+                  case Some(false) => UserAPIClient.stop(()).future
                   case None=>
               },
               child <--
