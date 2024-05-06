@@ -96,11 +96,8 @@ object UIUtils:
           else labelOff),
         height := "34px", marginRight := "10px", display.flex, flexDirection.row, alignItems.center
       ),
-      label(cls := "switch",
-        in,
-        span(cls := "slider round"
-        )
-      )
+      
+      label(cls := "switch", in, span(cls := "slider round"))
     )
 
   def switch(labelsOn: String, labelsOff: String, podInfo: Option[PodInfo] = None): Switch =
@@ -120,7 +117,6 @@ object UIUtils:
 
   def openmoleBoard(uuid: String) =
     val podInfo: Var[Option[PodInfo]] = Var(None)
-    UserAPIClient.instance(()).future.foreach(podInfo.set)
 
     def buildStatusDiv(status: Data.PodInfo.Status, message: Option[String] = None) =
       (
@@ -134,20 +130,19 @@ object UIUtils:
         message.map(m => div(m, fontStyle.italic)).getOrElse(div()).amend(cls := "statusLine")
       )
 
-    val sw = switch("Stop OpenMOLE", "Start OpenMOLE")
+    val sw = podInfo.signal.map(pi => switch("Stop OpenMOLE", "Start OpenMOLE", pi))
     div(
+      EventStream.periodic(5000).toObservable -->
+        Observer: _ =>
+          UserAPIClient.instance(()).future.foreach(podInfo.set),
       child <--
         podInfo.signal.map: pi =>
           div(Css.columnFlex, justifyContent.flexEnd,
-            EventStream.periodic(5000).toObservable -->
-              Observer: _ =>
-                UserAPIClient.instance(()).future.foreach(podInfo.set),
             div(
-              sw.isSet.signal --> {
-                _ match
-                  case Some(true) => UserAPIClient.launch(()).future
-                  case Some(false) => UserAPIClient.stop(()).future
-                  case None=>
+              sw.flatMap(_.isSet.signal) --> {
+                case Some(true) => UserAPIClient.launch(()).future
+                case Some(false) => UserAPIClient.stop(()).future
+                case None =>
               },
               child <--
                 podInfo.signal.map: pi =>
@@ -163,7 +158,7 @@ object UIUtils:
                           case None=> buildStatusDiv(PodInfo.Status.Terminated("", 0L))
                   div(
                     Css.columnFlex, justifyContent.flexEnd,
-                    sw.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30"),
+                    child <-- sw.map(_.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30")),
                     statusDiv._1.amend(marginTop := "20"),
                     statusDiv._2
                   )
@@ -175,6 +170,7 @@ object UIUtils:
                     podInfo.status match
                       case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting) | None => div()
                       case _ => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+                  case _ => a()
             )
           )
     )
