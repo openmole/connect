@@ -110,15 +110,13 @@ object UIUtils:
 
   def element(color: String) = div(cls := "statusCircle", background := color)
 
-  val terminatedStatusElement = element("#D40000")
-
   def statusElement(status: Option[Data.PodInfo.Status]) =
     status match
       case Some(Data.PodInfo.Status.Running(_)) => element("#73AD21")
-      case Some(Data.PodInfo.Status.Terminated(_, _)) => terminatedStatusElement
+      case Some(Data.PodInfo.Status.Terminated(_, _)) => element("#D40000")
       case Some(Data.PodInfo.Status.Waiting(_)) => element("#73AD21").amend(cls := "blink_me")
       case Some(Data.PodInfo.Status.Terminating()) => element("#D40000").amend(cls := "blink_me")
-      case None => terminatedStatusElement
+      case None => element("#D40000")
 
   def openmoleBoard(uuid: Option[String] = None) =
     val podInfo: Var[Option[PodInfo]] = Var(None)
