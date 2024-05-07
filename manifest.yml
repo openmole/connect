@@ -76,7 +76,7 @@ metadata:
 spec:
   containers:
   - name: openmole-connect
-    image: openmole-connect:0.6-SNAPSHOT
+    image: openmole/openmole-connect:1.0-SNAPSHOT
     args:
       - --config-file
       - "/etc/connect-config/config.yml"

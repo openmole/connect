@@ -36,7 +36,6 @@ object ConnectServer:
 
   object Config:
     case class Kube(storageClassName: Option[String] = None)
-
     case class OpenMOLE(versionHistory: Int)
 
   case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE)

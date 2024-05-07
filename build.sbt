@@ -40,7 +40,7 @@ val skuberProject = RootProject(uri("https://github.com/doriordan/skuber.git#30r
 
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
-  version := "0.6-SNAPSHOT",
+  version := "1.0-SNAPSHOT",
   scalaVersion := "3.3.3",
   resolvers := Resolvers
 )
@@ -133,7 +133,7 @@ lazy val application = project.in(file("application")) settings (defaultSettings
     ) ++ doMapping((resourceDirectory in client in Compile).value, prefix)
       ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/")
       ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),
-  Docker / packageName := "openmole-connect",
+  Docker / packageName := "openmole/openmole-connect",
   Docker / organization := "openmole"
 )
 
