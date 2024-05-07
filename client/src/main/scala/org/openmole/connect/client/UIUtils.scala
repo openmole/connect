@@ -179,7 +179,10 @@ object UIUtils:
               case Some(podInfo) =>
                 podInfo.status match
                   case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting) | None => div()
-                  case _ => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+                  case _ =>
+                    uuid.match
+                      case None => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+                      case Some(_) => a("Log as user", cls := "statusLine", marginTop := "20")
               case _ => a()
         )
       )

@@ -31,7 +31,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
   val usedSpaceRoute = usedSpace.implementedBy(impl.usedSpace)
   val instanceRoute = instance.implementedBy(impl.instance)
   val launchRoute = launch.implementedBy(impl.launch)
-  val stopRoute = launch.implementedBy(impl.stop)
+  val stopRoute = stop.implementedBy(impl.stop)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
     routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, launchRoute, stopRoute)
