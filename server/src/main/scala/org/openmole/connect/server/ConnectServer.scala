@@ -68,10 +68,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
   def start() =
     DB.initDB()
-
-    //println(K8sService.listPods)
-    //println(K8sService.deployOpenMOLE("8888888", "latest", "5Gi", config.kube.storageClassName))
-
+    
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
         case req@GET -> Root =>
@@ -86,7 +83,6 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") zip r.getFirst("Name") zip r.getFirst("First name") zip r.getFirst("Institution") match
               case Some(((((email: String, password: String), name: String), firstName: String), institution: String)) =>
-                println("Register match")
                 DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
                 ServerContent.ok("connection(false)")
               case None =>
@@ -106,6 +102,19 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
         case req @ GET -> Root / Data.disconnectRoute =>
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
           ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
+
+        case req @ GET -> Root / Data.impersonateRoute =>
+          ServerContent.authenticated(req): admin =>
+            req.params.get("uuid") match
+              case Some(uuid) =>
+                if DB.User.isAdmin(admin)
+                then
+                  DB.userFromUUID(uuid) match
+                    case Some(user) => ServerContent.redirect(s"/").map(ServerContent.addJWTToken(user.email, user.password))
+                    case None => NotFound(s"User not found ${uuid}")
+                else
+                  Forbidden(s"User ${admin.name} is not admin")
+              case None => BadRequest("No uuid parameter found")
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>

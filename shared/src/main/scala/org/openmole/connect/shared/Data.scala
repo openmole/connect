@@ -8,6 +8,7 @@ object Data:
   val adminAPIRoute = "admin"
   val openMOLERoute = "openmole"
   val disconnectRoute = "disconnect"
+  val impersonateRoute = "impersonate"
 
   type Role = String
   val admin: Role = "Admin"
