@@ -14,20 +14,25 @@ class AdminAPIImpl(k8sService: K8sService)(using salt: Salt):
   def usedSpace(uuid: String): Option[Double] = K8sService.usedSpace(uuid)
   def instance(uuid: String): Option[Data.PodInfo] = K8sService.podInfo(uuid)
 
+  def launch(uuid: String): Unit =
+    if K8sService.deploymentExists(uuid)
+    then K8sService.startOpenMOLEPod(uuid)
+    else
+      DB.userFromUUID(uuid).foreach: user =>
+        K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu, user.storage)
+
+  def stop(uuid: String): Unit = K8sService.stopOpenMOLEPod(uuid)
+
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
-
   val usersRoute = users.implementedBy { _ =>  impl.users }
-  
   val registeringUsersRoute = registeringUsers.implementedBy { _ => impl.registeringUsers }
-
   val promoteRoute = promoteRegisteringUser.implementedBy{ r => impl.promoteRegisterUser(r)}
-
-  val deleteRegisterRoute = deleteRegisteringUser.implementedBy(r=> impl.deleteRegisterUser(r))
-
+  val deleteRegisterRoute = deleteRegisteringUser.implementedBy(impl.deleteRegisterUser)
   val usedSpaceRoute = usedSpace.implementedBy(impl.usedSpace)
-  
-  val instanceRoute = instance.implementedBy(uuid=> impl.instance(uuid))
+  val instanceRoute = instance.implementedBy(impl.instance)
+  val launchRoute = launch.implementedBy(impl.launch)
+  val stopRoute = launch.implementedBy(impl.stop)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, launchRoute, stopRoute)
   )

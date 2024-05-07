@@ -47,6 +47,19 @@ trait AdminAPI
       ok(jsonResponse[Option[Data.PodInfo]])
     )
 
+  val launch: Endpoint[String, Unit] =
+    endpoint(
+      post(path / "launch", jsonRequest[String]),
+      ok(jsonResponse[Unit])
+    )
+
+  val stop: Endpoint[String, Unit] =
+    endpoint(
+      post(path / "stop", jsonRequest[String]),
+      ok(jsonResponse[Unit])
+    )
+
+
 //  val upserted: Endpoint[User, Seq[User]] =
 //    endpoint(
 //      post(path / "upserted", jsonRequest[User]),

@@ -70,20 +70,18 @@ object UIUtils:
       case None => UserAPIClient.instance(()).future
 
   class Switch(labelOn: String, labelOff: String, uuid: Option[String]):
-
     def toBoolean(opt: Option[Boolean]): Boolean = opt.getOrElse(false)
 
     lazy val isSet: Var[Option[Boolean]] = Var(None)
 
     instanceFuture(uuid).foreach: x =>
-          isSet.set(
-            x match
-            case None => None
-            case Some(pi) =>
-              pi.status match
-                case Some(_: PodInfo.Status.Running | _: PodInfo.Status.Waiting) => Some(true)
-                case _ => Some(false)
-          )
+      isSet.set:
+        x match
+        case None => None
+        case Some(pi) =>
+          pi.status match
+            case Some(_: PodInfo.Status.Running | _: PodInfo.Status.Waiting) => Some(true)
+            case _ => Some(false)
 
     //lazy val isTriggered: Var[Option[Boolean]] = Var(None)
 
@@ -160,8 +158,14 @@ object UIUtils:
           instanceFuture(uuid).foreach(podInfo.set),
       div(
         sw.isSet.signal --> {
-          case Some(true) => UserAPIClient.launch(()).future
-          case Some(false) => UserAPIClient.stop(()).future
+          case Some(true) =>
+            uuid match
+              case None => UserAPIClient.launch(()).future
+              case Some(uuid) => AdminAPIClient.launch((uuid)).future
+          case Some(false) =>
+            uuid match
+              case None => UserAPIClient.stop(()).future
+              case Some(uuid) => AdminAPIClient.stop((uuid)).future
           case None =>
         },
         div(

@@ -191,12 +191,10 @@ object K8sService:
             k8s update updated
 
   def stopOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
-    println("STOP " + uuid)
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
 
   def startOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
-    println("START " + uuid)
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
 
