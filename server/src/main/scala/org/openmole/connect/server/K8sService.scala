@@ -17,9 +17,13 @@ import skuber.json.format.*
 import skuber.json.networking.format.*
 import skuber.networking.{Ingress, IngressList}
 
+import java.util
 import scala.collection.immutable.List
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+
+import monocle.*
+import monocle.syntax.all.*
 
 object K8sService:
 
@@ -62,13 +66,10 @@ object K8sService:
     val allPodsFuture = allPodsMapFut.map(_.items)
     allPodsFuture.map { _.map(toPodInfo) }.await
 
-  def withK8s[T](kubeAction: KubernetesClient => T) =
-    implicit val system: ActorSystem = ActorSystem()
-    val k8s = k8sInit
-    try kubeAction(k8s)
-    finally k8s.close()
 
-  def withK8sNF[T](kubeAction: KubernetesClient => T) =
+  type KubeAction[+T] = KubernetesClient => T
+
+  def withK8s[T](kubeAction: KubeAction[T]) =
     implicit val system: ActorSystem = ActorSystem()
     val k8s = k8sInit
     try kubeAction(k8s)
@@ -110,7 +111,7 @@ object K8sService:
       resources = Some(Resource.Requirements(limits = limits))
     ).exposePort(80)
 
-  def createPersistentVolumeClaim(pvcName: String, storage: Int, storageClassName: Option[String]) =
+  def persistentVolumeClaim(pvcName: String, storage: Int, storageClassName: Option[String]) =
     def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map("app" -> Namespace.openmole))
 
     PersistentVolumeClaim(
@@ -132,12 +133,12 @@ object K8sService:
     )
 
   def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, storageRequirement: Int) =
-    withK8sNF: k8s =>
+    withK8s: k8s =>
       val podName = uuid.value
-      val pvcName = s"pvc-${podName}"
+      val pvcName = s"pvc-$podName-${util.UUID.randomUUID().toString}"
       //val pvName = s"pv-${podName}"
 
-      val pvc = createPersistentVolumeClaim(pvcName, storageRequirement, k8sService.storageClassName)
+      val pvc = persistentVolumeClaim(pvcName, storageRequirement, k8sService.storageClassName)
 
       val openMOLESelector: LabelSelector = LabelSelector.IsEqualRequirement("app", "openmole")
       val openMOLEContainer = createOpenMOLEContainer(omVersion, openMOLEMemory, memoryLimit, cpuLimit)
@@ -199,19 +200,52 @@ object K8sService:
       k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
     .await
 
+  def getPVCName(uuid: UUID): Option[String] =
+    withK8s: k8s =>
+      val deployment = k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).await
+      deployment.focus(_.spec.some.template.spec.some.volumes.index(0).source).getOption match
+          case Some(v: Volume.PersistentVolumeClaimRef) => Some(v.claimName)
+          case _ => None
+
   // FIXME test with no pv name
-  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: Int, storageClassName: Option[String]) = withK8s: k8s =>
-    k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").map: pvc =>
-      pvc.spec.map: spec =>
-        spec.volumeName.map: pvName =>
-          k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
+  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, size: Int, storageClassName: Option[String]) = withK8s: k8s =>
+    //stopOpenMOLEPod(uuid)
+
+    //val pvcName = s"pvc-$uuid-${util.UUID.randomUUID().toString}"
+    //val newPVC = persistentVolumeClaim(pvcName, size, storageClassName)
+
+    //k8s.usingNamespace(Namespace.openmole).create(newPVC).await
+    getPVCName(uuid).foreach: pvcName =>
+      k8s.usingNamespace(Namespace.openmole).update(persistentVolumeClaim(pvcName, size, storageClassName)).await
+
+//    val deployment = k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).await
+//
+//    k8s.usingNamespace(Namespace.openmole).update[Deployment]:
+//      deployment.focus(_.spec.some.template.spec.some.volumes).set:
+//        List(Volume(name = "data", source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
+
+//    deployment.withTemplate:
+//      deployment.spec.get.template.spec.get.volumes
+//      d.spec.map: s =>
+//        s.template.spec.map: t =>
+//          t.volumes.head.source match
+//            case v: Volume.PersistentVolumeClaimRef => println(v.claimName)
+//            case _ =>
+//
+//    //val pvc = k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").await
+//
+//    k8s.usingNamespace(Namespace.openmole).delete(pvcName).await
+//    k8s.usingNamespace(Namespace.openmole).update(newPVC).await //createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
 
   def deleteOpenMOLE(uuid: UUID): Unit =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
     withK8s: k8s =>
+      getPVCName(uuid).foreach: name =>
+        k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](name).await
+
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
       k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions).await
-      k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](s"pvc-${uuid.value}").await
+
 
   //  def deployIfNotDeployedYet(k8sService: K8sService, uuid: UUID, omVersion: String, storage: String) =
   //    if !deploymentExists(uuid) then deployOpenMOLE(k8sService, uuid, omVersion, storage)
@@ -258,7 +292,51 @@ object K8sService:
       podInfo <- podInfo(uuid, pods)
     yield podInfo
 
-//def hostIP(uuid: UUID) = podInfo(uuid).flatMap { _.podIP }
+  /*def migratePV(source: String, destination: String) =
+    withK8s: k8s =>
+      import skuber.batch.*
+      import skuber.json.batch.format.*
+
+      val migrate = Job(
+        metadata = ObjectMeta(name = s"migrate-pv-$source"),
+        spec = Some:
+          Job.Spec(
+            template = Some:
+              Pod.Template.Spec(
+                spec = Some:
+                  Pod.Spec(
+                    containers = List:
+                      Container(
+                        name = "migrate",
+                        image = "debian",
+                        command = List("/bin/bash", "-c"),
+                        args = List("ls -lah /src_vol /dst_vol && df -h && cp -a /src_vol/. /dst_vol/ && ls -lah /dst_vol/ && du -shxc /src_vol/ /dst_vol/"),
+                        volumeMounts = List(
+                          Volume.Mount(
+                            mountPath = "/src_vol",
+                            name = "src",
+                            readOnly = true
+                          ),
+                          Volume.Mount(
+                            mountPath = "/dst_vol",
+                            name = "dst"
+                          )
+                        )
+                      ),
+                    restartPolicy = RestartPolicy.Never,
+                    volumes = List(
+                      Volume(name = "src", source = Volume.PersistentVolumeClaimRef(claimName = source)),
+                      Volume(name = "dst", source = Volume.PersistentVolumeClaimRef(claimName = destination))
+                    )
+                  )
+                ),
+            backoffLimit = Some(1)
+          )
+
+      )
+
+      k8s.usingNamespace(Namespace.openmole).create(migrate)
+  */
 
 
 case class K8sService(storageClassName: Option[String])

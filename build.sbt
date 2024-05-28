@@ -112,6 +112,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.apache.commons" % "commons-lang3" % "3.14.0",
     "io.github.arainko" %% "ducktape" % "0.2.0",
     "io.kubernetes" % "client-java" % "19.0.1",
+    "dev.optics" %% "monocle-core"  % "3.2.0",
+    "dev.optics" %% "monocle-macro" % "3.2.0",
   )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
 

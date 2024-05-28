@@ -59,6 +59,9 @@ metadata:
   namespace: openmole
   name: csi-sc-cinderplugin
 provisioner: cinder.csi.openstack.org
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
