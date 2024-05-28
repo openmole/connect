@@ -10,6 +10,13 @@ import org.apache.http.impl.client.{CloseableHttpClient, HttpClientBuilder}
 import java.io.{PrintWriter, StringWriter}
 import java.text.SimpleDateFormat
 import java.util.Locale
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
+
+extension [T](inline f: scala.concurrent.Future[T])
+  inline def await: T = Await.result(f, Duration.Inf)
 
 object Utils:
 
@@ -45,5 +52,4 @@ object Utils:
         (json \\ "name").children.map(_.values.toString)
       finally response.close()
     finally httpClient.close()
-
 

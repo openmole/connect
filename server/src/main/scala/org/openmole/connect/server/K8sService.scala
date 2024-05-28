@@ -20,8 +20,6 @@ import skuber.networking.{Ingress, IngressList}
 import scala.collection.immutable.List
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.*
-import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
 object K8sService:
 
@@ -60,42 +58,38 @@ object K8sService:
     )
 
   def listPods = withK8s: k8s =>
-    val allPodsMapFut: Future[PodList] = k8s.listInNamespace[PodList]("openmole") //k8s.listSelected[PodList](LabelSelector.IsEqualRequirement("app","openmole"))
-    val allPodsFuture: Future[List[Pod]] = allPodsMapFut.map(_.items)
+    val allPodsMapFut = k8s.listInNamespace[PodList]("openmole") //k8s.listSelected[PodList](LabelSelector.IsEqualRequirement("app","openmole"))
+    val allPodsFuture = allPodsMapFut.map(_.items)
+    allPodsFuture.map { _.map(toPodInfo) }.await
 
-    allPodsFuture map {
-      _.map(toPodInfo)
-    }
-
-
-  def withK8s[T](kubeAction: KubernetesClient => Future[T]) =
+  def withK8s[T](kubeAction: KubernetesClient => T) =
     implicit val system: ActorSystem = ActorSystem()
     val k8s = k8sInit
-    try Await.result(kubeAction(k8s), Duration.Inf)
+    try kubeAction(k8s)
+    finally k8s.close()
+
+  def withK8sNF[T](kubeAction: KubernetesClient => T) =
+    implicit val system: ActorSystem = ActorSystem()
+    val k8s = k8sInit
+    try kubeAction(k8s)
     finally k8s.close()
 
   def getIngress = withK8s: k8s =>
-
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val dispatcher: ExecutionContextExecutor = system.dispatcher
-
-    val allIngressMapFut: Future[ListResource[Ingress]] = k8s.listInNamespace[IngressList]("ingress-nginx")
-    val allIngressFuture: Future[List[Ingress]] = allIngressMapFut map { allIngressMap => allIngressMap.items }
+    val allIngressMapFut = k8s.listInNamespace[IngressList]("ingress-nginx")
+    val allIngressFuture = allIngressMapFut.map { allIngressMap => allIngressMap.items }
 
     def listIngress(ingresses: List[Ingress]) = ingresses.headOption
 
-    allIngressFuture map { ingresses => listIngress(ingresses) }
+    allIngressFuture.map { ingresses => listIngress(ingresses) }.await
 
   def ingressIP: Option[String] =
-    getIngress.flatMap { i =>
-      i.status.flatMap {
-        _.loadBalancer.flatMap {
-          _.ingress.headOption.flatMap {
-            _.ip
-          }
-        }
-      }
-    }
+    for
+      i <- getIngress
+      s <- i.status
+      b <- s.loadBalancer
+      ig <- b.ingress.headOption
+      ip <- ig.ip
+    yield ip
 
   def createOpenMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
@@ -138,8 +132,7 @@ object K8sService:
     )
 
   def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, storageRequirement: Int) =
-    withK8s: k8s =>
-      println("DEPLOY")
+    withK8sNF: k8s =>
       val podName = uuid.value
       val pvcName = s"pvc-${podName}"
       //val pvName = s"pv-${podName}"
@@ -167,14 +160,13 @@ object K8sService:
       val openMOLEDeployment =
         Deployment(
           metadata = ObjectMeta(name = podName),
-          spec = Some(
+          spec = Some:
             Deployment.Spec(
               replicas = Some(desiredCount),
               selector = openMOLESelector,
               template = openMOLETemplate,
               strategy = Some(Deployment.Strategy.Recreate)
             )
-          )
         )
       //        .withReplicas(desiredCount)
       //        .withTemplate(openMOLETemplate)
@@ -183,25 +175,29 @@ object K8sService:
       // Creating the openmole deployment
       k8s.usingNamespace(Namespace.openmole) create pvc
       val createdDeploymentFut = k8s.usingNamespace(Namespace.openmole) create openMOLEDeployment
-      println("111")
+
       createdDeploymentFut.recoverWith:
         case ex: K8SException if ex.status.code.contains(409) =>
           k8s.get[Deployment](openMOLEDeployment.name).flatMap: curr =>
             val updated = openMOLEDeployment.withResourceVersion(curr.metadata.resourceVersion)
             k8s update updated
+      .await
 
   def stopOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
+    .await
 
   def startOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
+    .await
 
   def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
       k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
+    .await
 
   // FIXME test with no pv name
   def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, newStorage: Int, storageClassName: Option[String]) = withK8s: k8s =>
@@ -210,26 +206,24 @@ object K8sService:
         spec.volumeName.map: pvName =>
           k8s.usingNamespace(Namespace.openmole).update(createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
 
-  def deleteOpenMOLE(uuid: UUID) =
+  def deleteOpenMOLE(uuid: UUID): Unit =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
     withK8s: k8s =>
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
-      k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
-      k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](s"pvc-${uuid.value}")
+      k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions).await
+      k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](s"pvc-${uuid.value}").await
 
   //  def deployIfNotDeployedYet(k8sService: K8sService, uuid: UUID, omVersion: String, storage: String) =
   //    if !deploymentExists(uuid) then deployOpenMOLE(k8sService, uuid, omVersion, storage)
 
   private def podInfo(uuid: UUID, podList: List[PodInfo]): Option[PodInfo] =
-    podList.find {
-      _.name.contains(uuid.value)
-    }
+    podList.find { _.name.contains(uuid.value) }
 
   // This method was kept to test the LabelSelector method. Is works but requires more API requests => longer
   def podInfo(uuid: UUID): Option[PodInfo] =
     withK8s: k8s =>
       val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
-      pods.map { list => list.items.map(toPodInfo).headOption }
+      pods.map { list => list.items.map(toPodInfo).headOption }.await
 
   //  def isServiceUp(uuid: UUID): Boolean =
   //    podInfo(uuid).flatMap { _.status.contains() }.isDefined

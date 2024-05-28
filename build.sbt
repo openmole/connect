@@ -111,7 +111,7 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "commons-codec" % "commons-codec" % "1.16.1",
     "org.apache.commons" % "commons-lang3" % "3.14.0",
     "io.github.arainko" %% "ducktape" % "0.2.0",
-    "io.kubernetes" % "client-java" % "19.0.1"
+    "io.kubernetes" % "client-java" % "19.0.1",
   )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
 
@@ -134,7 +134,8 @@ lazy val application = project.in(file("application")) settings (defaultSettings
       ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/")
       ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),
   Docker / packageName := "openmole/openmole-connect",
-  Docker / organization := "openmole"
+  Docker / organization := "openmole",
+  dockerBaseImage := "openjdk:21-slim"
 )
 
 def doMapping(from: java.io.File, toBase: String): Seq[(File, String)] = {
