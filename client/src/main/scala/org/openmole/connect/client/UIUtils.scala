@@ -1,15 +1,17 @@
 package org.openmole.connect.client
 
-import org.openmole.connect.shared.Data.{PodInfo, RegisterUser, Role}
+import org.openmole.connect.shared.Data.{PodInfo, RegisterUser, Role, User, UserAndPodInfo}
 import com.raquo.laminar.api.L.*
 import org.openmoleconnect.client.Css
 import scaladget.bootstrapnative.bsn.*
 import org.openmole.connect.shared.Data
 import com.raquo.laminar.nodes.ReactiveElement.isActive
 import org.openmole.connect.client.ConnectUtils.*
+import org.openmole.connect.shared.Data.PodInfo.Status.Running
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.UUID
+import scala.runtime.LazyVals.Waiting
 
 object UIUtils:
 
@@ -46,15 +48,18 @@ object UIUtils:
       span(Css.centerColumnFlex, fontFamily := "gi", fontSize := "14", s"${toGB(value)}/${toGB(max)} GB")
     )
 
-  def userInfoBlock(detailedInfo: DetailedInfo) =
-    div(Css.centerRowFlex, justifyContent.center, padding := "30px",
-      badgeBlock("Role", detailedInfo.role),
-      textBlock("OpendMOLE version", detailedInfo.omVersion),
-      textBlock("CPU", detailedInfo.cpu.toString),
-      textBlock("Memory", toGB(detailedInfo.memory)),
-      textBlock("OpenMOLE memory", toGB(detailedInfo.openMOLEMemory)),
-      //FIXME use another color when used storage is not set
-      memoryBar("Storage", detailedInfo.usedStorage.getOrElse(0), detailedInfo.availableStorage),
+  def userInfoBlock(user: User) =
+    div(
+      child <-- Signal.fromFuture(AdminAPIClient.usedSpace(user.uuid).future).map: v =>
+        div(Css.centerRowFlex, justifyContent.center, padding := "30px",
+          badgeBlock("Role", user.role),
+          textBlock("OpendMOLE version", user.omVersion),
+          textBlock("CPU", user.cpu.toString),
+          textBlock("Memory", toGB(user.memory)),
+          textBlock("OpenMOLE memory", toGB(user.openMOLEMemory)),
+          //FIXME use another color when used storage is not set
+          memoryBar("Storage", v.flatten.map(_.toInt).getOrElse(0), user.storage),
+        )
     )
 
   def mainPanel(panel: HtmlElement) =
@@ -69,34 +74,22 @@ object UIUtils:
       case Some(uuid) => AdminAPIClient.instance(uuid).future
       case None => UserAPIClient.instance(()).future
 
-  class Switch(labelOn: String, labelOff: String, uuid: Option[String]):
-    def toBoolean(opt: Option[Boolean]): Boolean = opt.getOrElse(false)
-
-    lazy val isSet: Var[Option[Boolean]] = Var(None)
-
-    instanceFuture(uuid).foreach: x =>
-      isSet.set:
-        x match
-        case None => None
-        case Some(pi) =>
-          pi.status match
-            case Some(_: PodInfo.Status.Running | _: PodInfo.Status.Waiting) => Some(true)
-            case _ => Some(false)
-
-    //lazy val isTriggered: Var[Option[Boolean]] = Var(None)
+  class Switch(labelOn: String, labelOff: String, uuid: Option[String], initialState: Boolean):
+    val isSet: Var[Boolean] = Var(initialState)
 
     val in: Input =
       input(
-        `type` := "checkbox", checked <-- isSet.signal.map(toBoolean),
+        `type` := "checkbox",
+        checked <-- isSet.signal,
         onInput --> { _ =>
-          isSet.set(Some(in.ref.checked))
+          isSet.set(in.ref.checked)
         }
       )
 
     val element = div(display.flex, flexDirection.row,
       div(
         child <-- isSet.signal.map(b =>
-          if toBoolean(b)
+          if b
           then labelOn
           else labelOff),
         height := "34px", marginRight := "10px", display.flex, flexDirection.row, alignItems.center
@@ -105,8 +98,8 @@ object UIUtils:
       label(cls := "switch", in, span(cls := "slider round"))
     )
 
-  def switch(labelsOn: String, labelsOff: String, uuid: Option[String]): Switch =
-    Switch(labelsOn, labelsOff, uuid)
+  def switch(labelsOn: String, labelsOff: String, uuid: Option[String], initialState: Boolean): Switch =
+    Switch(labelsOn, labelsOff, uuid, initialState)
 
   def element(color: String) = div(cls := "statusCircle", background := color)
 
@@ -116,57 +109,79 @@ object UIUtils:
       case Some(Data.PodInfo.Status.Terminated(_, _)) => element("#D40000")
       case Some(Data.PodInfo.Status.Waiting(_)) => element("#73AD21").amend(cls := "blink_me")
       case Some(Data.PodInfo.Status.Terminating()) => element("#D40000").amend(cls := "blink_me")
+      case Some(Data.PodInfo.Status.Unknown()) => element("#000")
       case None => element("#D40000")
 
-  def openmoleBoard(uuid: Option[String] = None) =
-    val podInfo: Var[Option[PodInfo]] = Var(None)
+  def statusLine(status: PodInfo.Status) =
+    div(cls := "statusLine",
+      div(
+        status.value,
+        cls := "badge"
+      ),
+      UIUtils.statusElement(Some(status)).amend(marginLeft := "10")
+    )
+
+  def launch(uuid: Option[String], status: Option[PodInfo.Status]) =
+    status match
+      case Some(PodInfo.Status.Running(_)) | Some(PodInfo.Status.Waiting(_)) =>
+      case _ =>
+        uuid match
+          case None => UserAPIClient.launch(()).future
+          case Some(uuid) => AdminAPIClient.launch((uuid)).future
+
+  def stop(uuid: Option[String], status: Option[PodInfo.Status]) =
+    status match
+      case Some(PodInfo.Status.Terminated(_, _) | PodInfo.Status.Terminating()) =>
+      case _ =>
+        uuid match
+          case None => UserAPIClient.stop(()).future
+          case Some(uuid) => AdminAPIClient.stop((uuid)).future
+
+  def openmoleBoard(uuid: Option[String] = None, initialPodInfo: Option[PodInfo]) =
+    val podInfo: Var[Option[PodInfo]] = Var(initialPodInfo)
 
     val statusDiv =
       def statusSeq(status: PodInfo.Status, message: Option[String] = None) =
         Seq(
-          div(cls := "statusLine",
-            div(
-              status.value,
-              cls := "badge"
-            ),
-            UIUtils.statusElement(Some(status)).amend(marginLeft := "10")
-          ),
+          statusLine(status),
           message.map(m => div(m, fontStyle.italic)).getOrElse(div()).amend(cls := "statusLine")
         )
 
       div(Css.columnFlex, justifyContent.flexEnd,
         children <--
           podInfo.signal.map:
-              case None => statusSeq(PodInfo.Status.Terminated("", 0L))
-              case Some(podInfo) =>
-                podInfo.status match
-                  case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
-                  case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
-                  case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
-                  case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
-                  case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+            case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+            case Some(podInfo) =>
+              podInfo.status match
+                case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
+                case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
+                case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
+                case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
+                case None => statusSeq(PodInfo.Status.Terminated("", 0L))
 
       )
 
     def impersonationLink(uuid: String) = a("Log as user", href := s"/${Data.impersonateRoute}?uuid=$uuid", cls := "statusLine", marginTop := "20")
 
-    val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid)
+    def isSwitchActivated(status: Option[PodInfo.Status]) =
+      status match
+        case Some(_: PodInfo.Status.Waiting | _: PodInfo.Status.Running) => true
+        case _=> false
+
+    lazy val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid, isSwitchActivated(initialPodInfo.flatMap(_.status)))
 
     div(
       EventStream.periodic(5000).toObservable -->
         Observer: _ =>
           instanceFuture(uuid).foreach(podInfo.set),
       div(
-        sw.isSet.signal --> {
-          case Some(true) =>
-            uuid match
-              case None => UserAPIClient.launch(()).future
-              case Some(uuid) => AdminAPIClient.launch((uuid)).future
-          case Some(false) =>
-            uuid match
-              case None => UserAPIClient.stop(()).future
-              case Some(uuid) => AdminAPIClient.stop((uuid)).future
-          case None =>
+        sw.isSet.signal.combineWith(podInfo.signal.map(_.flatMap(_.status))) --> {
+          case (true, x) =>
+            x match
+              case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Waiting | _: PodInfo.Status.Running) =>
+              case _ => launch(uuid, None)
+          case (false, Some(x)) => stop(uuid, Some(x))
+          case x: Any =>
         },
         div(
           Css.columnFlex, justifyContent.flexEnd,

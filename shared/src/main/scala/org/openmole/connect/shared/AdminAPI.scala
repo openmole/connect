@@ -47,6 +47,12 @@ trait AdminAPI
       ok(jsonResponse[Option[Data.PodInfo]])
     )
 
+  val allInstances: Endpoint[Unit, Seq[Data.UserAndPodInfo]] =
+    endpoint(
+      post(path / "all-instances", jsonRequest[Unit]),
+      ok(jsonResponse[Seq[Data.UserAndPodInfo]])
+    )  
+
   val launch: Endpoint[String, Unit] =
     endpoint(
       post(path / "launch", jsonRequest[String]),

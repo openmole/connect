@@ -27,12 +27,14 @@ object Data:
             case _: Waiting => "Starting"
             case _: Terminating => "Terminating"
             case _: Terminated => "Terminated"
+            case _: Unknown => "Unkonwn"
 
     enum Status:
       case Running(startedAt: Long) extends Status
       case Waiting(message: String) extends Status
       case Terminated(message: String, finishedAt: Long) extends Status
       case Terminating() extends Status
+      case Unknown() extends Status
 
   case class PodInfo(
     name: String,
@@ -55,7 +57,11 @@ object Data:
     cpu: Double,
     openMOLEMemory: Int,
     lastAccess: Long, created: Long)
-
+  
+  case class UserAndPodInfo(
+     user: User, 
+     podInfo: Option[PodInfo])
+  
   case class RegisterUser(
     uuid: String,
     name: String,

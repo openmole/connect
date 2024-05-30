@@ -5,6 +5,7 @@ import org.openmole.connect.shared.*
 import cats.effect.*
 import org.http4s.*
 import org.openmole.connect.server.DB.{RegisterUser, Salt, registerUsers}
+import org.openmole.connect.shared.Data.UserAndPodInfo
 
 class AdminAPIImpl(k8sService: K8sService)(using salt: Salt):
   def users: Seq[Data.User] = DB.users.map(DB.User.toData)
@@ -13,6 +14,7 @@ class AdminAPIImpl(k8sService: K8sService)(using salt: Salt):
   def deleteRegisterUser(uuid: String): Unit = DB.deleteRegistering(uuid)
   def usedSpace(uuid: String): Option[Double] = K8sService.usedSpace(uuid)
   def instance(uuid: String): Option[Data.PodInfo] = K8sService.podInfo(uuid)
+  def usersAndPodInfo: Seq[Data.UserAndPodInfo] = users.map(u=> UserAndPodInfo(u, instance(u.uuid)))
 
   def launch(uuid: String): Unit =
     if K8sService.deploymentExists(uuid)
@@ -30,9 +32,10 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
   val deleteRegisterRoute = deleteRegisteringUser.implementedBy(impl.deleteRegisterUser)
   val usedSpaceRoute = usedSpace.implementedBy(impl.usedSpace)
   val instanceRoute = instance.implementedBy(impl.instance)
+  val allInstancesRoute = allInstances.implementedBy(_=> impl.usersAndPodInfo)
   val launchRoute = launch.implementedBy(impl.launch)
   val stopRoute = stop.implementedBy(impl.stop)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, launchRoute, stopRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, launchRoute, stopRoute)
   )

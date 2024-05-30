@@ -10,7 +10,8 @@ import scaladget.bootstrapnative.Table.{BasicRow, ExpandedRow}
 import scaladget.bootstrapnative.bsn.*
 import scaladget.tools.*
 import ConnectUtils.*
-import org.openmole.connect.client.UIUtils.DetailedInfo
+import org.openmole.connect.client.UIUtils.{DetailedInfo}
+import org.openmole.connect.shared.Data.PodInfo.Status.Terminated
 import org.openmoleconnect.client.Css
 
 object AdminPanel:
@@ -18,18 +19,18 @@ object AdminPanel:
   @JSExportTopLevel("admin")
   def admin() =
 
-    val users: Var[Seq[User]] = Var(Seq())
+    val users: Var[Seq[UserAndPodInfo]] = Var(Seq())
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
     val selected: Var[Option[String]] = Var(None)
 
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
-    def updateUserInfo() =
+    def updateUserInfo =
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-      AdminAPIClient.users(()).future.foreach(us => users.set(us))
+      AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
 
-    updateUserInfo()
+    updateUserInfo
     UserAPIClient.availableVersions((Some(10), false)).future.foreach(vs => versions.set(vs))
 
     def statusElement(registerinUser: RegisterUser) =
@@ -51,11 +52,11 @@ object AdminPanel:
       div(Css.centerRowFlex, padding := "10px",
         button(btn_secondary, "Validate", marginRight := "20px", onClick --> { _ =>
           AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _ =>
-            updateUserInfo()
+            updateUserInfo
         }),
         button(btn_danger, "Reject", onClick --> { _ =>
           AdminAPIClient.deleteRegisteringUser(register.uuid).future.foreach: _ =>
-            updateUserInfo()
+            updateUserInfo
         })
       )
 
@@ -73,30 +74,36 @@ object AdminPanel:
                 statusElement(r),
                 triggerButton(r.email))),
             ExpandedRow(
-              div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
+              div(
+                height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
               selected.signal.map(s => s.contains(r.email))
             )
           )) ++
             us.map(u => UserInfo(
               BasicRow(
                 Seq(
-                  div(u.name),
-                  div(u.firstName),
-                  div(u.email),
-                  div(u.institution),
-                  div(u.lastAccess.toStringDate, Css.badgeConnect),
-                  triggerButton(u.email))),
-
+                  div(u.user.name),
+                  div(u.user.firstName),
+                  div(u.user.email),
+                  div(u.user.institution),
+                  div(
+                    u.podInfo.map(pi => UIUtils.statusLine(pi.status.getOrElse(PodInfo.Status.Unknown()))).getOrElse(div()),
+                    triggerButton(u.user.email))
+                )
+              ),
               ExpandedRow(
                 div(
-                  Css.columnFlex, height := "350",
-                  div(child <--
-                    Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
-                      UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
-                  ),
-                  UIUtils.openmoleBoard(Some(u.uuid))
+                  child <-- selected.signal.map: s =>
+                    if (s.contains(u.user.email))
+                    then
+                      div(
+                        Css.columnFlex, height := "350",
+                        UIUtils.userInfoBlock(u.user),
+                        UIUtils.openmoleBoard(Some(u.user.uuid), u.podInfo)
+                      )
+                    else div()
                 ),
-                selected.signal.map(s => s.contains(u.email))
+                selected.signal.map(s => s.contains(u.user.email))
               )
             )
             )
@@ -107,5 +114,14 @@ object AdminPanel:
             )
       )
 
+
     lazy val appContainer = dom.document.querySelector("#appContainer")
-    render(appContainer, UIUtils.mainPanel(adminTable.render.amend(cls := "border")))
+    render(appContainer,
+      div(
+        EventStream.periodic(5000).toObservable -->
+          Observer: _ =>
+            AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
+            AdminAPIClient.allInstances(()).future.foreach(us => users.set(us)),
+        UIUtils.mainPanel(adminTable.render.amend(cls := "border"))
+      )
+    )

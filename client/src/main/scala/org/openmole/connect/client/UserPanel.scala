@@ -25,18 +25,24 @@ object UserPanel {
   def user(): Unit =
     def getUser = UserAPIClient.user(()).future
 
+    val podInfo: Var[Option[PodInfo]] = Var(None)
+
     lazy val userPanel = div(
       child <-- Signal.fromFuture(getUser).map:
         case Some(u) =>
-          div(child <-- Signal.fromFuture(AdminAPIClient.usedSpace(u.uuid).future).map: v =>
+          div(
+            EventStream.periodic(5000).toObservable -->
+              Observer: _ =>
+                UserAPIClient.instance(()).future.foreach(podInfo.set),
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
-              UIUtils.userInfoBlock(DetailedInfo(u.role, u.omVersion, v.flatten.map(_.toInt), u.storage, u.memory, u.cpu, u.openMOLEMemory)),
-              UIUtils.openmoleBoard()
+              UIUtils.userInfoBlock(u),
+              UIUtils.openmoleBoard(None, podInfo.now())
             )
           )
-        case _=> UIUtils.waiter
+        case _ => UIUtils.waiter
     )
+
     lazy val appContainer = dom.document.querySelector("#appContainer")
     render(appContainer, UIUtils.mainPanel(userPanel))
 
