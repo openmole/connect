@@ -77,7 +77,6 @@ spec:
   containers:
   - name: openmole-connect
     image: openmole/openmole-connect:1.0-SNAPSHOT
-    imagePullPolicy: "Always"
     args:
       - --config-file
       - "/etc/connect-config/config.yml"

@@ -27,14 +27,14 @@ object Data:
             case _: Waiting => "Starting"
             case _: Terminating => "Terminating"
             case _: Terminated => "Terminated"
-            case _: Unknown => "Unkonwn"
+            case _: Inactive => "Inactive"
 
     enum Status:
       case Running(startedAt: Long) extends Status
       case Waiting(message: String) extends Status
       case Terminated(message: String, finishedAt: Long) extends Status
       case Terminating() extends Status
-      case Unknown() extends Status
+      case Inactive() extends Status
 
   case class PodInfo(
     name: String,

@@ -86,9 +86,8 @@ object AdminPanel:
                   div(u.user.firstName),
                   div(u.user.email),
                   div(u.user.institution),
-                  div(
-                    u.podInfo.map(pi => UIUtils.statusLine(pi.status.getOrElse(PodInfo.Status.Unknown()))).getOrElse(div()),
-                    triggerButton(u.user.email))
+                  u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive()))),
+                  triggerButton(u.user.email)
                 )
               ),
               ExpandedRow(

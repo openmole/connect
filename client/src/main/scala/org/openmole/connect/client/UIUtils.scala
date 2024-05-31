@@ -109,16 +109,16 @@ object UIUtils:
       case Some(Data.PodInfo.Status.Terminated(_, _)) => element("#D40000")
       case Some(Data.PodInfo.Status.Waiting(_)) => element("#73AD21").amend(cls := "blink_me")
       case Some(Data.PodInfo.Status.Terminating()) => element("#D40000").amend(cls := "blink_me")
-      case Some(Data.PodInfo.Status.Unknown()) => element("#000")
+      case Some(Data.PodInfo.Status.Inactive()) => element("#D40000")
       case None => element("#D40000")
 
-  def statusLine(status: PodInfo.Status) =
+  def statusLine(status: Option[PodInfo.Status]) =
     div(cls := "statusLine",
       div(
-        status.value,
+        status.map(_.value).getOrElse("Inactive"),
         cls := "badge"
       ),
-      UIUtils.statusElement(Some(status)).amend(marginLeft := "10")
+      UIUtils.statusElement(status).amend(marginLeft := "10")
     )
 
   def launch(uuid: Option[String], status: Option[PodInfo.Status]) =
@@ -143,14 +143,14 @@ object UIUtils:
     val statusDiv =
       def statusSeq(status: PodInfo.Status, message: Option[String] = None) =
         Seq(
-          statusLine(status),
+          statusLine(Some(status)),
           message.map(m => div(m, fontStyle.italic)).getOrElse(div()).amend(cls := "statusLine")
         )
 
       div(Css.columnFlex, justifyContent.flexEnd,
         children <--
           podInfo.signal.map:
-            case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+            case None => statusSeq(PodInfo.Status.Inactive())
             case Some(podInfo) =>
               podInfo.status match
                 case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
