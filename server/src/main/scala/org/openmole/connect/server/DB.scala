@@ -50,7 +50,7 @@ object DB:
     def toData(u: User): Data.User = u.to[Data.User]
     def fromData(u: Data.User): Option[User] = user(u.email)
     def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = DB.user, uuid: UUID = randomUUID) =
-      User(name, firstName, email, password, institution, "latest", 10240, 2048, 2, 1024, now, now, role, uuid)
+      User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 10240, 2048, 2, 1024, now, now, role, uuid)
 
   case class User(
    name: String,

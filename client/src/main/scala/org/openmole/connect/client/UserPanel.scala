@@ -25,6 +25,8 @@ object UserPanel {
   def user(): Unit =
     def getUser = UserAPIClient.user(()).future
 
+    def getVersions = UserAPIClient.availableVersions(()).future
+
     val podInfo: Var[Option[PodInfo]] = Var(None)
 
     lazy val userPanel = div(
@@ -37,6 +39,11 @@ object UserPanel {
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
               UIUtils.userInfoBlock(u),
+              div(Css.rowFlex, justifyContent.flexEnd, marginRight := "30", marginBottom := "20",
+                child <--
+                  Signal.fromFuture(getVersions).map: vs =>
+                    UIUtils.versionChanger(u.omVersion, vs.getOrElse(Seq()))
+              ),
               UIUtils.openmoleBoard(None, podInfo.now())
             )
           )

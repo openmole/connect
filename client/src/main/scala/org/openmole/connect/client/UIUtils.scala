@@ -8,7 +8,7 @@ import org.openmole.connect.shared.Data
 import com.raquo.laminar.nodes.ReactiveElement.isActive
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.shared.Data.PodInfo.Status.Running
-
+import scaladget.bootstrapnative.Selector._
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.UUID
 import scala.runtime.LazyVals.Waiting
@@ -157,7 +157,7 @@ object UIUtils:
                 case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
                 case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
                 case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
-                case None => statusSeq(PodInfo.Status.Terminated("", 0L))
+                case None | Some(_: PodInfo.Status.Inactive) => statusSeq(PodInfo.Status.Inactive())
 
       )
 
@@ -166,7 +166,7 @@ object UIUtils:
     def isSwitchActivated(status: Option[PodInfo.Status]) =
       status match
         case Some(_: PodInfo.Status.Waiting | _: PodInfo.Status.Running) => true
-        case _=> false
+        case _ => false
 
     lazy val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid, isSwitchActivated(initialPodInfo.flatMap(_.status)))
 
@@ -208,6 +208,17 @@ object UIUtils:
         )
       )
     )
+
+  def versionChanger(currentVersion: String, availableVersions: Seq[String]) =
+    lazy val versionChanger: Options[String] =
+      availableVersions.options(
+        availableVersions.indexOf(currentVersion),
+        Seq(btn_primary, width := "160"),
+        (m: String) => m,
+        onclose = () => UserAPIClient.setOpenMOLEVersion(versionChanger.content.now().get).future
+      )
+
+    versionChanger.selector
 
   def waiter =
     div(Css.centerColumnFlex,
