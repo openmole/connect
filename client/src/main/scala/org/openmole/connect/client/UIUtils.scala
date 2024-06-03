@@ -213,7 +213,7 @@ object UIUtils:
     lazy val versionChanger: Options[String] =
       availableVersions.options(
         availableVersions.indexOf(currentVersion),
-        Seq(btn_primary, width := "160"),
+        Seq(cls := "btn btnUser", width := "160"),
         (m: String) => m,
         onclose = () => UserAPIClient.setOpenMOLEVersion(versionChanger.content.now().get).future
       )

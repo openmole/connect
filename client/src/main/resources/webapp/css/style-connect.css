@@ -294,7 +294,7 @@ input:checked + .slider:before {
     margin-right: 30px;
 }
 
-.btnUser {
+.btn.btnUser {
   color: #fff;
   background-color: #17a2b8;
   border-color: #17a2b8;
