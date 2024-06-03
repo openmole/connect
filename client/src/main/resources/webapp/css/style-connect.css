@@ -299,3 +299,12 @@ input:checked + .slider:before {
   background-color: #17a2b8;
   border-color: #17a2b8;
 }
+
+.btn.switchState {
+    font-size: 13px;
+}
+
+.inPwd {
+    display: flex;
+    align-items: center;
+}

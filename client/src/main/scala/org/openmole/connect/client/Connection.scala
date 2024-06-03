@@ -40,22 +40,15 @@ object Connection:
     val displaySignupForm: Var[Boolean] = Var(false)
     val signupError: Var[Seq[Int]] = Var(0 to 4)
 
-    def buildInput(attr: String) = inputTag("")
-      .amend(
-        nameAttr := attr,
-        placeholder := attr,
-        cls := "formField"
-      )
-
-    lazy val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
+      lazy val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
     lazy val connectionForm =
       form(
         Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10,
         method := "POST",
         action := connectionRoute,
-        buildInput("Email"),
-        buildInput("Password").amend(`type` := "password"),
+        UIUtils.buildInput("Email"),
+        UIUtils.buildInput("Password").amend(`type` := "password"),
         connectButton
       )
 
@@ -64,7 +57,7 @@ object Connection:
 
     def checkFieldBlock(id: Int, field: String, checker: String => Option[String]) =
       val errorMsg: Var[Option[String]] = Var(None)
-      lazy val in: Input = buildInput(field).amend(
+      lazy val in: Input = UIUtils.buildInput(field).amend(
         onInput --> { _ =>
           errorMsg.set {
             val em = checker(in.ref.value)
@@ -84,8 +77,8 @@ object Connection:
 
     def checkPasswordBlock(checker: (String, String) => Option[String]) =
       val errorMsg: Var[Option[String]] = Var(None)
-      val in: Input = buildInput("Password").amend(`type` := "password")
-      lazy val in2: Input = buildInput("Confirm password").amend(`type` := "password",
+      val in: Input = UIUtils.buildInput("Password").amend(`type` := "password")
+      lazy val in2: Input = UIUtils.buildInput("Confirm password").amend(`type` := "password",
         onInput --> { _ =>
           errorMsg.set {
             val em = checker(in.ref.value, in2.ref.value)

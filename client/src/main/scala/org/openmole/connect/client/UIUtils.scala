@@ -220,6 +220,35 @@ object UIUtils:
 
     versionChanger.selector
 
+
+  def buildInput(attr: String) = inputTag("")
+    .amend(
+      nameAttr := attr,
+      placeholder := attr,
+      cls := "formField"
+    )
+
+
+  case class Settings(element: HtmlElement, save: () => Unit)
+
+  def settings(uuid: String): Settings =
+    lazy val in: Input = UIUtils.buildInput("New password").amend(
+      `type` := "password",
+      cls := "inPwd"
+    )
+
+    Settings(
+      div(margin := "30",
+        Css.columnFlex,
+        in
+      ),
+      () =>
+        val pwd = in.ref.value
+        if (!pwd.isEmpty)
+        then AdminAPIClient.changePassword(uuid, in.ref.value)
+    )
+
+
   def waiter =
     div(Css.centerColumnFlex,
       cls := "loading",

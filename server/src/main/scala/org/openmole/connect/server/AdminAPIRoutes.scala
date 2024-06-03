@@ -15,6 +15,7 @@ class AdminAPIImpl(k8sService: K8sService)(using salt: Salt):
   def usedSpace(uuid: String): Option[Double] = K8sService.usedSpace(uuid)
   def instance(uuid: String): Option[Data.PodInfo] = K8sService.podInfo(uuid)
   def usersAndPodInfo: Seq[Data.UserAndPodInfo] = users.map(u=> UserAndPodInfo(u, instance(u.uuid)))
+  def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
 
   def launch(uuid: String): Unit =
     if K8sService.deploymentExists(uuid)
@@ -33,9 +34,10 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
   val usedSpaceRoute = usedSpace.implementedBy(impl.usedSpace)
   val instanceRoute = instance.implementedBy(impl.instance)
   val allInstancesRoute = allInstances.implementedBy(_=> impl.usersAndPodInfo)
+  val changePasswordRoute = changePassword.implementedBy((uuid, p)=> impl.changePassword(uuid, p))
   val launchRoute = launch.implementedBy(impl.launch)
   val stopRoute = stop.implementedBy(impl.stop)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, launchRoute, stopRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, changePasswordRoute, launchRoute, stopRoute)
   )

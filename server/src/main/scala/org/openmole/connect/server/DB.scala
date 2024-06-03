@@ -47,55 +47,73 @@ object DB:
 
   object User:
     def isAdmin(u: User) = u.role == admin
+
     def toData(u: User): Data.User = u.to[Data.User]
+
     def fromData(u: Data.User): Option[User] = user(u.email)
+
     def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = DB.user, uuid: UUID = randomUUID) =
       User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 10240, 2048, 2, 1024, now, now, role, uuid)
 
   case class User(
-   name: String,
-   firstName: String,
-   email: Email,
-   password: Password,
-   institution: Institution,
-   omVersion: Version,
-   storage: Storage,
-   memory: Memory,
-   cpu: Double,
-   openMOLEMemory: Memory,
-   lastAccess: Long,
-   created: Long,
-   role: Role = user,
-   uuid: UUID = randomUUID)
+                   name: String,
+                   firstName: String,
+                   email: Email,
+                   password: Password,
+                   institution: Institution,
+                   omVersion: Version,
+                   storage: Storage,
+                   memory: Memory,
+                   cpu: Double,
+                   openMOLEMemory: Memory,
+                   lastAccess: Long,
+                   created: Long,
+                   role: Role = user,
+                   uuid: UUID = randomUUID)
 
   object RegisterUser:
     def toData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
+
     def fromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
+
     def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid)
 
   case class RegisterUser(
-    name: String,
-    firstName: String,
-    email: Email,
-    password: Password,
-    institution: Institution,
-    status: EmailStatus = unchecked,
-    uuid: UUID = randomUUID)
+                           name: String,
+                           firstName: String,
+                           email: Email,
+                           password: Password,
+                           institution: Institution,
+                           status: EmailStatus = unchecked,
+                           uuid: UUID = randomUUID)
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
+
     def name = column[String]("NAME")
+
     def firstName = column[String]("FIRST_NAME")
+
     def email = column[Email]("EMAIL", O.Unique)
+
     def password = column[Password]("PASSWORD")
+
     def institution = column[Institution]("INSTITUTION")
+
     def role = column[Role]("ROLE")
+
     def omVersion = column[Version]("OMVERSION")
+
     def storage = column[Storage]("STORAGE_REQUIREMENT")
+
     def memory = column[Storage]("MEMORY_LIMIT")
+
     def cpu = column[Double]("CPU_LIMIT")
+
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
+
     def lastAccess = column[Long]("LASTACCESS")
+
     def created = column[Long]("CREATED")
 
     def * = (name, firstName, email, password, institution, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
@@ -106,11 +124,17 @@ object DB:
 
   class RegisterUsers(tag: Tag) extends Table[RegisterUser](tag, "REGISTERING_USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
+
     def name = column[String]("NAME")
+
     def firstName = column[String]("FIRST_NAME")
+
     def email = column[Email]("EMAIL", O.Unique)
+
     def password = column[Password]("PASSWORD")
+
     def institution = column[Institution]("INSTITUTION")
+
     def status = column[EmailStatus]("STATUS")
 
     def * = (name, firstName, email, password, institution, status, uuid).mapTo[RegisterUser]
@@ -122,6 +146,7 @@ object DB:
 
   class DatabaseInfo(tag: Tag) extends Table[DatabaseInfo.Data](tag, "DB_INFO"):
     def version = column[Int]("VERSION")
+
     def * = (version).mapTo[DatabaseInfo.Data]
 
   val databaseInfoTable = TableQuery[DatabaseInfo]
@@ -135,8 +160,8 @@ object DB:
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
 
-//  def runUnitTransaction[E <: Effect, Unit](action: DBIOAction[Unit, NoStream, E]): Unit =
-//    Await.result(db.run(action), Duration.Inf)
+  //  def runUnitTransaction[E <: Effect, Unit](action: DBIOAction[Unit, NoStream, E]): Unit =
+  //    Await.result(db.run(action), Duration.Inf)
 
 
   def initDB()(using Salt) =
@@ -153,7 +178,7 @@ object DB:
 
     // TODO remove for testing only
     val user = User.withDefault("user", "Ali", "user@user.com", salted("user"), "CNRS")
-   // val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
+    // val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
     addUser(user)
     //addRegisteringUser(newUser)
 
@@ -187,10 +212,10 @@ object DB:
     runTransaction:
       userTable.filter(_.uuid === uuid).delete
 
-//  def delete(registeringUser: Data.RegisterUser): Int =
-//    DB.RegisterUser.fromData(registeringUser).map { ru =>
-//      delete(ru)
-//    }.getOrElse(0)
+  //  def delete(registeringUser: Data.RegisterUser): Int =
+  //    DB.RegisterUser.fromData(registeringUser).map { ru =>
+  //      delete(ru)
+  //    }.getOrElse(0)
 
   def deleteRegistering(uuid: String): Int =
     runTransaction:
@@ -207,24 +232,24 @@ object DB:
 
 
   //  def upsert(user: User, salt: String) =
-//    runTransaction(
-//      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
-//    )
-//
-//  def setLastAccess(email: Email, lastAccess: Long) =
-//    runTransaction {
-//      getLastAccesQuery(email).update(lastAccess)
-//    }
-//
-//  def delete(user: User) =
-//    runTransaction(
-//      userTable.filter {
-//        _.uuid === user.uuid
-//      }.delete
-//    )
+  //    runTransaction(
+  //      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
+  //    )
+  //
+  //  def setLastAccess(email: Email, lastAccess: Long) =
+  //    runTransaction {
+  //      getLastAccesQuery(email).update(lastAccess)
+  //    }
+  //
+  //  def delete(user: User) =
+  //    runTransaction(
+  //      userTable.filter {
+  //        _.uuid === user.uuid
+  //      }.delete
+  //    )
 
-//QUERIES
-// val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
+  //QUERIES
+  // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
 
 
   def userFromUUID(uuid: UUID): Option[User] =
@@ -266,9 +291,15 @@ object DB:
 
   def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 
-  def updatePassword(uuid: UUID, old: Password, password: Password)(using salt: Salt): Boolean =
+  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using salt: Salt): Boolean =
     runTransaction:
-      val q = for {user <- userTable if user.uuid === uuid && user.password === salted(old)} yield user.password
+      val q = for {user <- userTable
+                   if user.uuid === uuid &&
+                     (old match
+                        case Some(pwd) => user.password === salted(pwd)
+                        case None => true
+                       )
+                   } yield user.password
       q.update(salted(password)).map(_ > 0)
 
 

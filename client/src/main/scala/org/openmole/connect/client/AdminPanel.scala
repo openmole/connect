@@ -7,10 +7,10 @@ import com.raquo.laminar.api.L.*
 import org.openmole.connect.shared.Data.*
 import org.scalajs.dom
 import scaladget.bootstrapnative.Table.{BasicRow, ExpandedRow}
-import scaladget.bootstrapnative.bsn.*
+import scaladget.bootstrapnative.bsn.{toggle, *}
 import scaladget.tools.*
 import ConnectUtils.*
-import org.openmole.connect.client.UIUtils.{DetailedInfo}
+import org.openmole.connect.client.UIUtils.DetailedInfo
 import org.openmole.connect.shared.Data.PodInfo.Status.Terminated
 import org.openmoleconnect.client.Css
 
@@ -23,6 +23,7 @@ object AdminPanel:
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
     val selected: Var[Option[String]] = Var(None)
+    val settingsUUID: Var[Option[String]] = Var(None)
 
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
@@ -43,7 +44,9 @@ object AdminPanel:
         cursor.pointer,
         onClick --> { _ =>
           selected.update:
-            case Some(email: String) if (email == key) => None
+            case Some(email: String) if (email == key) =>
+              settingsUUID.set(None)
+              None
             case Some(email: String) => Some(key)
             case None => Some(key)
         })
@@ -59,6 +62,15 @@ object AdminPanel:
             updateUserInfo
         })
       )
+
+
+    val settingsOnState = ToggleState("SAVE", "SAVE", "btn btnUser switchState", (_: String) => {})
+    val settingsOffState = ToggleState("SETTINGS", "SETTINGS", btn_secondary_string + " switchState", (_: String) => {})
+
+    def toBool(opt: Option[String], uuid: String) =
+      opt match
+        case Some(id) if id == uuid=> true
+        case _=> false
 
     lazy val adminTable =
       new UserTable(
@@ -95,10 +107,25 @@ object AdminPanel:
                   child <-- selected.signal.map: s =>
                     if (s.contains(u.user.email))
                     then
+                      lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), u.user.uuid), settingsOffState, () => {})
+                      val settings = UIUtils.settings(u.user.uuid)
                       div(
-                        Css.columnFlex, height := "350",
-                        UIUtils.userInfoBlock(u.user),
-                        UIUtils.openmoleBoard(Some(u.user.uuid), u.podInfo)
+                        settingsSwitch.element.amend(margin := "30"),
+                        div(
+                          child <--
+                            settingsSwitch.toggled.signal.map:
+                              case true =>
+                                settingsUUID.set(Some(u.user.uuid))
+                                settings.element
+                              case false =>
+                                settings.save()
+                                settingsUUID.set(None)
+                                div(
+                                  Css.columnFlex, height := "350",
+                                  UIUtils.userInfoBlock(u.user),
+                                  UIUtils.openmoleBoard(Some(u.user.uuid), u.podInfo)
+                                )
+                        ),
                       )
                     else div()
                 ),
@@ -119,8 +146,12 @@ object AdminPanel:
       div(
         EventStream.periodic(5000).toObservable -->
           Observer: _ =>
-            AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-            AdminAPIClient.allInstances(()).future.foreach(us => users.set(us)),
-        UIUtils.mainPanel(adminTable.render.amend(cls := "border"))
+            settingsUUID.now() match
+              case None=>
+               AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
+               AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
+              case _=>
+        ,
+        UIUtils.mainPanel(adminTable.render.amend(cls := "border", width := "800"))
       )
     )
