@@ -137,8 +137,9 @@ object UIUtils:
           case None => UserAPIClient.stop(()).future
           case Some(uuid) => AdminAPIClient.stop((uuid)).future
 
-  def openmoleBoard(uuid: Option[String] = None, initialPodInfo: Option[PodInfo]) =
-    val podInfo: Var[Option[PodInfo]] = Var(initialPodInfo)
+  def openmoleBoard(uuid: Option[String] = None, status: PodInfo.Status) =
+
+    val waiting: Var[Boolean] = Var(false)
 
     val statusDiv =
       def statusSeq(status: PodInfo.Status, message: Option[String] = None) =
@@ -148,66 +149,62 @@ object UIUtils:
         )
 
       div(Css.columnFlex, justifyContent.flexEnd,
-        children <--
-          podInfo.signal.map:
-            case None => statusSeq(PodInfo.Status.Inactive())
-            case Some(podInfo) =>
-              podInfo.status match
-                case Some(t: PodInfo.Status.Terminating) => statusSeq(t)
-                case Some(t: PodInfo.Status.Terminated) => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
-                case Some(t: PodInfo.Status.Waiting) => statusSeq(t, Some(t.message))
-                case Some(t: PodInfo.Status.Running) => statusSeq(t, Some(t.startedAt.toStringDate))
-                case None | Some(_: PodInfo.Status.Inactive) => statusSeq(PodInfo.Status.Inactive())
-
+        status match
+          case t: PodInfo.Status.Terminating => statusSeq(t)
+          case t: PodInfo.Status.Terminated => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
+          case t: PodInfo.Status.Waiting => statusSeq(t, Some(t.message))
+          case t: PodInfo.Status.Running => statusSeq(t, Some(t.startedAt.toStringDate))
+          case t: PodInfo.Status.Inactive => div()
       )
 
     def impersonationLink(uuid: String) = a("Log as user", href := s"/${Data.impersonateRoute}?uuid=$uuid", cls := "statusLine", marginTop := "20")
 
-    def isSwitchActivated(status: Option[PodInfo.Status]) =
+    def isSwitchActivated(status: PodInfo.Status) =
       status match
-        case Some(_: PodInfo.Status.Waiting | _: PodInfo.Status.Running) => true
+        case _: PodInfo.Status.Waiting | _: PodInfo.Status.Running => true
         case _ => false
 
-    lazy val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid, isSwitchActivated(initialPodInfo.flatMap(_.status)))
+    lazy val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid, isSwitchActivated(status))
 
     div(
-      EventStream.periodic(5000).toObservable -->
-        Observer: _ =>
-          instanceFuture(uuid).foreach(podInfo.set),
+      sw.isSet.signal --> {
+        case true =>
+          status match
+            case _: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Inactive =>
+              waiting.set(true)
+              launch(uuid, None)
+            case _ =>
+        case false =>
+          status match
+            case _: PodInfo.Status.Waiting | _: PodInfo.Status.Running =>
+              waiting.set(true)
+              stop(uuid, Some(status))
+            case _ =>
+      },
       div(
-        sw.isSet.signal.combineWith(podInfo.signal.map(_.flatMap(_.status))) --> {
-          case (true, x) =>
-            x match
-              case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Waiting | _: PodInfo.Status.Running) =>
-              case _ => launch(uuid, None)
-          case (false, Some(x)) => stop(uuid, Some(x))
-          case x: Any =>
-        },
-        div(
-          Css.columnFlex, justifyContent.flexEnd,
-          sw.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30"),
-          statusDiv.amend(marginTop := "20")
-        ),
-        div(Css.rowFlex, justifyContent.flexEnd,
-          child <--
-            podInfo.signal.map:
-              case Some(podInfo) =>
-                podInfo.status match
-                  case Some(_: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting) | None =>
-                    uuid match
-                      case None => div()
-                      case Some(uuid) => impersonationLink(uuid)
-                  case _ =>
-                    uuid match
-                      case None => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
-                      case Some(uuid) => impersonationLink(uuid)
-              case _ =>
-                uuid match
-                  case None => a()
-                  case Some(uuid) => impersonationLink(uuid)
-        )
+        child <--
+          waiting.signal.map:
+            case true => div(Css.rowFlex, justifyContent.flexEnd, marginRight := "30", waiter)
+            case false =>
+              div(
+                Css.columnFlex, justifyContent.flexEnd,
+                sw.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30"),
+                statusDiv.amend(marginTop := "20")
+              )
+      ),
+      div(Css.rowFlex, justifyContent.flexEnd,
+        status match
+          case _: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting =>
+            uuid match
+              case None => div()
+              case Some(uuid) => impersonationLink(uuid)
+          case _ =>
+            uuid match
+              case None => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+              case Some(uuid) => impersonationLink(uuid)
       )
     )
+
 
   def versionChanger(currentVersion: String, availableVersions: Seq[String]) =
     lazy val versionChanger: Options[String] =
@@ -249,12 +246,4 @@ object UIUtils:
     )
 
 
-  def waiter =
-    div(Css.centerColumnFlex,
-      cls := "loading",
-      div(
-        cls := "loading-text",
-        Seq("L", "O", "A", "D", "I", "N", "G").map: letter =>
-          span(cls := "loading-text-words", letter)
-      )
-    )
+  def waiter = span(cls := "loader")

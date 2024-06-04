@@ -35,7 +35,9 @@ object UserPanel {
           div(
             EventStream.periodic(5000).toObservable -->
               Observer: _ =>
-                UserAPIClient.instance(()).future.foreach(podInfo.set),
+                UserAPIClient.instance(()).future.foreach(x=>
+                  println("XX set " + x)
+                  podInfo.set(x)),
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
               UIUtils.userInfoBlock(u),
@@ -44,10 +46,15 @@ object UserPanel {
                   Signal.fromFuture(getVersions).map: vs =>
                     UIUtils.versionChanger(u.omVersion, vs.getOrElse(Seq()))
               ),
-              UIUtils.openmoleBoard(None, podInfo.now())
+              div(
+                child <--
+                  podInfo.signal.map(_.flatMap(_.status)).map:
+                    case Some(st: Data.PodInfo.Status) => UIUtils.openmoleBoard(None, st)
+                    case None: Any => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive())
+              )
             )
           )
-        case _ => UIUtils.waiter
+        case _ => UIUtils.waiter.amend(Css.rowFlex, justifyContent.flexEnd)
     )
 
     lazy val appContainer = dom.document.querySelector("#appContainer")

@@ -69,8 +69,8 @@ object AdminPanel:
 
     def toBool(opt: Option[String], uuid: String) =
       opt match
-        case Some(id) if id == uuid=> true
-        case _=> false
+        case Some(id) if id == uuid => true
+        case _ => false
 
     lazy val adminTable =
       new UserTable(
@@ -123,7 +123,11 @@ object AdminPanel:
                                 div(
                                   Css.columnFlex, height := "350",
                                   UIUtils.userInfoBlock(u.user),
-                                  UIUtils.openmoleBoard(Some(u.user.uuid), u.podInfo)
+                                  div(
+                                    u.podInfo.flatMap(_.status) match
+                                      case Some(st) => UIUtils.openmoleBoard(Some(u.user.uuid), st)
+                                      case _ => UIUtils.openmoleBoard(Some(u.user.uuid), PodInfo.Status.Inactive())
+                                  )
                                 )
                         ),
                       )
@@ -147,10 +151,10 @@ object AdminPanel:
         EventStream.periodic(5000).toObservable -->
           Observer: _ =>
             settingsUUID.now() match
-              case None=>
-               AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-               AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
-              case _=>
+              case None =>
+                AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
+                AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
+              case _ =>
         ,
         UIUtils.mainPanel(adminTable.render.amend(cls := "border", width := "800"))
       )
