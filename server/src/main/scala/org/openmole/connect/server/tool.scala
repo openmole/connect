@@ -1,15 +1,16 @@
 package org.openmole.connect.server
 
 import org.apache.commons.codec.digest.DigestUtils
-import org.apache.http.client.HttpClient
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.config.SocketConfig
-import org.apache.http.impl.EnglishReasonPhraseCatalog
-import org.apache.http.impl.client.{CloseableHttpClient, HttpClientBuilder}
+import org.apache.hc.client5.http.classic.methods.HttpGet
+import org.apache.hc.client5.http.config.ConnectionConfig
+import org.apache.hc.client5.http.impl.classic.*
+import org.apache.hc.client5.http.impl.io.{BasicHttpClientConnectionManager, PoolingHttpClientConnectionManagerBuilder}
+import org.apache.hc.client5.http.io.HttpClientConnectionManager
 
 import java.io.{PrintWriter, StringWriter}
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -21,10 +22,18 @@ extension [T](inline f: scala.concurrent.Future[T])
 object tool:
 
   def buildHttpClient() =
-    HttpClientBuilder.create().setDefaultSocketConfig(socketConfig()).build()
+    HttpClientBuilder.create().setConnectionManager(connectionManager()).build()
 
-  def socketConfig(timeout: Int = 60000) =
-    SocketConfig.custom().setSoTimeout(timeout).build()
+  def connectionManager(timeout: Int = 60000) =
+    val connConfig = ConnectionConfig.custom()
+      .setConnectTimeout(timeout, TimeUnit.MILLISECONDS)
+      .setSocketTimeout(timeout, TimeUnit.MILLISECONDS)
+      .build()
+
+    PoolingHttpClientConnectionManagerBuilder.create().
+      setDefaultConnectionConfig(connConfig).
+      setMaxConnPerRoute(10).
+      build()
 
   implicit class ST(throwable: Throwable):
     def toStackTrace =

@@ -100,8 +100,10 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
 //    "org.scalaj" %% "scalaj-http" % "2.4.2",
     "io.skuber" %% "skuber" % skuberVersion cross CrossVersion.for3Use2_13,
     //"io.monix" %% "monix" % "3.0.0",
-    "org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
-    "org.apache.httpcomponents" % "httpmime" % httpComponentsVersion,
+   "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
+
+    //"org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
+    //"org.apache.httpcomponents" % "httpmime" % httpComponentsVersion,
     "com.typesafe.slick" %% "slick" % slickVersion,
     "com.h2database" % "h2" % h2Version,
 //    "io.suzaku" %% "boopickle" % boopickleVersion,

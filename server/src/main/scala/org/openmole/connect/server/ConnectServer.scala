@@ -5,20 +5,13 @@ import cats.data.*
 import cats.effect.*
 import cats.effect.unsafe.IORuntime
 import cats.implicits.*
-import dev.profunktor.auth.*
-import dev.profunktor.auth.jwt.*
-import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
-import org.apache.http.client.config.RequestConfig
-import org.apache.http.client.methods.{CloseableHttpResponse, HttpDelete, HttpGet, HttpPost}
-import org.apache.http.entity.InputStreamEntity
-import org.apache.http.impl.client.HttpClients
+import org.apache.hc.client5.http.classic.methods.{HttpDelete, HttpGet, HttpPost}
 import org.http4s.*
 import org.http4s.blaze.server.*
 import org.http4s.dsl.io.*
 import org.http4s.headers.*
 import org.http4s.implicits.*
-import org.http4s.multipart.Multipart
 import org.http4s.server.*
 import org.openmole.connect.server.ServerContent.connectionError
 import org.openmole.connect.shared.Data
@@ -31,6 +24,9 @@ import scala.jdk.CollectionConverters.*
 import fs2.io.*
 import io.circe.yaml
 import io.circe.generic.auto.*
+import org.apache.hc.client5.http.impl.classic.*
+import org.apache.hc.core5.http.{ConnectionReuseStrategy, ContentType}
+import org.apache.hc.core5.http.io.entity.InputStreamEntity
 
 import java.util.concurrent.TimeUnit
 
@@ -65,7 +61,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       custom().
       disableAutomaticRetries().
       disableRedirectHandling().
-      setDefaultSocketConfig(tool.socketConfig()).
+      setConnectionManager(tool.connectionManager()).
       build()
 
   def start() =
@@ -157,17 +153,17 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                   req.headers.headers.filter(h => !filteredHeaders.contains(h.name))
 
                 def response(forwardResponse: CloseableHttpResponse) =
-                  def forwardStatus = Status.fromInt(forwardResponse.getStatusLine.getStatusCode).toTry.get
+                  def forwardStatus = Status.fromInt(forwardResponse.getCode).toTry.get
 
                   Ok(fs2.io.readInputStream(IO(forwardResponse.getEntity.getContent), 10240).onFinalize(IO(forwardResponse.close()))).map: r =>
-                    val hs: Seq[Header.ToRaw] = forwardResponse.getAllHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
+                    val hs: Seq[Header.ToRaw] = forwardResponse.getHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
                     r.putHeaders(hs: _*).withStatus(forwardStatus)
 
                 req.method match
                   case p@POST =>
                     val res = fs2.io.toInputStreamResource(req.body).use: is =>
                       val post = new HttpPost(uri)
-                      post.setEntity(new InputStreamEntity(is))
+                      post.setEntity(new InputStreamEntity(is, null))
                       forwadedHeaders(req).foreach(h => post.setHeader(h.name.toString, h.value))
                       response(httpClient.execute(post))
                     res
