@@ -113,7 +113,7 @@ object Connection:
       val passwds = checkPasswordBlock((pwd: String, pwd2: String) => validPassword(pwd, pwd2))
       form(
         method := "POST",
-        action := connectionRoute,
+        action := registerRoute,
         onKeyDown --> {event=> if(event.keyCode == 13) event.preventDefault()},
         div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
           checkFieldBlock(0, "First name", (s: String) => validNotNullString(s, "First name")),

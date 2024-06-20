@@ -93,25 +93,21 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
 
-        case req@POST -> Root / Data.connectionRoute =>
+        case req@POST -> Root / Data.registerRoute =>
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") zip r.getFirst("Name") zip r.getFirst("First name") zip r.getFirst("Institution") match
-              case Some(((((email: String, password: String), name: String), firstName: String), institution: String)) =>
+              case Some(((((email, password), name), firstName), institution)) =>
                 DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
                 ServerContent.ok("connection(false)")
-              case None =>
-                r.getFirst("Email") zip r.getFirst("Password") match
-                  case Some((email, password)) =>
-                    DB.user(email, password) match
-                      case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
-                      case None => ServerContent.connectionError
+              case None => ServerContent.connectionError
+        case req@POST -> Root / Data.connectionRoute =>
+          req.decode[UrlForm]: r =>
+            r.getFirst("Email") zip r.getFirst("Password") match
+              case Some((email, password)) =>
+                DB.user(email, password) match
+                  case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
                   case None => ServerContent.connectionError
-        //            r.getFirst("Email") zip r.getFirst("Password") match
-        //              case Some((email, password)) =>
-        //                DB.user(email, password) match
-        //                  case Some(_) => ServerContent.redirect("/").map(ServerContent.addJWTToken(email, DB.salted(password)))
-        //                  case None => ServerContent.connectionError
-        //              case None => ServerContent.connectionError
+              case None => ServerContent.connectionError
 
         case req @ GET -> Root / Data.disconnectRoute =>
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))

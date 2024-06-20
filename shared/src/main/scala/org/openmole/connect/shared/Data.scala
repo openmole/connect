@@ -4,6 +4,8 @@ import java.util.UUID
 
 object Data:
   val connectionRoute = "connection"
+  val registerRoute = "register"
+
   val userAPIRoute = "user"
   val adminAPIRoute = "admin"
   val openMOLERoute = "openmole"
