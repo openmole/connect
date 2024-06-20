@@ -17,12 +17,7 @@ object Authentication:
     import java.util.concurrent.TimeUnit
 
     def apply(): AuthenticationCache =
-      val user =
-        CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[Key, Cached]].
-          expireAfterAccess(30, TimeUnit.MINUTES).
-          maximumSize(10000).
-          build[Key, Cached]
-
+      val user = tool.cache[Key, Cached]()
       AuthenticationCache(user)
 
 

@@ -1,5 +1,6 @@
 package org.openmole.connect.server
 
+import com.google.common.cache.CacheBuilder
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.hc.client5.http.classic.methods.HttpGet
 import org.apache.hc.client5.http.config.ConnectionConfig
@@ -47,7 +48,8 @@ object tool:
     val shaHex: String = DigestUtils.sha256Hex(salt + v)
     s"sha256:$shaHex"
 
-  def tags(group: String, image: String, pageSize: Int = 100): Seq[String] =
+
+  def dockerHubTags(group: String, image: String, pageSize: Int = 100): Seq[String] =
     import org.json4s.*
     import org.json4s.jackson.JsonMethods.*
 
@@ -61,6 +63,12 @@ object tool:
       finally response.close()
     finally httpClient.close()
 
+
+  def cache[A, B]() =
+    CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[A, B]].
+      expireAfterAccess(30, TimeUnit.MINUTES).
+      maximumSize(10000).
+      build[A, B]
 
   extension [A, B](cache: com.google.common.cache.Cache[A, B])
     def getOptional(k: A, f: A => Option[B]): Option[B] =

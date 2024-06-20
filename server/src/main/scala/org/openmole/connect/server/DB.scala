@@ -73,9 +73,7 @@ object DB:
 
   object RegisterUser:
     def toData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
-
     def fromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
-
     def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid)
 
   case class RegisterUser(
@@ -89,52 +87,32 @@ object DB:
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
-
     def name = column[String]("NAME")
-
     def firstName = column[String]("FIRST_NAME")
-
     def email = column[Email]("EMAIL", O.Unique)
-
     def password = column[Password]("PASSWORD")
-
     def institution = column[Institution]("INSTITUTION")
-
     def role = column[Role]("ROLE")
-
     def omVersion = column[Version]("OMVERSION")
-
     def storage = column[Storage]("STORAGE_REQUIREMENT")
-
     def memory = column[Storage]("MEMORY_LIMIT")
-
     def cpu = column[Double]("CPU_LIMIT")
-
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
-
     def lastAccess = column[Long]("LASTACCESS")
-
     def created = column[Long]("CREATED")
 
     def * = (name, firstName, email, password, institution, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
-
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
 
   class RegisterUsers(tag: Tag) extends Table[RegisterUser](tag, "REGISTERING_USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
-
     def name = column[String]("NAME")
-
     def firstName = column[String]("FIRST_NAME")
-
     def email = column[Email]("EMAIL", O.Unique)
-
     def password = column[Password]("PASSWORD")
-
     def institution = column[Institution]("INSTITUTION")
-
     def status = column[EmailStatus]("STATUS")
 
     def * = (name, firstName, email, password, institution, status, uuid).mapTo[RegisterUser]
@@ -159,10 +137,6 @@ object DB:
 
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
-
-  //  def runUnitTransaction[E <: Effect, Unit](action: DBIOAction[Unit, NoStream, E]): Unit =
-  //    Await.result(db.run(action), Duration.Inf)
-
 
   def initDB()(using Salt) =
     val schema = databaseInfoTable.schema ++ userTable.schema ++ registerUserTable.schema
@@ -207,17 +181,6 @@ object DB:
         _ <- if e.isEmpty then registerUserTable += registerUser else DBIO.successful(())
       yield ()
 
-
-  def deleteUser(uuid: UUID)(using Authentication.AuthenticationCache) =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
-    runTransaction:
-      userTable.filter(_.uuid === uuid).delete
-
-  //  def delete(registeringUser: Data.RegisterUser): Int =
-  //    DB.RegisterUser.fromData(registeringUser).map { ru =>
-  //      delete(ru)
-  //    }.getOrElse(0)
-
   def deleteRegistering(uuid: String): Int =
     runTransaction:
       registerUserTable.filter(_.uuid === uuid).delete
@@ -230,28 +193,6 @@ object DB:
         _ <- DBIO.sequence(user.map(addUserTransaction))
         _ <- registerUserTable.filter(_.uuid === uuid).delete
       yield ()
-
-
-  //  def upsert(user: User, salt: String) =
-  //    runTransaction(
-  //      userTable.insertOrUpdate(user.uuid, user.name, user.email, Hash.hash(user.password, salt), user.role, user.omVersion, user.storage, user.lastAccess)
-  //    )
-  //
-  //  def setLastAccess(email: Email, lastAccess: Long) =
-  //    runTransaction {
-  //      getLastAccesQuery(email).update(lastAccess)
-  //    }
-  //
-  //  def delete(user: User) =
-  //    runTransaction(
-  //      userTable.filter {
-  //        _.uuid === user.uuid
-  //      }.delete
-  //    )
-
-  //QUERIES
-  // val users = Seq(User(Login("foo"), Password("foo"), UUID("foo-123-567-foo")), User(Login("bar"), Password("bar"), UUID("bar-123-567-bar")))
-
 
   def userFromUUID(uuid: UUID): Option[User] =
     runTransaction:
@@ -295,16 +236,19 @@ object DB:
   def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.AuthenticationCache): Boolean =
     summon[Authentication.AuthenticationCache].user.invalidate(uuid)
     runTransaction:
-      val q = for {user <- userTable
-                   if user.uuid === uuid &&
-                     (old match
-                        case Some(pwd) => user.password === salted(pwd)
-                        case None => true
-                       )
-                   } yield user.password
+      val q =
+        for
+          user <- userTable
+          if user.uuid === uuid &&
+            (old match
+               case Some(pwd) => user.password === salted(pwd)
+               case None => true)
+        yield user.password
       q.update(salted(password)).map(_ > 0)
 
+  def deleteUser(uuid: UUID)(using Authentication.AuthenticationCache) =
+    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+    runTransaction:
+      userTable.filter(_.uuid === uuid).delete
 
   def salted(password: Password)(using salt: Salt) = tool.hash(password, Salt.value(salt))
-
-//def isAdmin(email: Email) = users.find(_.email == email).map { _.role }.contains(admin)

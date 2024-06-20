@@ -36,10 +36,7 @@ object K8sService:
     import java.util.concurrent.TimeUnit
 
     def apply(): KubeCache =
-      val ipCache =
-        CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[DB.UUID, Cached]].
-          expireAfterAccess(30, TimeUnit.MINUTES).
-          build[DB.UUID, Cached]
+      val ipCache = tool.cache[DB.UUID, Cached]()
 
       KubeCache(ipCache)
 
