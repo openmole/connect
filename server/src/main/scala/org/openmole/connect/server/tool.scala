@@ -33,7 +33,8 @@ object tool:
 
     PoolingHttpClientConnectionManagerBuilder.create().
       setDefaultConnectionConfig(connConfig).
-      setMaxConnPerRoute(10).
+      setMaxConnTotal(1000).
+      setMaxConnPerRoute(20).
       build()
 
   implicit class ST(throwable: Throwable):
