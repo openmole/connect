@@ -56,20 +56,20 @@ object DB:
       User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 10240, 2048, 2, 1024, now, now, role, uuid)
 
   case class User(
-                   name: String,
-                   firstName: String,
-                   email: Email,
-                   password: Password,
-                   institution: Institution,
-                   omVersion: Version,
-                   storage: Storage,
-                   memory: Memory,
-                   cpu: Double,
-                   openMOLEMemory: Memory,
-                   lastAccess: Long,
-                   created: Long,
-                   role: Role = user,
-                   uuid: UUID = randomUUID)
+    name: String,
+    firstName: String,
+    email: Email,
+    password: Password,
+    institution: Institution,
+    omVersion: Version,
+    storage: Storage,
+    memory: Memory,
+    cpu: Double,
+    openMOLEMemory: Memory,
+    lastAccess: Long,
+    created: Long,
+    role: Role = user,
+    uuid: UUID = randomUUID)
 
   object RegisterUser:
     def toData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
@@ -155,7 +155,7 @@ object DB:
 
   lazy val db: Database =
     DriverManager.registerDriver(new org.h2.Driver())
-    Database.forURL(url = s"jdbc:h2:${dbFile.pathAsString};AUTOCOMMIT=TRUE")
+    Database.forURL(url = s"jdbc:h2:${dbFile.pathAsString}")
 
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
@@ -267,11 +267,11 @@ object DB:
       userTable.filter(u => u.email === email && u.password === salted(password)).result
     .headOption
 
-  def userFromSaltedPassword(email: Email, salted: Password): Option[User] =
+  def userFromSaltedPassword(uuid: UUID, salted: Password): Option[User] =
     runTransaction:
-      userTable.filter(u => u.email === email && u.password === salted).result
+      userTable.filter(u => u.uuid === uuid && u.password === salted).result
     .headOption
-
+  
   def registerUser(email: Email): Option[RegisterUser] =
     runTransaction:
       registerUserTable.filter(u => u.email === email).result

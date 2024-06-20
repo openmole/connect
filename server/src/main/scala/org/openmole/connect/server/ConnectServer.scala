@@ -32,6 +32,8 @@ import fs2.io.*
 import io.circe.yaml
 import io.circe.generic.auto.*
 
+import java.util.concurrent.TimeUnit
+
 object ConnectServer:
 
   object Config:
@@ -50,11 +52,22 @@ object ConnectServer:
     new ConnectServer(config, k8s)
 
 
+  object IPCache:
+
+    import com.google.common.cache.*
+
+    case class Cached(user: DB.User, ip: String)
+
+    def apply(): IPCache = CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[DB.UUID, Cached]].
+      expireAfterAccess(30, TimeUnit.MINUTES).
+      build[DB.UUID, Cached]
+
+  type IPCache = com.google.common.cache.Cache[DB.UUID, IPCache.Cached]
+
 class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
-
   given salt: DB.Salt = DB.Salt(config.salt)
 
   val httpClient =
@@ -65,6 +78,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       setDefaultSocketConfig(Utils.socketConfig()).
       build()
 
+  val ipCache = ConnectServer.IPCache()
 
   def start() =
     DB.initDB()
@@ -73,8 +87,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       HttpRoutes.of:
         case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) if user.role == DB.admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.email, user.password))
-            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.email, user.password))
+            case Some(user) if user.role == DB.admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.uuid, user.password))
+            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
@@ -89,7 +103,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 r.getFirst("Email") zip r.getFirst("Password") match
                   case Some((email, password)) =>
                     DB.user(email, password) match
-                      case Some(_) => ServerContent.redirect("/").map(ServerContent.addJWTToken(email, DB.salted(password)))
+                      case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
                       case None => ServerContent.connectionError
                   case None => ServerContent.connectionError
         //            r.getFirst("Email") zip r.getFirst("Password") match
@@ -110,7 +124,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 if DB.User.isAdmin(admin)
                 then
                   DB.userFromUUID(uuid) match
-                    case Some(user) => ServerContent.redirect(s"/").map(ServerContent.addJWTToken(user.email, user.password))
+                    case Some(user) => ServerContent.redirect(s"/").map(ServerContent.addJWTToken(user.uuid, user.password))
                     case None => NotFound(s"User not found ${uuid}")
                 else
                   Forbidden(s"User ${admin.name} is not admin")
@@ -258,8 +272,8 @@ object ServerContent:
       )
     )
 
-  def addJWTToken(email: DB.Email, hashedPassword: DB.Password)(response: Response[IO])(using JWT.Secret) =
-    val token = JWT.TokenData(email, hashedPassword)
+  def addJWTToken(uuid: DB.UUID, hashedPassword: DB.Password)(response: Response[IO])(using JWT.Secret) =
+    val token = JWT.TokenData(uuid, hashedPassword)
     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
     response.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate)))
 

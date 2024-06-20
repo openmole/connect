@@ -57,15 +57,15 @@ object JWT:
 
     def fromTokenContent(content: String)(using secret: Secret) =
       Jwt.decode(content, secret, Seq(JWT.algorithm)).map: jwtClaim =>
-        val email: Email = Json.fromJson(jwtClaim.content, Json.key.email)
+        val uuid: UUID = Json.fromJson(jwtClaim.content, Json.key.uuid)
         val password: Password = Json.fromJson(jwtClaim.content, Json.key.password)
-        TokenData(email, password, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
+        TokenData(uuid, password, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
       .toOption.filter { t => !hasExpired(t) }
 
     def toContent(token: TokenData)(using secret: Secret) =
       val claims =
         Seq(
-          Json.key.email -> token.email,
+          Json.key.uuid -> token.uuid,
           Json.key.password -> token.password
         )
 
@@ -81,5 +81,5 @@ object JWT:
       )
 
 
-  case class TokenData(email: Email, password: Password, issued: Long = Utils.now, expirationTime: Long = inOneMonth)
+  case class TokenData(uuid: UUID, password: Password, issued: Long = Utils.now, expirationTime: Long = inOneMonth)
 

@@ -8,11 +8,9 @@ import org.json4s.jackson.JsonMethods.*
 object Json:
 
   object key:
-    val email = "email"
+    val uuid = "uuid"
     val password = "password"
 
-    val uuid = "uuid"
-    val hostIP = "hostIP"
 
   def fromJson(json: String, jsonKey: String): String =
     fromJson(parse(json), jsonKey)
