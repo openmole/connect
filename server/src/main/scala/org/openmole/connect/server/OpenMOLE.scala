@@ -1,5 +1,12 @@
 package org.openmole.connect.server
 
+import com.google.common.base.{Supplier, Suppliers}
+import com.google.common.cache.CacheBuilder
+import org.apache.hc.client5.http.classic.methods.HttpGet
+import org.openmole.connect.server.tool.cache
+
+import java.util.concurrent.TimeUnit
+
 /*
  * Copyright (C) 2024 Romain Reuillon
  *
@@ -23,9 +30,9 @@ object OpenMOLE:
 
   def wellFormedVersion(v: String) =
     v.matches(versionPattern) || v.matches(snapshotPattern)
-  
-  def availableVersions(withSnapshot: Boolean = true, history: Option[Int], lastMajors: Boolean): Seq[String] =
-    val tags = tool.dockerHubTags("openmole", "openmole")
+
+  def availableVersions(withSnapshot: Boolean = true, history: Option[Int], lastMajors: Boolean)(using DockerHubCache): Seq[String] =
+    val tags = summon[DockerHubCache].get()
     val snapshot: Seq[String] = if withSnapshot then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()
 
     val wellFormed = tags.filter(_.matches(versionPattern))
@@ -43,3 +50,24 @@ object OpenMOLE:
         else wellFormed.filter(_.startsWith(m))
 
     snapshot ++ majors
+
+  object DockerHubCache:
+    def apply(): DockerHubCache =
+      Suppliers.memoizeWithExpiration(() => dockerHubTags("openmole", "openmole"), 2, TimeUnit.MINUTES)
+
+  opaque type DockerHubCache = Supplier[Seq[String]]
+
+  def dockerHubTags(group: String, image: String, pageSize: Int = 100): Seq[String] =
+    import org.json4s.*
+    import org.json4s.jackson.JsonMethods.*
+
+    val httpClient = tool.buildHttpClient()
+    try
+      val httpGet = new HttpGet(s"https://hub.docker.com/v2/namespaces/$group/repositories/$image/tags?page_size=$pageSize")
+      val response = httpClient.execute(httpGet)
+      try
+        val json = parse(response.getEntity.getContent)
+        (json \\ "name").children.map(_.values.toString)
+      finally response.close()
+    finally httpClient.close()
+

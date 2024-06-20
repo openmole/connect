@@ -49,21 +49,6 @@ object tool:
     s"sha256:$shaHex"
 
 
-  def dockerHubTags(group: String, image: String, pageSize: Int = 100): Seq[String] =
-    import org.json4s.*
-    import org.json4s.jackson.JsonMethods.*
-
-    val httpClient = buildHttpClient()
-    try
-      val httpGet = new HttpGet(s"https://hub.docker.com/v2/namespaces/$group/repositories/$image/tags?page_size=$pageSize")
-      val response = httpClient.execute(httpGet)
-      try
-        val json = parse(response.getEntity.getContent)
-        (json \\ "name").children.map(_.values.toString)
-      finally response.close()
-    finally httpClient.close()
-
-
   def cache[A, B]() =
     CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[A, B]].
       expireAfterAccess(30, TimeUnit.MINUTES).

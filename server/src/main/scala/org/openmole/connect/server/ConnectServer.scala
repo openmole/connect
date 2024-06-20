@@ -55,6 +55,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   given salt: DB.Salt = DB.Salt(config.salt)
   given authenticationCache: Authentication.AuthenticationCache = Authentication.AuthenticationCache()
   given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
+  given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
 
   val httpClient =
     HttpClients.
