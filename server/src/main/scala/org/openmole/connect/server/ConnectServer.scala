@@ -52,33 +52,21 @@ object ConnectServer:
     new ConnectServer(config, k8s)
 
 
-  object IPCache:
-
-    import com.google.common.cache.*
-
-    case class Cached(user: DB.User, ip: String)
-
-    def apply(): IPCache = CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[DB.UUID, Cached]].
-      expireAfterAccess(30, TimeUnit.MINUTES).
-      build[DB.UUID, Cached]
-
-  type IPCache = com.google.common.cache.Cache[DB.UUID, IPCache.Cached]
-
 class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
   given salt: DB.Salt = DB.Salt(config.salt)
+  given authenticationCache: Authentication.AuthenticationCache = Authentication.AuthenticationCache()
+  given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
 
   val httpClient =
     HttpClients.
       custom().
       disableAutomaticRetries().
       disableRedirectHandling().
-      setDefaultSocketConfig(Utils.socketConfig()).
+      setDefaultSocketConfig(tool.socketConfig()).
       build()
-
-  val ipCache = ConnectServer.IPCache()
 
   def start() =
     DB.initDB()
@@ -148,7 +136,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req): user =>
-            K8sService.podInfo(user.uuid).flatMap(_.podIP) match
+            K8sService.podIP(user.uuid) match
               case Some(ip) =>
                 val openmoleURL = s"http://$ip:80"
                 val openmoleURI = java.net.URI(openmoleURL)
@@ -238,7 +226,7 @@ object ServerContent:
     Forbidden.apply(ServerContent.someHtml("connection(true);").render)
       .map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
-  def authenticated[T](req: Request[IO])(using JWT.Secret)(f: DB.User => T) =
+  def authenticated[T](req: Request[IO])(using JWT.Secret, Authentication.AuthenticationCache)(f: DB.User => T) =
     Authentication.authenticatedUser(req) match
       case Some(user) => f(user)
       case None =>

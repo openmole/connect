@@ -44,7 +44,7 @@ data:
     salt: "some-salt"
     secret: "some-secret"
     kube:
-     storageClassName: csi-sc-cinderplugin
+     storageClassName: longhorn
     openmole:
       versionHistory: 3
 kind: ConfigMap
@@ -53,23 +53,13 @@ metadata:
   name: connect-config
   namespace: openmole
 ---
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  namespace: openmole
-  name: csi-sc-cinderplugin
-provisioner: cinder.csi.openstack.org
-volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: true
-reclaimPolicy: Delete
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: connect-pv-claim
   namespace: openmole
 spec:
-  storageClassName: csi-sc-cinderplugin
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:

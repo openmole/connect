@@ -25,7 +25,26 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import monocle.*
 import monocle.syntax.all.*
 
+import tool.*
+
 object K8sService:
+
+  object KubeCache:
+    type Cached = String
+
+    import com.google.common.cache.*
+    import java.util.concurrent.TimeUnit
+
+    def apply(): KubeCache =
+      val ipCache =
+        CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[DB.UUID, Cached]].
+          expireAfterAccess(30, TimeUnit.MINUTES).
+          build[DB.UUID, Cached]
+
+      KubeCache(ipCache)
+
+  case class KubeCache(ipCache: com.google.common.cache.Cache[DB.UUID, KubeCache.Cached])
+
 
   object Namespace:
     val openmole = "openmole"
@@ -184,10 +203,12 @@ object K8sService:
             k8s update updated
       .await
 
-  def stopOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
-    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
-      k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
-    .await
+  def stopOpenMOLEPod(uuid: UUID)(using KubeCache) =
+    summon[KubeCache].ipCache.invalidate(uuid)
+    withK8s: k8s =>
+      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
+        k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
+      .await
 
   def startOpenMOLEPod(uuid: UUID) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
@@ -237,8 +258,10 @@ object K8sService:
 //    k8s.usingNamespace(Namespace.openmole).delete(pvcName).await
 //    k8s.usingNamespace(Namespace.openmole).update(newPVC).await //createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
 
-  def deleteOpenMOLE(uuid: UUID): Unit =
+  def deleteOpenMOLE(uuid: UUID)(using KubeCache): Unit =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
+
+    summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
       getPVCName(uuid).foreach: name =>
         k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](name).await
@@ -258,6 +281,10 @@ object K8sService:
     withK8s: k8s =>
       val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
       pods.map { list => list.items.map(toPodInfo).headOption }.await
+
+  def podIP(uuid: UUID)(using KubeCache) =
+    def ip(uuid: UUID) = podInfo(uuid).flatMap(_.podIP)
+    summon[KubeCache].ipCache.getOptional(uuid, ip)
 
   //  def isServiceUp(uuid: UUID): Boolean =
   //    podInfo(uuid).flatMap { _.status.contains() }.isDefined

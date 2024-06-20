@@ -3,11 +3,13 @@ package org.openmole.connect.server
 import cats.effect.*
 import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
+import org.openmole.connect.server.Authentication.AuthenticationCache
 import org.openmole.connect.server.DB.Salt
+import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.shared.*
 
 
-class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using salt: Salt):
+class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using Salt, KubeCache, AuthenticationCache):
   def userData = DB.User.toData(user)
   def instanceStatus = K8sService.podInfo(user.uuid)
   def launch =

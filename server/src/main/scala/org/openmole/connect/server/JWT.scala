@@ -41,8 +41,8 @@ object JWT:
 
     implicit val formats: DefaultFormats = DefaultFormats
 
-    def inFiveMinutes = Utils.now + 300000L
-    def inOneMonth = Utils.now + 2592000000L
+    def inFiveMinutes = tool.now + 300000L
+    def inOneMonth = tool.now + 2592000000L
 
     def hasExpired(token: String)(using secret: Secret): Option[JwtClaim] =
       Jwt.decode(token, secret, Seq(JWT.algorithm)).toOption.filter { claim =>
@@ -50,7 +50,7 @@ object JWT:
       }
 
     def hasExpired(time: Long): Boolean =
-      time > Utils.now
+      time > tool.now
 
     def hasExpired(tokenData: TokenData)(implicit secret: Secret): Boolean =
       hasExpired(tokenData.expirationTime)
@@ -81,5 +81,5 @@ object JWT:
       )
 
 
-  case class TokenData(uuid: UUID, password: Password, issued: Long = Utils.now, expirationTime: Long = inOneMonth)
+  case class TokenData(uuid: UUID, password: Password, issued: Long = tool.now, expirationTime: Long = inOneMonth)
 

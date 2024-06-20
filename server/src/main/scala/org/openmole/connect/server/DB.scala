@@ -10,7 +10,7 @@ import java.util
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import org.openmole.connect.server.Utils.*
+import org.openmole.connect.server.tool.*
 import io.github.arainko.ducktape.*
 import better.files.*
 
@@ -79,13 +79,13 @@ object DB:
     def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid)
 
   case class RegisterUser(
-                           name: String,
-                           firstName: String,
-                           email: Email,
-                           password: Password,
-                           institution: Institution,
-                           status: EmailStatus = unchecked,
-                           uuid: UUID = randomUUID)
+    name: String,
+    firstName: String,
+    email: Email,
+    password: Password,
+    institution: Institution,
+    status: EmailStatus = unchecked,
+    uuid: UUID = randomUUID)
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
@@ -208,7 +208,8 @@ object DB:
       yield ()
 
 
-  def deleteUser(uuid: UUID) =
+  def deleteUser(uuid: UUID)(using Authentication.AuthenticationCache) =
+    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
     runTransaction:
       userTable.filter(_.uuid === uuid).delete
 
@@ -271,7 +272,7 @@ object DB:
     runTransaction:
       userTable.filter(u => u.uuid === uuid && u.password === salted).result
     .headOption
-  
+
   def registerUser(email: Email): Option[RegisterUser] =
     runTransaction:
       registerUserTable.filter(u => u.email === email).result
@@ -280,7 +281,7 @@ object DB:
   def updadeLastAccess(uuid: UUID) =
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.lastAccess)
-      q.update(Utils.now)
+      q.update(tool.now)
 
   def updadeOMVersion(uuid: UUID, version: String) =
     runTransaction:
@@ -291,7 +292,8 @@ object DB:
 
   def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 
-  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using salt: Salt): Boolean =
+  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.AuthenticationCache): Boolean =
+    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
     runTransaction:
       val q = for {user <- userTable
                    if user.uuid === uuid &&
@@ -303,6 +305,6 @@ object DB:
       q.update(salted(password)).map(_ > 0)
 
 
-  def salted(password: Password)(using salt: Salt) = Utils.hash(password, Salt.value(salt))
+  def salted(password: Password)(using salt: Salt) = tool.hash(password, Salt.value(salt))
 
 //def isAdmin(email: Email) = users.find(_.email == email).map { _.role }.contains(admin)

@@ -5,8 +5,30 @@ import cats.effect.IO
 import org.http4s.Request
 import org.http4s.headers.Cookie
 import org.openmole.connect.server.JWT.*
+import tool.*
 
 object Authentication:
+
+  object AuthenticationCache:
+    type Cached = DB.User
+    case class Key(uuid: DB.UUID, password: DB.Password)
+
+    import com.google.common.cache.*
+    import java.util.concurrent.TimeUnit
+
+    def apply(): AuthenticationCache =
+      val user =
+        CacheBuilder.newBuilder.asInstanceOf[CacheBuilder[Key, Cached]].
+          expireAfterAccess(30, TimeUnit.MINUTES).
+          maximumSize(10000).
+          build[Key, Cached]
+
+      AuthenticationCache(user)
+
+
+  case class AuthenticationCache(user: com.google.common.cache.Cache[AuthenticationCache.Key, AuthenticationCache.Cached])
+
+
 
   def authorizationCookieKey = "authorized_openmole_cookie"
 
@@ -18,12 +40,15 @@ object Authentication:
 
     cookie
 
-  def authenticatedUser[T](request: Request[IO])(using JWT.Secret): Option[DB.User] =
+  def authenticatedUser[T](request: Request[IO])(using JWT.Secret, AuthenticationCache): Option[DB.User] =
     authorizationToken(request) match
       case Some(t) =>
-        val user = DB.userFromSaltedPassword(t.uuid, t.password)
-        user.foreach(u => DB.updadeLastAccess(u.uuid))
-        user
+        def queryUser(k: AuthenticationCache.Key) =
+          val user = DB.userFromSaltedPassword(k.uuid, k.password)
+          user.foreach(u => DB.updadeLastAccess(k.uuid))
+          user
+
+        summon[AuthenticationCache].user.getOptional(AuthenticationCache.Key(t.uuid, t.password), queryUser)
       case _ => None
 
   def isAuthenticated(request: Request[IO])(using JWT.Secret) =
@@ -35,38 +60,3 @@ object Authentication:
     authorizationToken(request) match
       case Some(t) => DB.userFromSaltedPassword(t.uuid, t.password).exists(_.role == DB.admin)
       case _ => false
-
-//
-//  def cookie(request: Request[IO]) = request.headers.get[org.http4s.headers.Cookie]
-//
-//  def isValid(request: Request[IO])(using JWT.Secret): Boolean =
-//    cookie(request) match
-//      case None =>
-////        val authFailure = AuthenticationFailure(request.getHeader("User-Agent"),
-////          request.getRequestURL.toString,
-////          request.getRemoteAddr)
-//
-//        //println(s"Error: cookie not found")
-//        //println("More information:")
-//        //println(authFailure.toString)
-//        false
-//      case Some(c: Cookie) => JWT.isTokenValid(c.values.head.renderString)
-//
-////  def tokenData(request: HttpServletRequest, tokenType: TokenType)(implicit secret: Secret): Option[TokenData] = {
-////    cookie(request, tokenType).flatMap { c =>
-////      JWT.TokenData.fromTokenContent(c.getValue, tokenType)
-////    }
-////  }
-//
-//
-//case class AuthenticationFailure(
-//  userAgent: String,
-//  url: String,
-//  remoteAddr: String):
-//
-//  override def toString =
-//    "AuthenticationFailure(\n" +
-//      "  User-Agent: " + userAgent + "\n" +
-//      "  Request URL: " + url + "\n" +
-//      "  Remote Address: " + remoteAddr + "\n" +
-//      ")"
