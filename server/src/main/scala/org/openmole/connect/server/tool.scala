@@ -7,6 +7,7 @@ import org.apache.hc.client5.http.config.ConnectionConfig
 import org.apache.hc.client5.http.impl.classic.*
 import org.apache.hc.client5.http.impl.io.{BasicHttpClientConnectionManager, PoolingHttpClientConnectionManagerBuilder}
 import org.apache.hc.client5.http.io.HttpClientConnectionManager
+import org.apache.hc.core5.pool.PoolReusePolicy
 
 import java.io.{PrintWriter, StringWriter}
 import java.text.SimpleDateFormat
@@ -35,6 +36,7 @@ object tool:
       setDefaultConnectionConfig(connConfig).
       setMaxConnTotal(1000).
       setMaxConnPerRoute(20).
+      setConnPoolPolicy(PoolReusePolicy.LIFO).
       build()
 
   implicit class ST(throwable: Throwable):
