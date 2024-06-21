@@ -40,7 +40,7 @@ object UserPanel {
                   podInfo.set(x)),
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
-              UIUtils.userInfoBlock(u),
+              UIUtils.userInfoBlock(u, admin = false),
               div(Css.rowFlex, justifyContent.flexEnd, marginRight := "30", marginBottom := "20",
                 child <--
                   Signal.fromFuture(getVersions).map: vs =>
@@ -50,7 +50,7 @@ object UserPanel {
                 child <--
                   podInfo.signal.map(_.flatMap(_.status)).map:
                     case Some(st: Data.PodInfo.Status) => UIUtils.openmoleBoard(None, st)
-                    case None: Any => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive())
+                    case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive())
               )
             )
           )

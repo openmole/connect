@@ -45,6 +45,7 @@ data:
     secret: "some-secret"
     kube:
      storageClassName: longhorn
+     storageSize: 10240
     openmole:
       versionHistory: 3
 kind: ConfigMap

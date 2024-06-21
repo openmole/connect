@@ -54,7 +54,6 @@ object Data:
     institution: String,
     role: Role,
     omVersion: String,
-    storage: Int,
     memory: Int,
     cpu: Double,
     openMOLEMemory: Int,
@@ -77,3 +76,6 @@ object Data:
 enum K8ActionResult:
   case K8Success(message: String) extends K8ActionResult
   case K8Failure(message: String, stackTrace: String) extends K8ActionResult
+
+
+case class Storage(used: Double, available: Double)

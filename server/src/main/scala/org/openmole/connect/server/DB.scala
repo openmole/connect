@@ -53,7 +53,7 @@ object DB:
     def fromData(u: Data.User): Option[User] = user(u.email)
 
     def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = DB.user, uuid: UUID = randomUUID) =
-      User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 10240, 2048, 2, 1024, now, now, role, uuid)
+      User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, uuid)
 
   case class User(
     name: String,
@@ -62,7 +62,6 @@ object DB:
     password: Password,
     institution: Institution,
     omVersion: Version,
-    storage: Storage,
     memory: Memory,
     cpu: Double,
     openMOLEMemory: Memory,
@@ -94,14 +93,13 @@ object DB:
     def institution = column[Institution]("INSTITUTION")
     def role = column[Role]("ROLE")
     def omVersion = column[Version]("OMVERSION")
-    def storage = column[Storage]("STORAGE_REQUIREMENT")
     def memory = column[Storage]("MEMORY_LIMIT")
     def cpu = column[Double]("CPU_LIMIT")
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
     def lastAccess = column[Long]("LASTACCESS")
     def created = column[Long]("CREATED")
 
-    def * = (name, firstName, email, password, institution, omVersion, storage, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
+    def * = (name, firstName, email, password, institution, omVersion, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]

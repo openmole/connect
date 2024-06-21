@@ -16,7 +16,7 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using Sal
   def launch =
     if K8sService.deploymentExists(user.uuid)
     then K8sService.startOpenMOLEPod(user.uuid)
-    else K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu, user.storage)
+    else K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
 
   def changePassword(oldPassword: String, newPassword: String) =
     DB.updatePassword(user.uuid, newPassword, Some(oldPassword))

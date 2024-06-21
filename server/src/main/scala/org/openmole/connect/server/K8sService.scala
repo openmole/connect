@@ -5,7 +5,7 @@ import akka.stream.ActorMaterializer
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.models.V1JobStatus
 import org.openmole.connect.server.DB.UUID
-import org.openmole.connect.shared.Data
+import org.openmole.connect.shared.{Data, Storage}
 import org.openmole.connect.shared.Data.*
 import skuber.LabelSelector.dsl.*
 import skuber.PersistentVolume.AccessMode
@@ -21,10 +21,8 @@ import java.util
 import scala.collection.immutable.List
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import monocle.*
 import monocle.syntax.all.*
-
 import tool.*
 
 object K8sService:
@@ -148,13 +146,13 @@ object K8sService:
         )
     )
 
-  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, storageRequirement: Int) =
+  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     withK8s: k8s =>
       val podName = uuid.value
       val pvcName = s"pvc-$podName-${util.UUID.randomUUID().toString}"
       //val pvName = s"pv-${podName}"
 
-      val pvc = persistentVolumeClaim(pvcName, storageRequirement, k8sService.storageClassName)
+      val pvc = persistentVolumeClaim(pvcName, k8sService.storageSize, k8sService.storageClassName)
 
       val openMOLESelector: LabelSelector = LabelSelector.IsEqualRequirement("app", "openmole")
       val openMOLEContainer = createOpenMOLEContainer(omVersion, openMOLEMemory, memoryLimit, cpuLimit)
@@ -286,7 +284,7 @@ object K8sService:
   //  def isServiceUp(uuid: UUID): Boolean =
   //    podInfo(uuid).flatMap { _.status.contains() }.isDefined
 
-  def usedSpace(uuid: UUID): Option[Double] =
+  def usedSpace(uuid: UUID): Option[Storage] =
     import io.kubernetes.client.openapi.*
     import io.kubernetes.client.*
     import io.kubernetes.client.util.*
@@ -302,8 +300,13 @@ object K8sService:
       scala.util.Try(builder.execute()).toOption.flatMap: proc =>
         val result =
           scala.io.Source.fromInputStream(proc.getInputStream).getLines().find(_.endsWith("/var/openmole")).map: l =>
-            val octets = l.replaceAll("  *", " ").split(' ')(2).toDouble
-            octets / (1024 * 1024)
+            val fields = l.replaceAll("  *", " ").split(' ')
+            val used = fields(2).toDouble
+            val free = fields(3).toDouble
+            Storage(
+              used / 1024,
+              free / 1024
+            )
 
         if proc.waitFor() == 0 then result else None
 
@@ -316,51 +319,5 @@ object K8sService:
       podInfo <- podInfo(uuid, pods)
     yield podInfo
 
-  /*def migratePV(source: String, destination: String) =
-    withK8s: k8s =>
-      import skuber.batch.*
-      import skuber.json.batch.format.*
 
-      val migrate = Job(
-        metadata = ObjectMeta(name = s"migrate-pv-$source"),
-        spec = Some:
-          Job.Spec(
-            template = Some:
-              Pod.Template.Spec(
-                spec = Some:
-                  Pod.Spec(
-                    containers = List:
-                      Container(
-                        name = "migrate",
-                        image = "debian",
-                        command = List("/bin/bash", "-c"),
-                        args = List("ls -lah /src_vol /dst_vol && df -h && cp -a /src_vol/. /dst_vol/ && ls -lah /dst_vol/ && du -shxc /src_vol/ /dst_vol/"),
-                        volumeMounts = List(
-                          Volume.Mount(
-                            mountPath = "/src_vol",
-                            name = "src",
-                            readOnly = true
-                          ),
-                          Volume.Mount(
-                            mountPath = "/dst_vol",
-                            name = "dst"
-                          )
-                        )
-                      ),
-                    restartPolicy = RestartPolicy.Never,
-                    volumes = List(
-                      Volume(name = "src", source = Volume.PersistentVolumeClaimRef(claimName = source)),
-                      Volume(name = "dst", source = Volume.PersistentVolumeClaimRef(claimName = destination))
-                    )
-                  )
-                ),
-            backoffLimit = Some(1)
-          )
-
-      )
-
-      k8s.usingNamespace(Namespace.openmole).create(migrate)
-  */
-
-
-case class K8sService(storageClassName: Option[String])
+case class K8sService(storageClassName: Option[String], storageSize: Int)

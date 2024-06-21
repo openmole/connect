@@ -122,7 +122,7 @@ object AdminPanel:
                                 settingsUUID.set(None)
                                 div(
                                   Css.columnFlex, height := "350",
-                                  UIUtils.userInfoBlock(u.user),
+                                  UIUtils.userInfoBlock(u.user, admin = true),
                                   div(
                                     u.podInfo.flatMap(_.status) match
                                       case Some(st) => UIUtils.openmoleBoard(Some(u.user.uuid), st)

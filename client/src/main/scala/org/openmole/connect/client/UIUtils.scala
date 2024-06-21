@@ -48,17 +48,23 @@ object UIUtils:
       span(Css.centerColumnFlex, fontFamily := "gi", fontSize := "14", s"${toGB(value)}/${toGB(max)} GB")
     )
 
-  def userInfoBlock(user: User) =
+  def userInfoBlock(user: User, admin: Boolean) =
+    def signal =
+      if admin
+      then Signal.fromFuture(AdminAPIClient.usedSpace(user.uuid).future)
+      else Signal.fromFuture(UserAPIClient.usedSpace(()).future)
+
     div(
-      child <-- Signal.fromFuture(AdminAPIClient.usedSpace(user.uuid).future).map: v =>
+      child <-- signal.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role),
           textBlock("OpendMOLE version", user.omVersion),
           textBlock("CPU", user.cpu.toString),
-          textBlock("Memory", toGB(user.memory)),
+          textBlock("Memory", s"${toGB(user.memory)} GB"),
           textBlock("OpenMOLE memory", toGB(user.openMOLEMemory)),
           //FIXME use another color when used storage is not set
-          memoryBar("Storage", v.flatten.map(_.toInt).getOrElse(0), user.storage),
+          storage.flatten.toSeq.map: storage =>
+            memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
         )
     )
 

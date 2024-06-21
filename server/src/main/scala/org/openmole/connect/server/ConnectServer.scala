@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
 object ConnectServer:
 
   object Config:
-    case class Kube(storageClassName: Option[String] = None)
+    case class Kube(storageClassName: Option[String] = None, storageSize: Int)
     case class OpenMOLE(versionHistory: Int)
 
   case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE)
@@ -44,7 +44,7 @@ object ConnectServer:
 
 
   def apply(config: Config) =
-    val k8s = K8sService(config.kube.storageClassName)
+    val k8s = K8sService(config.kube.storageClassName, config.kube.storageSize)
     new ConnectServer(config, k8s)
 
 

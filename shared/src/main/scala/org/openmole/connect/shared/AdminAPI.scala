@@ -35,10 +35,10 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
-  val usedSpace: Endpoint[String, Option[Double]] =
+  val usedSpace: Endpoint[String, Option[Storage]] =
     endpoint(
       post(path / "used-space", jsonRequest[String]),
-      ok(jsonResponse[Option[Double]])
+      ok(jsonResponse[Option[Storage]])
     )
 
   val instance: Endpoint[String, Option[Data.PodInfo]] =
