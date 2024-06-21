@@ -17,7 +17,11 @@ object UIUtils:
 
   case class DetailedInfo(role: Role, omVersion: String, usedStorage: Option[Int], availableStorage: Int, memory: Int, cpu: Double, openMOLEMemory: Int)
 
-  def toGB(size: Int): String = s"${(size.toDouble / 1024).round.toString}"
+  def toGB(size: Int, float: Boolean = false): String =
+    val gs = size.toDouble / 1024
+    if float
+    then f"$gs%.2f"
+    else s"${gs.round.toString}"
 
   def textBlock(title: String, text: String) =
     div(Css.centerColumnFlex,
@@ -45,7 +49,7 @@ object UIUtils:
         span(width := s"${bar1}%", cls := "bar-1"),
         span(width := s"${bar2}%", cls := "bar-2")
       ),
-      span(Css.centerColumnFlex, fontFamily := "gi", fontSize := "14", s"${toGB(value)}/${toGB(max)} GB")
+      span(Css.centerColumnFlex, fontFamily := "gi", fontSize := "14", s"${toGB(value, float = true)}/${toGB(max)} GB")
     )
 
   def userInfoBlock(user: User, admin: Boolean) =
