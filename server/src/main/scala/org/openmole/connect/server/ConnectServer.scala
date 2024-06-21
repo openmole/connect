@@ -198,6 +198,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
         .withIdleTimeout(Duration.Inf)
         .withResponseHeaderTimeout(Duration.Inf)
         .withServiceErrorHandler(errorHandler)
+        .withMaxConnections(10240)
         .resource.allocated.unsafeRunSync()._2
 
     server
