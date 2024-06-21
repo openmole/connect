@@ -22,6 +22,7 @@ object AdminPanel:
     val users: Var[Seq[UserAndPodInfo]] = Var(Seq())
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
+
     val selected: Var[Option[String]] = Var(None)
     val settingsUUID: Var[Option[String]] = Var(None)
 
@@ -32,6 +33,7 @@ object AdminPanel:
       AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
 
     updateUserInfo
+
     UserAPIClient.availableVersions((Some(10), false)).future.foreach(vs => versions.set(vs))
 
     def statusElement(registerinUser: RegisterUser) =
@@ -146,16 +148,9 @@ object AdminPanel:
 
 
     lazy val appContainer = dom.document.querySelector("#appContainer")
-    render(appContainer,
+    render(
+      appContainer,
       div(
-        EventStream.periodic(5000).toObservable -->
-          Observer: _ =>
-            settingsUUID.now() match
-              case None =>
-                AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-                AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
-              case _ =>
-        ,
         UIUtils.mainPanel(adminTable.render.amend(cls := "border", width := "800"))
       )
     )

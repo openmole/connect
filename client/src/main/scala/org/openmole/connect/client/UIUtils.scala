@@ -65,7 +65,7 @@ object UIUtils:
           textBlock("OpendMOLE version", user.omVersion),
           textBlock("CPU", user.cpu.toString),
           textBlock("Memory", s"${toGB(user.memory)} GB"),
-          textBlock("OpenMOLE memory", toGB(user.openMOLEMemory)),
+          textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory)} GB"),
           //FIXME use another color when used storage is not set
           storage.flatten.toSeq.map: storage =>
             memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
