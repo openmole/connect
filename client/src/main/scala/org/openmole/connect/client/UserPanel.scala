@@ -28,6 +28,7 @@ object UserPanel {
     def getVersions = UserAPIClient.availableVersions(()).future
 
     val podInfo: Var[Option[PodInfo]] = Var(None)
+    val refreshUserBlock: Var[Unit] = Var(())
 
     lazy val userPanel = div(
       child <-- Signal.fromFuture(getUser).map:
@@ -35,12 +36,16 @@ object UserPanel {
           div(
             EventStream.periodic(5000).toObservable -->
               Observer: _ =>
-                UserAPIClient.instance(()).future.foreach(x=>
-                  println("XX set " + x)
-                  podInfo.set(x)),
+                UserAPIClient.instance(()).future.foreach: i =>
+                  (podInfo.now().flatMap(_.status).map(_.isRunning), i.flatMap(_.status).map(_.isRunning)) match
+                    case (Some(false) | None, Some(true)) => refreshUserBlock.set(())
+                    case _ =>
+
+                  podInfo.set(i),
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
-              UIUtils.userInfoBlock(u, admin = false),
+              child <-- refreshUserBlock.signal.map: _ =>
+                UIUtils.userInfoBlock(u, admin = false),
               div(Css.rowFlex, justifyContent.flexEnd, marginRight := "30", marginBottom := "20",
                 child <--
                   Signal.fromFuture(getVersions).map: vs =>
@@ -49,7 +54,7 @@ object UserPanel {
               div(
                 child <--
                   podInfo.signal.map(_.flatMap(_.status)).map:
-                    case Some(st: Data.PodInfo.Status) => UIUtils.openmoleBoard(None, st)
+                    case Some(st) => UIUtils.openmoleBoard(None, st)
                     case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive())
               )
             )

@@ -23,6 +23,11 @@ object Data:
   object PodInfo:
     object Status:
       extension (s: Status)
+        def isRunning =
+          s match
+            case _: Running => true
+            case _ => false
+
         def value =
           s match
             case _: Running => "Running"

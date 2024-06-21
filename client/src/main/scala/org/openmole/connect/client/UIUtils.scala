@@ -62,11 +62,10 @@ object UIUtils:
       child <-- signal.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role),
-          textBlock("OpendMOLE version", user.omVersion),
+          textBlock("OpenMOLE version", user.omVersion),
           textBlock("CPU", user.cpu.toString),
           textBlock("Memory", s"${toGB(user.memory)} GB"),
           textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory)} GB"),
-          //FIXME use another color when used storage is not set
           storage.flatten.toSeq.map: storage =>
             memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
         )
@@ -203,15 +202,12 @@ object UIUtils:
               )
       ),
       div(Css.rowFlex, justifyContent.flexEnd,
-        status match
-          case _: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Waiting =>
-            uuid match
-              case None => div()
-              case Some(uuid) => impersonationLink(uuid)
-          case _ =>
-            uuid match
-              case None => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
-              case Some(uuid) => impersonationLink(uuid)
+        uuid match
+          case None =>
+            status match
+              case _: PodInfo.Status.Running => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+              case _ => div()
+          case Some(uuid) => impersonationLink(uuid)
       )
     )
 
