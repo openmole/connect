@@ -30,18 +30,20 @@ object Data:
 
         def value =
           s match
+            case Creating => "Creating"
             case _: Running => "Running"
             case _: Waiting => "Starting"
-            case _: Terminating => "Terminating"
+            case Terminating => "Terminating"
             case _: Terminated => "Terminated"
-            case _: Inactive => "Inactive"
+            case Inactive => "Inactive"
 
     enum Status:
+      case Creating
       case Running(startedAt: Long) extends Status
       case Waiting(message: String) extends Status
       case Terminated(message: String, finishedAt: Long) extends Status
-      case Terminating() extends Status
-      case Inactive() extends Status
+      case Terminating
+      case Inactive
 
   case class PodInfo(
     name: String,

@@ -116,9 +116,9 @@ object UIUtils:
     status match
       case Some(Data.PodInfo.Status.Running(_)) => element("#73AD21")
       case Some(Data.PodInfo.Status.Terminated(_, _)) => element("#D40000")
-      case Some(Data.PodInfo.Status.Waiting(_)) => element("#73AD21").amend(cls := "blink_me")
-      case Some(Data.PodInfo.Status.Terminating()) => element("#D40000").amend(cls := "blink_me")
-      case Some(Data.PodInfo.Status.Inactive()) => element("#D40000")
+      case Some(Data.PodInfo.Status.Waiting(_) | Data.PodInfo.Status.Creating) => element("#73AD21").amend(cls := "blink_me")
+      case Some(Data.PodInfo.Status.Terminating) => element("#D40000").amend(cls := "blink_me")
+      case Some(Data.PodInfo.Status.Inactive) => element("#D40000")
       case None => element("#D40000")
 
   def statusLine(status: Option[PodInfo.Status]) =
@@ -140,7 +140,7 @@ object UIUtils:
 
   def stop(uuid: Option[String], status: Option[PodInfo.Status]) =
     status match
-      case Some(PodInfo.Status.Terminated(_, _) | PodInfo.Status.Terminating()) =>
+      case Some(PodInfo.Status.Terminated(_, _) | PodInfo.Status.Terminating) =>
       case _ =>
         uuid match
           case None => UserAPIClient.stop(()).future
@@ -159,11 +159,12 @@ object UIUtils:
 
       div(Css.columnFlex, justifyContent.flexEnd,
         status match
-          case t: PodInfo.Status.Terminating => statusSeq(t)
+          case PodInfo.Status.Creating => statusSeq(PodInfo.Status.Creating)
+          case PodInfo.Status.Terminating => statusSeq(PodInfo.Status.Terminating)
           case t: PodInfo.Status.Terminated => statusSeq(t, Some(s"Stopped since ${t.finishedAt.toStringDate}: ${t.message}"))
           case t: PodInfo.Status.Waiting => statusSeq(t, Some(t.message))
           case t: PodInfo.Status.Running => statusSeq(t, Some(t.startedAt.toStringDate))
-          case t: PodInfo.Status.Inactive => div()
+          case PodInfo.Status.Inactive => div()
       )
 
     def impersonationLink(uuid: String) = a("Log as user", href := s"/${Data.impersonateRoute}?uuid=$uuid", cls := "statusLine", marginTop := "20")
@@ -179,13 +180,13 @@ object UIUtils:
       sw.isSet.signal --> {
         case true =>
           status match
-            case _: PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | _: PodInfo.Status.Inactive =>
+            case PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | PodInfo.Status.Inactive =>
               waiting.set(true)
               launch(uuid, None)
             case _ =>
         case false =>
           status match
-            case _: PodInfo.Status.Waiting | _: PodInfo.Status.Running =>
+            case _: PodInfo.Status.Waiting | _: PodInfo.Status.Running | PodInfo.Status.Creating =>
               waiting.set(true)
               stop(uuid, Some(status))
             case _ =>

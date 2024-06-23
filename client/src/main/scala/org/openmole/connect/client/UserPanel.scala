@@ -55,7 +55,7 @@ object UserPanel {
                 child <--
                   podInfo.signal.map(_.flatMap(_.status)).map:
                     case Some(st) => UIUtils.openmoleBoard(None, st)
-                    case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive())
+                    case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive)
               )
             )
           )

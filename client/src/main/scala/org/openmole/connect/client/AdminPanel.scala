@@ -100,7 +100,7 @@ object AdminPanel:
                   div(u.user.firstName),
                   div(u.user.email),
                   div(u.user.institution),
-                  u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive()))),
+                  u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive))),
                   triggerButton(u.user.email)
                 )
               ),
@@ -128,7 +128,7 @@ object AdminPanel:
                                   div(
                                     u.podInfo.flatMap(_.status) match
                                       case Some(st) => UIUtils.openmoleBoard(Some(u.user.uuid), st)
-                                      case _ => UIUtils.openmoleBoard(Some(u.user.uuid), PodInfo.Status.Inactive())
+                                      case _ => UIUtils.openmoleBoard(Some(u.user.uuid), PodInfo.Status.Inactive)
                                   )
                                 )
                         ),
