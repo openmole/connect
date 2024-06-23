@@ -149,7 +149,7 @@ object K8sService:
   def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     withK8s: k8s =>
       val podName = uuid.value
-      val pvcName = s"pvc-$podName-${util.UUID.randomUUID().toString}"
+      val pvcName = s"pvc-$podName"
       //val pvName = s"pv-${podName}"
 
       val pvc = persistentVolumeClaim(pvcName, k8sService.storageSize, k8sService.storageClassName)
