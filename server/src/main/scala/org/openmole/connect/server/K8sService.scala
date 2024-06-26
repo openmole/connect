@@ -127,14 +127,14 @@ object K8sService:
     ).exposePort(80)
 
   def persistentVolumeClaim(pvcName: String, storage: Int, storageClassName: Option[String]) =
-    def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map("app" -> Namespace.openmole))
+    def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole) //, labels = Map("app" -> Namespace.openmole))
 
     PersistentVolumeClaim(
       metadata = metadata(pvcName),
       spec =
         Some(
           PersistentVolumeClaim.Spec(
-            //volumeName = Some(pvName),
+            //volumeName = Some(pvcName),
             storageClassName = storageClassName,
             accessModes = List(AccessMode.ReadWriteOnce),
             resources =
@@ -147,7 +147,8 @@ object K8sService:
         )
     )
 
-  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
+  def deployOpenMOLE(k8sService: K8sService, uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache) =
+    summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
       val podName = uuid.value
       val pvcName = s"pvc-$podName"
@@ -211,11 +212,13 @@ object K8sService:
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
     .await
 
-  def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double) = withK8s: k8s =>
-    k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
-      val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
-      k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
-    .await
+  def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache) =
+    summon[KubeCache].ipCache.invalidate(uuid)
+    withK8s: k8s =>
+      k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
+        val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
+        k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
+      .await
 
   def getPVCName(uuid: UUID): Option[String] =
     withK8s: k8s =>

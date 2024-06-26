@@ -206,7 +206,7 @@ object UIUtils:
         uuid match
           case None =>
             status match
-              case _: PodInfo.Status.Running => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20")
+              case _: PodInfo.Status.Running => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20", target := "_blank")
               case _ => div()
           case Some(uuid) => impersonationLink(uuid)
       )
