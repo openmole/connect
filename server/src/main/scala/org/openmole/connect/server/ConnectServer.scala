@@ -74,7 +74,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       HttpRoutes.of:
         case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) if user.role == DB.admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.uuid, user.password))
+            case Some(user) if user.role == Data.Role.Admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.uuid, user.password))
             case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
@@ -114,7 +114,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                   case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
                   case None =>
                     DB.registerUser(email) match
-                      case Some(u) => ServerContent.connectionError("User has not been validated by an admin")
+                      case Some(u) if u.status == Data.EmailStatus.Unchecked => ServerContent.connectionError("User email has not been validated and the account has not been validated by an admin")
+                      case Some(u) => ServerContent.connectionError("User account has not been validated by an admin")
                       case None => ServerContent.connectionError("Invalid email or password")
               case None => BadRequest("Missing email or password")
 

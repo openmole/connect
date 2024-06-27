@@ -61,7 +61,7 @@ object UIUtils:
     div(
       child <-- signal.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
-          badgeBlock("Role", user.role),
+          badgeBlock("Role", user.role.toString),
           textBlock("OpenMOLE version", user.omVersion),
           textBlock("CPU", user.cpu.toString),
           textBlock("Memory", s"${toGB(user.memory)} GB"),

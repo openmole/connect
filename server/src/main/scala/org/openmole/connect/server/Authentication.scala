@@ -6,6 +6,7 @@ import org.http4s.Request
 import org.http4s.headers.Cookie
 import org.openmole.connect.server.JWT.*
 import tool.*
+import org.openmole.connect.shared.Data
 
 object Authentication:
 
@@ -53,5 +54,5 @@ object Authentication:
 
   def isAdmin(request: Request[IO])(using JWT.Secret) =
     authorizationToken(request) match
-      case Some(t) => DB.userFromSaltedPassword(t.uuid, t.password).exists(_.role == DB.admin)
+      case Some(t) => DB.userFromSaltedPassword(t.uuid, t.password).exists(_.role == Data.Role.Admin)
       case _ => false

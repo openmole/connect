@@ -38,8 +38,8 @@ object AdminPanel:
 
     def statusElement(registerinUser: RegisterUser) =
       registerinUser.status match
-        case Data.`emailChecked` => div(Css.badgeConnect, "Email Checked")
-        case Data.`emailUnchecked` => div(badge_danger, "Email Unchecked")
+        case Data.EmailStatus.Checked => div(Css.badgeConnect, "Email Checked")
+        case Data.EmailStatus.Unchecked => div(badge_danger, "Email Unchecked")
 
     def triggerButton(key: String) =
       span(cls := "bi-eye-fill",

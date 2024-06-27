@@ -13,6 +13,8 @@ import scala.concurrent.{Await, Future}
 import org.openmole.connect.server.tool.*
 import io.github.arainko.ducktape.*
 import better.files.*
+import slick.*
+import slick.jdbc.H2Profile
 
 import java.sql.DriverManager
 
@@ -32,24 +34,33 @@ object DB:
   type Email = String
   type Password = String
   type Institution = String
-  type Role = String
   type Version = String
-  type EmailStatus = String
+  import Data.EmailStatus
+  import Data.Role
   type Storage = Int
   type Memory = Int
   type Secret = UUID
 
-  val admin: Role = "Admin"
-  val user: Role = "User"
+  given BaseColumnType[EmailStatus] = MappedColumnType.base[EmailStatus, String] (
+    s => s.toString,
+    v => EmailStatus.valueOf(v)
+  )
+
+
+  given BaseColumnType[Role] = MappedColumnType.base[Role, String] (
+    s => s.toString,
+    v => Role.valueOf(v)
+  )
+
 
   object User:
-    def isAdmin(u: User) = u.role == admin
+    def isAdmin(u: User) = u.role == Role.Admin
 
     def toData(u: User): Data.User = u.to[Data.User]
 
     def fromData(u: Data.User): Option[User] = user(u.email)
 
-    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = DB.user, uuid: UUID = randomUUID) =
+    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = Role.User, uuid: UUID = randomUUID) =
       User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, uuid)
 
   case class User(
@@ -64,7 +75,7 @@ object DB:
     openMOLEMemory: Memory,
     lastAccess: Long,
     created: Long,
-    role: Role = user,
+    role: Role = Role.User,
     uuid: UUID = randomUUID)
 
   object RegisterUser:
@@ -78,7 +89,7 @@ object DB:
     email: Email,
     password: Password,
     institution: Institution,
-    status: EmailStatus = Data.emailUnchecked,
+    status: EmailStatus = Data.EmailStatus.Unchecked,
     uuid: UUID = randomUUID,
     validationSecret: Secret = randomUUID)
 
@@ -141,7 +152,7 @@ object DB:
       runTransaction(schema.createIfNotExists)
 
     runTransaction:
-      val admin = User.withDefault("admin", "Bob", "admin@admin.com", salted("admin"), "CNRS", DB.admin)
+      val admin = User.withDefault("admin", "Bob", "admin@admin.com", salted("admin"), "CNRS", Role.Admin)
       for
         e <- userTable.result
         _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
@@ -189,7 +200,7 @@ object DB:
             ru <- registerUserTable.filter(r => r.uuid === uuid && r.validationSecret === secret)
           yield ru.status
 
-        q.update(Data.emailChecked)
+        q.update(Data.EmailStatus.Checked)
 
     res >= 1
 

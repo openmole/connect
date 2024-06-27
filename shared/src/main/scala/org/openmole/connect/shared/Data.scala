@@ -13,13 +13,11 @@ object Data:
   val disconnectRoute = "disconnect"
   val impersonateRoute = "impersonate"
 
-  type Role = String
-  val admin: Role = "Admin"
-  val user: Role = "User"
+  enum Role:
+    case Admin, User
 
-  type EmailStatus = String
-  val emailChecked: EmailStatus = "Checked"
-  val emailUnchecked: EmailStatus = "Unchecked"
+  enum EmailStatus:
+    case Unchecked, Checked
 
   object PodInfo:
     object Status:

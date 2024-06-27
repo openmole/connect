@@ -18,8 +18,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object UserPanel {
 
-  lazy val roles = Seq(Data.user, connect.shared.Data.admin)
-  lazy val roleFilter = (r: Role) => r == admin
+  lazy val roles = Seq(Data.Role.User, connect.shared.Data.Role.Admin)
+  lazy val roleFilter = (r: Role) => r == Data.Role.Admin
 
   @JSExportTopLevel("user")
   def user(): Unit =
