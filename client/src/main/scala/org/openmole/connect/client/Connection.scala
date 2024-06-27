@@ -50,6 +50,7 @@ object Connection:
         UIUtils.buildInput("Email"),
         UIUtils.buildInput("Password").amend(`type` := "password"),
         connectButton
+        //onMountBind(ctx => ctx.thisNode.ref.elements.namedItem("URL"). := "test")
       )
 
     // def errorMsgObserver(errorMsg: Var[Option[String]]) =
@@ -127,7 +128,8 @@ object Connection:
             button("Sign up", btn_primary,
               cls.toggle("disabled") <-- signupError.signal.map(se => !se.isEmpty)
             )
-          )
+          ),
+          UIUtils.buildInput("URL").amend(value := document.location.toString, styleAttr := "display:none"),
         )
       )
 

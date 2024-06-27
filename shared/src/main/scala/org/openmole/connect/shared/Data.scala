@@ -5,6 +5,7 @@ import java.util.UUID
 object Data:
   val connectionRoute = "connection"
   val registerRoute = "register"
+  val validateRoute = "validate"
 
   val userAPIRoute = "user"
   val adminAPIRoute = "admin"
@@ -17,8 +18,8 @@ object Data:
   val user: Role = "User"
 
   type EmailStatus = String
-  val checked: EmailStatus = "Email checked"
-  val unchecked: EmailStatus = "Email unchecked"
+  val emailChecked: EmailStatus = "Checked"
+  val emailUnchecked: EmailStatus = "Unchecked"
 
   object PodInfo:
     object Status:

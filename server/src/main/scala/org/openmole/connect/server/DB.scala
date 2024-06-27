@@ -38,12 +38,10 @@ object DB:
   type EmailStatus = String
   type Storage = Int
   type Memory = Int
+  type Secret = UUID
 
   val admin: Role = "Admin"
   val user: Role = "User"
-
-  val checked: EmailStatus = "Email checked"
-  val unchecked: EmailStatus = "Email unchecked"
 
   object User:
     def isAdmin(u: User) = u.role == admin
@@ -76,13 +74,14 @@ object DB:
     def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid)
 
   case class RegisterUser(
-    name: String,
-    firstName: String,
-    email: Email,
-    password: Password,
-    institution: Institution,
-    status: EmailStatus = unchecked,
-    uuid: UUID = randomUUID)
+                           name: String,
+                           firstName: String,
+                           email: Email,
+                           password: Password,
+                           institution: Institution,
+                           status: EmailStatus = Data.emailUnchecked,
+                           uuid: UUID = randomUUID,
+                           validationSecret: Secret = randomUUID)
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
@@ -112,8 +111,9 @@ object DB:
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
     def status = column[EmailStatus]("STATUS")
+    def validationSecret = column[Secret]("VALIDATION_SECRET")
 
-    def * = (name, firstName, email, password, institution, status, uuid).mapTo[RegisterUser]
+    def * = (name, firstName, email, password, institution, status, uuid, validationSecret).mapTo[RegisterUser]
 
   val registerUserTable = TableQuery[RegisterUsers]
 
@@ -172,18 +172,33 @@ object DB:
     yield ()
 
 
-  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Unit =
+  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): RegisterUser =
     runTransaction:
+      val q = registerUserTable.filter(r => r.email === registerUser.email)
       for
-        e <- registerUserTable.filter(r => r.email === registerUser.email).result
-        _ <- if e.isEmpty then registerUserTable += registerUser else DBIO.successful(())
-      yield ()
+        e <- q.delete
+        _ <- registerUserTable += registerUser
+        r <- q.result
+      yield r
+    .head
 
-  def deleteRegistering(uuid: String): Int =
+  def validateRegistering(uuid: UUID, secret: Secret): Boolean =
+    val res =
+      runTransaction:
+        val q =
+          for
+            ru <- registerUserTable.filter(r => r.uuid === uuid && r.validationSecret === secret)
+          yield ru.status
+
+        q.update(Data.emailChecked)
+
+    res >= 1
+
+  def deleteRegistering(uuid: UUID): Int =
     runTransaction:
       registerUserTable.filter(_.uuid === uuid).delete
 
-  def promoteRegistering(uuid: String): Unit =
+  def promoteRegistering(uuid: UUID): Unit =
     runTransaction:
       for
         ru <- registerUserTable.filter(_.uuid === uuid).result
@@ -191,6 +206,7 @@ object DB:
         _ <- DBIO.sequence(user.map(addUserTransaction))
         _ <- registerUserTable.filter(_.uuid === uuid).delete
       yield ()
+
 
   def userFromUUID(uuid: UUID): Option[User] =
     runTransaction:

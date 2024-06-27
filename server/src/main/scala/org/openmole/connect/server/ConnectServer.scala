@@ -28,6 +28,7 @@ import org.apache.hc.client5.http.impl.classic.*
 import org.apache.hc.core5.http.{ConnectionReuseStrategy, ContentType}
 import org.apache.hc.core5.http.io.entity.InputStreamEntity
 
+import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
 
 object ConnectServer:
@@ -35,8 +36,9 @@ object ConnectServer:
   object Config:
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
     case class OpenMOLE(versionHistory: Int)
+    case class Validation(server: String, port: Int, user: String, password: String, from: String)
 
-  case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE)
+  case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE, validation: Option[Config.Validation] = None)
 
   def read(file: File): Config =
     import better.files.*
@@ -78,13 +80,32 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
 
+        case req@GET -> Root / Data.validateRoute =>
+          req.params.get("uuid") zip req.params.get("secret") match
+            case Some((uuid, secret)) =>
+              val res = DB.validateRegistering(uuid, secret)
+              if res then Ok("Thank you, your email has benn validated") else NotFound("validation not found")
+            case None => BadRequest("Expected uuid and secret")
+
         case req@POST -> Root / Data.registerRoute =>
           req.decode[UrlForm]: r =>
-            r.getFirst("Email") zip r.getFirst("Password") zip r.getFirst("Name") zip r.getFirst("First name") zip r.getFirst("Institution") match
-              case Some(((((email, password), name), firstName), institution)) =>
-                DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
+            val response =
+              for
+                email <- r.getFirst("Email")
+                password <- r.getFirst("Password")
+                name <- r.getFirst("Name")
+                firstName <- r.getFirst("First name")
+                institution <- r.getFirst("Institution")
+                url <- r.getFirst("URL")
+              yield
+                val inDB = DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
+                config.validation.foreach: v =>
+                  val serverURL = url.reverse.dropWhile(_ != '/').reverse
+                  EmailValidation.send(v, serverURL, inDB)
                 ServerContent.ok("connection(false)")
-              case None => ServerContent.connectionError
+
+            response.getOrElse(ServerContent.connectionError)
+
         case req@POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match

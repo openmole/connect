@@ -116,7 +116,9 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "io.kubernetes" % "client-java" % "19.0.1",
     "dev.optics" %% "monocle-core"  % "3.2.0",
     "dev.optics" %% "monocle-macro" % "3.2.0",
-    "com.google.guava" % "guava" % "33.2.1-jre"
+    "com.google.guava" % "guava" % "33.2.1-jre",
+    "com.github.eikek" %% "emil-common" % "0.15.0",  // the core library
+    "com.github.eikek" %% "emil-javamail" % "0.15.0" // implementation module
 
   )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)

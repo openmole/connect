@@ -38,8 +38,8 @@ object AdminPanel:
 
     def statusElement(registerinUser: RegisterUser) =
       registerinUser.status match
-        case Data.checked => div(Css.badgeConnect, Data.checked)
-        case Data.unchecked => div(badge_danger, Data.unchecked)
+        case Data.`emailChecked` => div(Css.badgeConnect, "Email Checked")
+        case Data.`emailUnchecked` => div(badge_danger, "Email Unchecked")
 
     def triggerButton(key: String) =
       span(cls := "bi-eye-fill",
@@ -55,7 +55,7 @@ object AdminPanel:
 
     def registeringUserBlock(register: RegisterUser) =
       div(Css.centerRowFlex, padding := "10px",
-        button(btn_secondary, "Validate", marginRight := "20px", onClick --> { _ =>
+        button(btn_secondary, "Accept", marginRight := "20px", onClick --> { _ =>
           AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _ =>
             updateUserInfo
         }),
@@ -78,21 +78,24 @@ object AdminPanel:
       new UserTable(
         Seq("Name", "First name", "Email", "Institution", "Activity", ""),
         registering.signal.combineWith(users.signal).map: (rs, us) =>
-          val userInfos = rs.map(r => UserInfo(
-            BasicRow(
-              Seq(
-                div(r.name),
-                div(r.firstName),
-                div(r.email),
-                div(r.institution),
-                statusElement(r),
-                triggerButton(r.email))),
-            ExpandedRow(
-              div(
-                height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
-              selected.signal.map(s => s.contains(r.email))
-            )
-          )) ++
+          def registeringInfo =
+            rs.map(r => UserInfo(
+              BasicRow(
+                Seq(
+                  div(r.name),
+                  div(r.firstName),
+                  div(r.email),
+                  div(r.institution),
+                  statusElement(r),
+                  triggerButton(r.email))),
+              ExpandedRow(
+                div(
+                  height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
+                selected.signal.map(s => s.contains(r.email))
+              )
+            ))
+
+          def registeredInfos =
             us.map(u => UserInfo(
               BasicRow(
                 Seq(
@@ -139,6 +142,8 @@ object AdminPanel:
               )
             )
             )
+
+          def userInfos = registeringInfo ++ registeredInfos
           userInfos.flatMap: ui =>
             Seq(
               ui.show,
