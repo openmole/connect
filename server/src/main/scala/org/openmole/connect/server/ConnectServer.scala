@@ -78,7 +78,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
-        case req@GET -> Root / Data.connectionRoute => ServerContent.ok("connection(false);")
+        case req@GET -> Root / Data.connectionRoute => ServerContent.ok(ServerContent.connectionFunction(None))
 
         case req@GET -> Root / Data.validateRoute =>
           req.params.get("uuid") zip req.params.get("secret") match
@@ -102,9 +102,9 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 config.validation.foreach: v =>
                   val serverURL = url.reverse.dropWhile(_ != '/').reverse
                   EmailValidation.send(v, serverURL, inDB)
-                ServerContent.ok("connection(false)")
+                ServerContent.ok(ServerContent.connectionFunction(None))
 
-            response.getOrElse(ServerContent.connectionError)
+            response.getOrElse(BadRequest("Missing param in request"))
 
         case req@POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
@@ -112,8 +112,11 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               case Some((email, password)) =>
                 DB.user(email, password) match
                   case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
-                  case None => ServerContent.connectionError
-              case None => ServerContent.connectionError
+                  case None =>
+                    DB.registerUser(email) match
+                      case Some(u) => ServerContent.connectionError("User has not been validated by an admin")
+                      case None => ServerContent.connectionError("Invalid email or password")
+              case None => BadRequest("Missing email or password")
 
         case req @ GET -> Root / Data.disconnectRoute =>
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
@@ -241,15 +244,15 @@ object ServerContent:
       val f = new File(webapp, s"fonts/$path")
       StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
 
-  val connectionError =
-    Forbidden.apply(ServerContent.someHtml("connection(true);").render)
+  def connectionError(error: String) =
+    Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(Some(error))).render)
       .map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
   def authenticated[T](req: Request[IO])(using JWT.Secret, Authentication.AuthenticationCache)(f: DB.User => T) =
     Authentication.authenticatedUser(req) match
       case Some(user) => f(user)
       case None =>
-        Forbidden.apply(ServerContent.someHtml("connection(false);").render)
+        Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(None)).render)
           .map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
 
@@ -283,3 +286,11 @@ object ServerContent:
   def redirect(to: String) =
     val uri = Uri.unsafeFromString(to)
     SeeOther(Location(uri))
+
+  def connectionFunction(error: Option[String]) =
+    val value =
+      error match
+        case Some(e) => s"\"$e\""
+        case None => "null"
+    s"""connection($value);"""
+

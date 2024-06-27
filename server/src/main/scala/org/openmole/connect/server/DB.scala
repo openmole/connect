@@ -19,7 +19,6 @@ import java.sql.DriverManager
 object DB:
   object Salt:
     def apply(s: String): Salt = s
-
     def value(s: Salt): String = s
 
   opaque type Salt = String
@@ -74,14 +73,14 @@ object DB:
     def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid)
 
   case class RegisterUser(
-                           name: String,
-                           firstName: String,
-                           email: Email,
-                           password: Password,
-                           institution: Institution,
-                           status: EmailStatus = Data.emailUnchecked,
-                           uuid: UUID = randomUUID,
-                           validationSecret: Secret = randomUUID)
+    name: String,
+    firstName: String,
+    email: Email,
+    password: Password,
+    institution: Institution,
+    status: EmailStatus = Data.emailUnchecked,
+    uuid: UUID = randomUUID,
+    validationSecret: Secret = randomUUID)
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)

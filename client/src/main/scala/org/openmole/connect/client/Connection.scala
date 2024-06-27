@@ -35,7 +35,7 @@ object Connection:
 
 
   @JSExportTopLevel("connection")
-  def connection(connectionError: Boolean) =
+  def connection(error: String) =
 
     val displaySignupForm: Var[Boolean] = Var(false)
     val signupError: Var[Seq[Int]] = Var(0 to 4)
@@ -146,7 +146,7 @@ object Connection:
                     div(marginTop := "120", Css.centerColumnFlex, alignItems.flexEnd,
                       connectionForm,
                       button("Sign up", cls := "linkLike", onClick --> { _ => displaySignupForm.set(true) }),
-                      div(if (connectionError) "Incorrect email or password" else "", cls := "inputError")
+                      div(Option(error).getOrElse(""), cls := "inputError")
                     )
                   )
               })
