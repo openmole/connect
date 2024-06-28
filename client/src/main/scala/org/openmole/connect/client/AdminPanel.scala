@@ -20,17 +20,15 @@ object AdminPanel:
   def admin() =
 
     val pods = Var(Map[String, Var[Option[PodInfo]]]())
-
     val users: Var[Seq[User]] = Var(Seq())
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
-
-    val selected: Var[Option[String]] = Var(None)
+    val selectedUUID: Var[Option[String]] = Var(None)
     val settingsUUID: Var[Option[String]] = Var(None)
 
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
-    def updateUserInfo =
+    def updateUserInfo() =
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
       AdminAPIClient.allInstances(()).future.foreach: us =>
         users.set(us.map(_.user))
@@ -41,7 +39,7 @@ object AdminPanel:
         pods.set(map.toMap)
 
 
-    updateUserInfo
+    updateUserInfo()
 
     UserAPIClient.availableVersions((Some(10), false)).future.foreach(vs => versions.set(vs))
 
@@ -54,11 +52,11 @@ object AdminPanel:
       span(cls := "bi-eye-fill",
         cursor.pointer,
         onClick --> { _ =>
-          selected.update:
-            case Some(email: String) if (email == key) =>
+          selectedUUID.update:
+            case Some(uuid) if uuid == key =>
               settingsUUID.set(None)
               None
-            case Some(email: String) => Some(key)
+            case Some(_) => Some(key)
             case None => Some(key)
         })
 
@@ -66,11 +64,11 @@ object AdminPanel:
       div(Css.centerRowFlex, padding := "10px",
         button(btn_secondary, "Accept", marginRight := "20px", onClick --> { _ =>
           AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _ =>
-            updateUserInfo
+            updateUserInfo()
         }),
         button(btn_danger, "Reject", onClick --> { _ =>
           AdminAPIClient.deleteRegisteringUser(register.uuid).future.foreach: _ =>
-            updateUserInfo
+            updateUserInfo()
         })
       )
 
@@ -83,8 +81,8 @@ object AdminPanel:
         case Some(id) if id == uuid => true
         case _ => false
 
-    def expandedUser(user: User, podInfo: Option[PodInfo], s: Option[String]) =
-      if s.contains(user.email)
+    def expandedUser(user: User, podInfo: Option[PodInfo], selectUUID: Option[String]) =
+      if selectUUID.contains(user.uuid)
       then
         lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), user.uuid), settingsOffState, () => {})
         val settings = UIUtils.settings(user.uuid)
@@ -124,45 +122,46 @@ object AdminPanel:
                 div(r.institution),
                 div(UIUtils.longTimeToString(r.created)),
                 statusElement(r),
-                triggerButton(r.email))),
+                triggerButton(r.uuid))),
             ExpandedRow(
               div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
-              selected.signal.map(s => s.contains(r.email))
+              selectedUUID.signal.map(s => s.contains(r.uuid))
             )
           )
 
     def registeredInfos =
-      users.signal.combineWith(pods.signal).map: (us, pods) =>
-        us.map: user =>
-          val pod = pods(user.email)
-
-          UserInfo(
-            BasicRow(
-              Seq(
-                div(user.name),
-                div(user.firstName),
-                div(user.email),
-                div(user.institution),
-                div(UIUtils.longTimeToString(user.lastAccess)),
-                div(
-                  child <-- pod.signal.map: pi =>
-                    pi.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive)))
-                ),
-                triggerButton(user.email)
-              )
-            ),
-            ExpandedRow(
-              div(
-                child <--
-                  (selected.signal combineWith pod.signal).map: (s, pi) =>
-                    expandedUser(user, pi, s),
-                EventStream.periodic(5000).toObservable -->
-                  Observer: _ =>
-                    AdminAPIClient.instance(user.uuid).future.foreach(pod.set),
+      (users.signal combineWith pods.signal).map: (us, pods) =>
+        us.flatMap: user =>
+          pods.get(user.email).map: pod =>
+            UserInfo(
+              BasicRow(
+                Seq(
+                  div(user.name),
+                  div(user.firstName),
+                  div(user.email),
+                  div(user.institution),
+                  div(UIUtils.longTimeToString(user.lastAccess)),
+                  div(
+                    child <--
+                      pod.signal.map: pi =>
+                        pi.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive)))
+                  ),
+                  triggerButton(user.uuid)
+                )
               ),
-              selected.signal.map(s => s.contains(user.email))
+              ExpandedRow(
+                div(
+                  child <--
+                    (selectedUUID.signal combineWith pod.signal).map: (s, pi) =>
+                      expandedUser(user, pi, s),
+                  EventStream.periodic(5000).toObservable -->
+                    Observer: _ =>
+                      if selectedUUID.now().contains(user.uuid)
+                      then AdminAPIClient.instance(user.uuid).future.foreach(pod.set)
+                ),
+                selectedUUID.signal.map(s => s.contains(user.uuid))
+              )
             )
-          )
 
 
     lazy val adminTable =
