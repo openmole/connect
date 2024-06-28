@@ -36,7 +36,7 @@ object ConnectServer:
 
   object Config:
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
-    case class OpenMOLE(versionHistory: Int)
+    case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class Validation(server: String, port: Int, user: String, password: String, from: String)
 
   case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE, validation: Option[Config.Validation] = None)
@@ -139,7 +139,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
-            val impl = UserAPIImpl(user, k8s, config.openmole.versionHistory)
+            val impl = UserAPIImpl(user, k8s, config.openmole)
             val userAPI = new UserAPIRoutes(impl)
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))

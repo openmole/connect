@@ -11,7 +11,7 @@ import org.openmole.connect.server.db.v1.DB
 import org.openmole.connect.shared.*
 
 
-class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using Salt, KubeCache, AuthenticationCache, DockerHubCache):
+class UserAPIImpl(user: DB.User, k8sService: K8sService, openmole: ConnectServer.Config.OpenMOLE)(using Salt, KubeCache, AuthenticationCache, DockerHubCache):
   def userData = DB.User.toData(user)
   def instanceStatus = K8sService.podInfo(user.uuid)
   def launch =
@@ -25,7 +25,7 @@ class UserAPIImpl(user: DB.User, k8sService: K8sService, history: Int)(using Sal
   def stop = K8sService.stopOpenMOLEPod(user.uuid)
 
   def availableVersions =
-    OpenMOLE.availableVersions(withSnapshot = true, history = Some(history), lastMajors = true)
+    OpenMOLE.availableVersions(withSnapshot = true, history = openmole.versionHistory, minVersion = openmole.minimumVersion, lastMajors = true)
 
   def setVersion(version: String) =
     val versions = availableVersions

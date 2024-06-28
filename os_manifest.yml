@@ -48,6 +48,7 @@ data:
      storageSize: 10240
     openmole:
       versionHistory: 3
+      minimumVersion: 17
 kind: ConfigMap
 metadata:
   creationTimestamp: null

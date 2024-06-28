@@ -31,7 +31,7 @@ object OpenMOLE:
   def wellFormedVersion(v: String) =
     v.matches(versionPattern) || v.matches(snapshotPattern)
 
-  def availableVersions(withSnapshot: Boolean = true, history: Option[Int], lastMajors: Boolean)(using DockerHubCache): Seq[String] =
+  def availableVersions(withSnapshot: Boolean = true, history: Option[Int], minVersion: Option[Int], lastMajors: Boolean)(using DockerHubCache): Seq[String] =
     val tags = summon[DockerHubCache].get()
     val snapshot: Seq[String] = if withSnapshot then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()
 
@@ -40,9 +40,16 @@ object OpenMOLE:
     val majors: Seq[String] =
       val ms = wellFormed.flatMap(_.split('.').headOption).distinct
       val majors =
-        history match
-          case Some(h) => ms.take(h)
-          case None => ms
+        val h =
+          history match
+            case Some(h) => ms.take(h)
+            case None => ms
+
+        minVersion match
+          case Some(m) =>
+            def accept(v: String) = util.Try(v.toInt).map(_ >= m).getOrElse(false)
+            h.filter(accept)
+          case None => h
 
       majors.flatMap: m =>
         if lastMajors
