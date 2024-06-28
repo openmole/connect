@@ -74,76 +74,81 @@ object AdminPanel:
         case Some(id) if id == uuid => true
         case _ => false
 
+    def expandedUser(user: User, podInfo: Option[PodInfo], s: Option[String]) =
+      if s.contains(user.email)
+      then
+        lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), user.uuid), settingsOffState, () => {})
+        val settings = UIUtils.settings(user.uuid)
+        div(
+          settingsSwitch.element.amend(margin := "30"),
+          div(
+            child <--
+              settingsSwitch.toggled.signal.map:
+                case true =>
+                  settingsUUID.set(Some(user.uuid))
+                  settings.element
+                case false =>
+                  settings.save()
+                  settingsUUID.set(None)
+                  div(
+                    Css.columnFlex, height := "350",
+                    UIUtils.userInfoBlock(user, admin = true),
+                    div(
+                      podInfo.flatMap(_.status) match
+                        case Some(st) => UIUtils.openmoleBoard(Some(user.uuid), st)
+                        case _ => UIUtils.openmoleBoard(Some(user.uuid), PodInfo.Status.Inactive)
+                    )
+                  )
+          )
+        )
+      else div()
+
+
     lazy val adminTable =
       new UserTable(
         Seq("Name", "First name", "Email", "Institution", "Activity","Status", ""),
+
         registering.signal.combineWith(users.signal).map: (rs, us) =>
           def registeringInfo =
-            rs.map(r => UserInfo(
-              BasicRow(
-                Seq(
-                  div(r.name),
-                  div(r.firstName),
-                  div(r.email),
-                  div(r.institution),
-                  div(UIUtils.longTimeToString(r.created)),
-                  statusElement(r),
-                  triggerButton(r.email))),
-              ExpandedRow(
-                div(
-                  height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
-                selected.signal.map(s => s.contains(r.email))
+            rs.map: r =>
+              UserInfo(
+                BasicRow(
+                  Seq(
+                    div(r.name),
+                    div(r.firstName),
+                    div(r.email),
+                    div(r.institution),
+                    div(UIUtils.longTimeToString(r.created)),
+                    statusElement(r),
+                    triggerButton(r.email))),
+                ExpandedRow(
+                  div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
+                  selected.signal.map(s => s.contains(r.email))
+                )
               )
-            ))
 
           def registeredInfos =
-            us.map(u => UserInfo(
-              BasicRow(
-                Seq(
-                  div(u.user.name),
-                  div(u.user.firstName),
-                  div(u.user.email),
-                  div(u.user.institution),
-                  div(UIUtils.longTimeToString(u.user.lastAccess)),
-                  u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive))),
-                  triggerButton(u.user.email)
-                )
-              ),
-              ExpandedRow(
-                div(
-                  child <-- selected.signal.map: s =>
-                    if (s.contains(u.user.email))
-                    then
-                      lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), u.user.uuid), settingsOffState, () => {})
-                      val settings = UIUtils.settings(u.user.uuid)
-                      div(
-                        settingsSwitch.element.amend(margin := "30"),
-                        div(
-                          child <--
-                            settingsSwitch.toggled.signal.map:
-                              case true =>
-                                settingsUUID.set(Some(u.user.uuid))
-                                settings.element
-                              case false =>
-                                settings.save()
-                                settingsUUID.set(None)
-                                div(
-                                  Css.columnFlex, height := "350",
-                                  UIUtils.userInfoBlock(u.user, admin = true),
-                                  div(
-                                    u.podInfo.flatMap(_.status) match
-                                      case Some(st) => UIUtils.openmoleBoard(Some(u.user.uuid), st)
-                                      case _ => UIUtils.openmoleBoard(Some(u.user.uuid), PodInfo.Status.Inactive)
-                                  )
-                                )
-                        ),
-                      )
-                    else div()
+            us.map: u =>
+              UserInfo(
+                BasicRow(
+                  Seq(
+                    div(u.user.name),
+                    div(u.user.firstName),
+                    div(u.user.email),
+                    div(u.user.institution),
+                    div(UIUtils.longTimeToString(u.user.lastAccess)),
+                    u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive))),
+                    triggerButton(u.user.email)
+                  )
                 ),
-                selected.signal.map(s => s.contains(u.user.email))
+                ExpandedRow(
+                  div(
+                    child <-- selected.signal.map: s =>
+                      expandedUser(u.user, u.podInfo, s)
+                  ),
+                  selected.signal.map(s => s.contains(u.user.email))
+                )
               )
-            )
-            )
 
           def userInfos = registeringInfo ++ registeredInfos
           userInfos.flatMap: ui =>
