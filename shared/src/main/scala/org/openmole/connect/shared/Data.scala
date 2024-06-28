@@ -13,6 +13,9 @@ object Data:
   val disconnectRoute = "disconnect"
   val impersonateRoute = "impersonate"
 
+  enum UserStatus:
+    case Active
+
   enum Role:
     case Admin, User
 
@@ -59,6 +62,7 @@ object Data:
     email: String,
     institution: String,
     role: Role,
+    status: UserStatus,
     omVersion: String,
     memory: Int,
     cpu: Double,

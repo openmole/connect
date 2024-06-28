@@ -1,7 +1,6 @@
 package org.openmole.connect.server
 
 import org.openmole.connect.shared.Data
-import org.openmole.connect.shared.Data.{EmailStatus, RegisterUser}
 import slick.jdbc.H2Profile.api.*
 import slick.model.ForeignKey
 
@@ -35,8 +34,9 @@ object DB:
   type Password = String
   type Institution = String
   type Version = String
-  import Data.EmailStatus
-  import Data.Role
+  export Data.EmailStatus
+  export Data.Role
+  export Data.UserStatus
   type Storage = Int
   type Memory = Int
   type Secret = UUID
@@ -53,6 +53,11 @@ object DB:
   )
 
 
+  given BaseColumnType[UserStatus] = MappedColumnType.base[UserStatus, String](
+    s => s.toString,
+    v => UserStatus.valueOf(v)
+  )
+
   object User:
     def isAdmin(u: User) = u.role == Role.Admin
 
@@ -60,8 +65,8 @@ object DB:
 
     def fromData(u: Data.User): Option[User] = user(u.email)
 
-    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = Role.User, uuid: UUID = randomUUID) =
-      User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, uuid)
+    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID) =
+      User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, status, uuid)
 
   case class User(
     name: String,
@@ -76,6 +81,7 @@ object DB:
     lastAccess: Long,
     created: Long,
     role: Role = Role.User,
+    status: Data.UserStatus = Data.UserStatus.Active,
     uuid: UUID = randomUUID)
 
   object RegisterUser:
@@ -101,6 +107,7 @@ object DB:
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
     def role = column[Role]("ROLE")
+    def status = column[UserStatus]("STATUS")
     def omVersion = column[Version]("OMVERSION")
     def memory = column[Storage]("MEMORY_LIMIT")
     def cpu = column[Double]("CPU_LIMIT")
@@ -108,7 +115,7 @@ object DB:
     def lastAccess = column[Long]("LASTACCESS")
     def created = column[Long]("CREATED")
 
-    def * = (name, firstName, email, password, institution, omVersion, memory, cpu, omMemory, lastAccess, created, role, uuid).mapTo[User]
+    def * = (name, firstName, email, password, institution, omVersion, memory, cpu, omMemory, lastAccess, created, role, status, uuid).mapTo[User]
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
