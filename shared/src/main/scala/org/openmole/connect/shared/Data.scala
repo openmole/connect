@@ -30,6 +30,11 @@ object Data:
             case _: Running => true
             case _ => false
 
+        def isStopped =
+          s match
+            case _: Terminated | Inactive => true
+            case _ => false
+
         def value =
           s match
             case Creating => "Creating"

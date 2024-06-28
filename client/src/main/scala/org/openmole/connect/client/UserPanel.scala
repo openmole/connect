@@ -37,7 +37,8 @@ object UserPanel:
               Observer: _ =>
                 UserAPIClient.instance(()).future.foreach: i =>
                   podInfo.set(i)
-                if space.now().isEmpty
+                val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
+                if space.now().isEmpty && !stopped
                 then UserAPIClient.usedSpace(()).future.foreach(space.set),
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),

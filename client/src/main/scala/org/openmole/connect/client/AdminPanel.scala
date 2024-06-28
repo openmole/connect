@@ -157,7 +157,9 @@ object AdminPanel:
                       if selectedUUID.now().contains(user.uuid)
                       then
                         AdminAPIClient.instance(user.uuid).future.foreach(pod.podInfo.set)
-                        if pod.storage.now().isEmpty then AdminAPIClient.usedSpace(user.uuid).future.foreach(pod.storage.set)
+                        val stopped = pod.podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
+                        if pod.storage.now().isEmpty && !stopped
+                        then AdminAPIClient.usedSpace(user.uuid).future.foreach(pod.storage.set)
                 ),
                 selectedUUID.signal.map(s => s.contains(user.uuid))
               )
