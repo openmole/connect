@@ -10,18 +10,19 @@ class UserTable(headers: Seq[String],
   val expanded: Var[Seq[RowID]] = Var(Seq())
 
 
-  def updateExpanded(rowID: RowID) = expanded.update { e =>
-    if (e.contains(rowID)) e.filterNot(_ == rowID)
-    else e.appended(rowID)
-  }
+  def updateExpanded(rowID: RowID) =
+    expanded.update: e =>
+      if e.contains(rowID)
+      then e.filterNot(_ == rowID)
+      else e.appended(rowID)
 
   def rowRender(rowID: RowID, initialRow: Row, rowStream: Signal[Row]): HtmlElement =
-    initialRow match {
+    initialRow match
       case br: BasicRow =>
         tr(
-          backgroundColor <-- selected.signal.map {
-            s => if (Some(initialRow.rowID) == s) "#dae5f2" else ""
-          },
+          backgroundColor <-- selected.signal.map: s =>
+            if initialRow.rowID.contains(s) then "#dae5f2" else ""
+          ,
           onClick --> (_ => selected.set(Some(initialRow.rowID))),
           children <-- rowStream.map(r => r.tds)
         )
@@ -29,7 +30,6 @@ class UserTable(headers: Seq[String],
         tr(
           child <-- rowStream.map(rs => rs.tds.head)
         )
-    }
 
 
   val render =

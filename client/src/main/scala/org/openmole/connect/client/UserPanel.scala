@@ -16,15 +16,14 @@ import org.openmoleconnect.client.Css
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object UserPanel {
+object UserPanel:
 
-  lazy val roles = Seq(Data.Role.User, connect.shared.Data.Role.Admin)
+  lazy val roles = Data.Role.values
   lazy val roleFilter = (r: Role) => r == Data.Role.Admin
 
   @JSExportTopLevel("user")
   def user(): Unit =
     def getUser = UserAPIClient.user(()).future
-
     def getVersions = UserAPIClient.availableVersions(()).future
 
     val podInfo: Var[Option[PodInfo]] = Var(None)
@@ -39,9 +38,7 @@ object UserPanel {
                 UserAPIClient.instance(()).future.foreach: i =>
                   podInfo.set(i)
                 if space.now().isEmpty
-                then UserAPIClient.usedSpace(()).future.foreach(space.set)
-
-            ,
+                then UserAPIClient.usedSpace(()).future.foreach(space.set),
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
               UIUtils.userInfoBlock(u, space),
@@ -64,4 +61,3 @@ object UserPanel {
     lazy val appContainer = dom.document.querySelector("#appContainer")
     render(appContainer, UIUtils.mainPanel(userPanel))
 
-}
