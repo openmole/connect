@@ -95,6 +95,7 @@ object DB:
     email: Email,
     password: Password,
     institution: Institution,
+    created: Long = now,
     status: EmailStatus = Data.EmailStatus.Unchecked,
     uuid: UUID = randomUUID,
     validationSecret: Secret = randomUUID)
@@ -129,8 +130,10 @@ object DB:
     def institution = column[Institution]("INSTITUTION")
     def status = column[EmailStatus]("STATUS")
     def validationSecret = column[Secret]("VALIDATION_SECRET")
+    def created = column[Long]("CREATED")
 
-    def * = (name, firstName, email, password, institution, status, uuid, validationSecret).mapTo[RegisterUser]
+
+    def * = (name, firstName, email, password, institution, created, status, uuid, validationSecret).mapTo[RegisterUser]
 
   val registerUserTable = TableQuery[RegisterUsers]
 

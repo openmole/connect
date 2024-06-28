@@ -76,7 +76,7 @@ object AdminPanel:
 
     lazy val adminTable =
       new UserTable(
-        Seq("Name", "First name", "Email", "Institution", "Activity", ""),
+        Seq("Name", "First name", "Email", "Institution", "Activity","Status", ""),
         registering.signal.combineWith(users.signal).map: (rs, us) =>
           def registeringInfo =
             rs.map(r => UserInfo(
@@ -86,6 +86,7 @@ object AdminPanel:
                   div(r.firstName),
                   div(r.email),
                   div(r.institution),
+                  div(UIUtils.longTimeToString(r.created)),
                   statusElement(r),
                   triggerButton(r.email))),
               ExpandedRow(
@@ -103,6 +104,7 @@ object AdminPanel:
                   div(u.user.firstName),
                   div(u.user.email),
                   div(u.user.institution),
+                  div(UIUtils.longTimeToString(u.user.lastAccess)),
                   u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive))),
                   triggerButton(u.user.email)
                 )

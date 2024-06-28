@@ -79,7 +79,8 @@ object Data:
     firstName: String,
     email: String,
     institution: String,
-    status: EmailStatus)
+    status: EmailStatus,
+    created: Long)
 
   case class ConnectRegister(info1: String, info2: String)
 

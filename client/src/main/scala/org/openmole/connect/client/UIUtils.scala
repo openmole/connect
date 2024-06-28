@@ -254,3 +254,7 @@ object UIUtils:
 
 
   def waiter = span(cls := "loader")
+
+  def longTimeToString(lg: Long): String =
+    val date = new scalajs.js.Date(lg)
+    s"${date.toLocaleDateString} ${date.toLocaleTimeString.dropRight(3)}"
