@@ -19,7 +19,9 @@ object AdminPanel:
   @JSExportTopLevel("admin")
   def admin() =
 
-    val users: Var[Seq[UserAndPodInfo]] = Var(Seq())
+    val pods = Var(Map[String, Var[Option[PodInfo]]]())
+
+    val users: Var[Seq[User]] = Var(Seq())
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
 
@@ -30,7 +32,14 @@ object AdminPanel:
 
     def updateUserInfo =
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-      AdminAPIClient.allInstances(()).future.foreach(us => users.set(us))
+      AdminAPIClient.allInstances(()).future.foreach: us =>
+        users.set(us.map(_.user))
+        val map =
+          for
+            u <- us
+          yield u.user.email -> Var(u.podInfo)
+        pods.set(map.toMap)
+
 
     updateUserInfo
 
@@ -103,55 +112,64 @@ object AdminPanel:
         )
       else div()
 
+    def registeringInfo =
+      registering.signal.map: rs =>
+        rs.map: r =>
+          UserInfo(
+            BasicRow(
+              Seq(
+                div(r.name),
+                div(r.firstName),
+                div(r.email),
+                div(r.institution),
+                div(UIUtils.longTimeToString(r.created)),
+                statusElement(r),
+                triggerButton(r.email))),
+            ExpandedRow(
+              div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
+              selected.signal.map(s => s.contains(r.email))
+            )
+          )
+
+    def registeredInfos =
+      users.signal.combineWith(pods.signal).map: (us, pods) =>
+        us.map: user =>
+          val pod = pods(user.email)
+
+          UserInfo(
+            BasicRow(
+              Seq(
+                div(user.name),
+                div(user.firstName),
+                div(user.email),
+                div(user.institution),
+                div(UIUtils.longTimeToString(user.lastAccess)),
+                div(
+                  child <-- pod.signal.map: pi =>
+                    pi.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive)))
+                ),
+                triggerButton(user.email)
+              )
+            ),
+            ExpandedRow(
+              div(
+                child <--
+                  (selected.signal combineWith pod.signal).map: (s, pi) =>
+                    expandedUser(user, pi, s),
+                EventStream.periodic(5000).toObservable -->
+                  Observer: _ =>
+                    AdminAPIClient.instance(user.uuid).future.foreach(pod.set),
+              ),
+              selected.signal.map(s => s.contains(user.email))
+            )
+          )
+
 
     lazy val adminTable =
       new UserTable(
         Seq("Name", "First name", "Email", "Institution", "Activity","Status", ""),
-
-        registering.signal.combineWith(users.signal).map: (rs, us) =>
-          def registeringInfo =
-            rs.map: r =>
-              UserInfo(
-                BasicRow(
-                  Seq(
-                    div(r.name),
-                    div(r.firstName),
-                    div(r.email),
-                    div(r.institution),
-                    div(UIUtils.longTimeToString(r.created)),
-                    statusElement(r),
-                    triggerButton(r.email))),
-                ExpandedRow(
-                  div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
-                  selected.signal.map(s => s.contains(r.email))
-                )
-              )
-
-          def registeredInfos =
-            us.map: u =>
-              UserInfo(
-                BasicRow(
-                  Seq(
-                    div(u.user.name),
-                    div(u.user.firstName),
-                    div(u.user.email),
-                    div(u.user.institution),
-                    div(UIUtils.longTimeToString(u.user.lastAccess)),
-                    u.podInfo.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive))),
-                    triggerButton(u.user.email)
-                  )
-                ),
-                ExpandedRow(
-                  div(
-                    child <-- selected.signal.map: s =>
-                      expandedUser(u.user, u.podInfo, s)
-                  ),
-                  selected.signal.map(s => s.contains(u.user.email))
-                )
-              )
-
-          def userInfos = registeringInfo ++ registeredInfos
-          userInfos.flatMap: ui =>
+        (registeringInfo combineWith registeredInfos).map: (ru, u) =>
+          (ru ++ u).flatMap: ui =>
             Seq(
               ui.show,
               ui.expandedRow
