@@ -4,9 +4,10 @@ import cats.effect.*
 import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
 import org.openmole.connect.server.Authentication.AuthenticationCache
-import org.openmole.connect.server.DB.Salt
+import org.openmole.connect.server.db.v1.DB.Salt
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
+import org.openmole.connect.server.db.v1.DB
 import org.openmole.connect.shared.*
 
 

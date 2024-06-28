@@ -27,6 +27,7 @@ import io.circe.generic.auto.*
 import org.apache.hc.client5.http.impl.classic.*
 import org.apache.hc.core5.http.{ConnectionReuseStrategy, ContentType}
 import org.apache.hc.core5.http.io.entity.InputStreamEntity
+import org.openmole.connect.server.db.v1.DB
 
 import java.net.URLDecoder
 import java.util.concurrent.TimeUnit

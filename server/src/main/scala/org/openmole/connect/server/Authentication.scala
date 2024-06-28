@@ -5,6 +5,7 @@ import cats.effect.IO
 import org.http4s.Request
 import org.http4s.headers.Cookie
 import org.openmole.connect.server.JWT.*
+import org.openmole.connect.server.db.v1.DB
 import tool.*
 import org.openmole.connect.shared.Data
 

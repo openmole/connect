@@ -1,5 +1,7 @@
 package org.openmole.connect.server
 
+import org.openmole.connect.server.db.v1.DB
+
 import java.net.URLEncoder
 
 /*

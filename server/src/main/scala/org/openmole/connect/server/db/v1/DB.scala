@@ -1,21 +1,21 @@
-package org.openmole.connect.server
+package org.openmole.connect.server.db.v1
 
+import better.files.*
+import io.github.arainko.ducktape.*
+import org.openmole.connect.server.tool.*
+import org.openmole.connect.server.{Authentication, Settings, tool}
 import org.openmole.connect.shared.Data
+import slick.*
+import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
 import slick.model.ForeignKey
 
+import java.sql.DriverManager
 import java.text.SimpleDateFormat
 import java.util
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import org.openmole.connect.server.tool.*
-import io.github.arainko.ducktape.*
-import better.files.*
-import slick.*
-import slick.jdbc.H2Profile
-
-import java.sql.DriverManager
 
 object DB:
   object Salt:

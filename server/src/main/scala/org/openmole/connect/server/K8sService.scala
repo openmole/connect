@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.models.V1JobStatus
-import org.openmole.connect.server.DB.UUID
+import org.openmole.connect.server.db.v1.DB.UUID
 import org.openmole.connect.shared.{Data, Storage}
 import org.openmole.connect.shared.Data.*
 import skuber.LabelSelector.dsl.*
@@ -23,6 +23,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import monocle.*
 import monocle.syntax.all.*
+import org.openmole.connect.server.db.v1.DB
 import tool.*
 
 object K8sService:

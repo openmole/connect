@@ -1,7 +1,7 @@
 package org.openmole.connect.server
 
 import org.json4s.DefaultFormats
-import org.openmole.connect.server.DB.*
+import org.openmole.connect.server.db.v1.DB.*
 import org.openmole.connect.server.JWT.TokenData.inOneMonth
 import pdi.jwt.*
 
