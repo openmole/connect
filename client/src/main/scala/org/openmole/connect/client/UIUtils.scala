@@ -1,5 +1,6 @@
 package org.openmole.connect.client
 
+import org.openmole.connect.shared.*
 import org.openmole.connect.shared.Data.{PodInfo, RegisterUser, Role, User, UserAndPodInfo}
 import com.raquo.laminar.api.L.*
 import org.openmoleconnect.client.Css
@@ -52,21 +53,16 @@ object UIUtils:
       span(Css.centerColumnFlex, fontFamily := "gi", fontSize := "14", s"${toGB(value, float = true)}/${toGB(max)} GB")
     )
 
-  def userInfoBlock(user: User, admin: Boolean) =
-    def signal =
-      if admin
-      then Signal.fromFuture(AdminAPIClient.usedSpace(user.uuid).future)
-      else Signal.fromFuture(UserAPIClient.usedSpace(()).future)
-
+  def userInfoBlock(user: User, space: Var[Option[Storage]]) =
     div(
-      child <-- signal.map: storage =>
+      child <-- space.signal.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role.toString),
           textBlock("OpenMOLE version", user.omVersion),
           textBlock("CPU", user.cpu.toString),
           textBlock("Memory", s"${toGB(user.memory)} GB"),
           textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory)} GB"),
-          storage.flatten.toSeq.map: storage =>
+          storage.toSeq.map: storage =>
             memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
         )
     )

@@ -2,7 +2,7 @@ package org.openmole.connect.client
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.openmole.connect.shared.Data
+import org.openmole.connect.shared.{Data, Storage}
 import com.raquo.laminar.api.L.*
 import org.openmole.connect.shared.Data.*
 import org.scalajs.dom
@@ -19,7 +19,8 @@ object AdminPanel:
   @JSExportTopLevel("admin")
   def admin() =
 
-    val pods = Var(Map[String, Var[Option[PodInfo]]]())
+    case class Pod(podInfo: Var[Option[PodInfo]], storage: Var[Option[Storage]])
+    val pods = Var(Map[String, Pod]())
     val users: Var[Seq[User]] = Var(Seq())
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
@@ -35,7 +36,7 @@ object AdminPanel:
         val map =
           for
             u <- us
-          yield u.user.email -> Var(u.podInfo)
+          yield u.user.email -> Pod(Var(u.podInfo), Var(None))
         pods.set(map.toMap)
 
 
@@ -81,34 +82,31 @@ object AdminPanel:
         case Some(id) if id == uuid => true
         case _ => false
 
-    def expandedUser(user: User, podInfo: Option[PodInfo], selectUUID: Option[String]) =
-      if selectUUID.contains(user.uuid)
-      then
-        lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), user.uuid), settingsOffState, () => {})
-        val settings = UIUtils.settings(user.uuid)
+    def expandedUser(user: User, podInfo: Option[PodInfo], space: Var[Option[Storage]]) =
+      lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), user.uuid), settingsOffState, () => {})
+      val settings = UIUtils.settings(user.uuid)
+      div(
+        settingsSwitch.element.amend(margin := "30"),
         div(
-          settingsSwitch.element.amend(margin := "30"),
-          div(
-            child <--
-              settingsSwitch.toggled.signal.map:
-                case true =>
-                  settingsUUID.set(Some(user.uuid))
-                  settings.element
-                case false =>
-                  settings.save()
-                  settingsUUID.set(None)
+          child <--
+            settingsSwitch.toggled.signal.map:
+              case true =>
+                settingsUUID.set(Some(user.uuid))
+                settings.element
+              case false =>
+                settings.save()
+                settingsUUID.set(None)
+                div(
+                  Css.columnFlex, height := "350",
+                  UIUtils.userInfoBlock(user, space),
                   div(
-                    Css.columnFlex, height := "350",
-                    UIUtils.userInfoBlock(user, admin = true),
-                    div(
-                      podInfo.flatMap(_.status) match
-                        case Some(st) => UIUtils.openmoleBoard(Some(user.uuid), st)
-                        case _ => UIUtils.openmoleBoard(Some(user.uuid), PodInfo.Status.Inactive)
-                    )
+                    podInfo.flatMap(_.status) match
+                      case Some(st) => UIUtils.openmoleBoard(Some(user.uuid), st)
+                      case _ => UIUtils.openmoleBoard(Some(user.uuid), PodInfo.Status.Inactive)
                   )
-          )
+                )
         )
-      else div()
+      )
 
     def registeringInfo =
       registering.signal.map: rs =>
@@ -143,7 +141,7 @@ object AdminPanel:
                   div(UIUtils.longTimeToString(user.lastAccess)),
                   div(
                     child <--
-                      pod.signal.map: pi =>
+                      pod.podInfo.signal.map: pi =>
                         pi.map(pi => UIUtils.statusLine(pi.status)).getOrElse(UIUtils.statusLine(Some(PodInfo.Status.Inactive)))
                   ),
                   triggerButton(user.uuid)
@@ -152,12 +150,14 @@ object AdminPanel:
               ExpandedRow(
                 div(
                   child <--
-                    (selectedUUID.signal combineWith pod.signal).map: (s, pi) =>
-                      expandedUser(user, pi, s),
+                    (selectedUUID.signal combineWith pod.podInfo.signal).map: (s, pi) =>
+                      if s.contains(user.uuid) then expandedUser(user, pi, pod.storage) else div(),
                   EventStream.periodic(5000).toObservable -->
                     Observer: _ =>
                       if selectedUUID.now().contains(user.uuid)
-                      then AdminAPIClient.instance(user.uuid).future.foreach(pod.set)
+                      then
+                        AdminAPIClient.instance(user.uuid).future.foreach(pod.podInfo.set)
+                        if pod.storage.now().isEmpty then AdminAPIClient.usedSpace(user.uuid).future.foreach(pod.storage.set)
                 ),
                 selectedUUID.signal.map(s => s.contains(user.uuid))
               )

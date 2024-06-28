@@ -6,7 +6,7 @@ import org.openmole.connect
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.client.ConnectUtils.OpenMOLEPodStatus
 import org.openmole.connect.client.UIUtils.DetailedInfo
-import org.openmole.connect.shared.Data
+import org.openmole.connect.shared.{Data, Storage}
 import org.scalajs.dom
 import scaladget.bootstrapnative.*
 import scaladget.bootstrapnative.bsn.*
@@ -28,7 +28,7 @@ object UserPanel {
     def getVersions = UserAPIClient.availableVersions(()).future
 
     val podInfo: Var[Option[PodInfo]] = Var(None)
-    val refreshUserBlock: Var[Unit] = Var(())
+    val space: Var[Option[Storage]] = Var(None)
 
     lazy val userPanel = div(
       child <-- Signal.fromFuture(getUser).map:
@@ -37,15 +37,14 @@ object UserPanel {
             EventStream.periodic(5000).toObservable -->
               Observer: _ =>
                 UserAPIClient.instance(()).future.foreach: i =>
-                  (podInfo.now().flatMap(_.status).map(_.isRunning), i.flatMap(_.status).map(_.isRunning)) match
-                    case (Some(false) | None, Some(true)) => refreshUserBlock.set(())
-                    case _ =>
+                  podInfo.set(i)
+                if space.now().isEmpty
+                then UserAPIClient.usedSpace(()).future.foreach(space.set)
 
-                  podInfo.set(i),
+            ,
             div(maxWidth := "1000", margin := "40px auto",
               ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
-              child <-- refreshUserBlock.signal.map: _ =>
-                UIUtils.userInfoBlock(u, admin = false),
+              UIUtils.userInfoBlock(u, space),
               div(Css.rowFlex, justifyContent.flexEnd, marginRight := "30", marginBottom := "20",
                 child <--
                   Signal.fromFuture(getVersions).map: vs =>
