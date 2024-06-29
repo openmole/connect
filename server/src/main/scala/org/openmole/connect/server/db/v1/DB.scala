@@ -162,16 +162,16 @@ object DB:
       runTransaction(schema.createIfNotExists)
 
     runTransaction:
-      val admin = User.withDefault("admin", "Bob", "admin@admin.com", salted("admin"), "CNRS", Role.Admin)
+      val admin = User.withDefault("Admin", "Admin", "admin@admin.com", salted("admin"), "CNRS", Role.Admin)
       for
         e <- userTable.result
         _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
       yield ()
 
     // TODO remove for testing only
-    val user = User.withDefault("user", "Ali", "user@user.com", salted("user"), "CNRS")
+    //val user = User.withDefault("user", "Ali", "user@user.com", salted("user"), "CNRS")
     // val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
-    addUser(user)
+    //addUser(user)
     //addRegisteringUser(newUser)
 
     runTransaction:
