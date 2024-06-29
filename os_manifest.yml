@@ -38,14 +38,27 @@ subjects:
   name: openmole-admin-sa
   namespace: openmole
 ---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: openmole-storage
+  namespace: openmole
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+parameters:
+  numberOfReplicas: "1"
+  dataLocality: "best-effort"
+  staleReplicaTimeout: "2880" # 48 hours in minutes
+  fromBackup: ""
+---
 apiVersion: v1
 data:
   config.yml: |
     salt: "some-salt"
     secret: "some-secret"
     kube:
-     storageClassName: longhorn
-     storageSize: 10240
+     storageClassName: openmole-storage
+     storageSize: 20480
     openmole:
       versionHistory: 3
       minimumVersion: 17
@@ -61,7 +74,7 @@ metadata:
   name: connect-pv-claim
   namespace: openmole
 spec:
-  storageClassName: longhorn
+  storageClassName: openmole-storage
   accessModes:
     - ReadWriteOnce
   resources:
