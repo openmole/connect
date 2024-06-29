@@ -22,7 +22,7 @@ import java.net.URLEncoder
  */
 
 object EmailValidation:
-  def send(server: ConnectServer.Config.Validation, url: String, user: DB.RegisterUser) =
+  def send(server: ConnectServer.Config.SMTP, url: String, user: DB.RegisterUser) =
     import cats.effect._
     import cats.data.NonEmptyList
     import emil._, emil.builder._

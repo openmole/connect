@@ -37,9 +37,9 @@ object ConnectServer:
   object Config:
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
-    case class Validation(server: String, port: Int, user: String, password: String, from: String)
+    case class SMTP(server: String, port: Int, user: String, password: String, from: String)
 
-  case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE, validation: Option[Config.Validation] = None)
+  case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE, smtp: Option[Config.SMTP] = None)
 
   def read(file: File): Config =
     import better.files.*
@@ -70,7 +70,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
   def start() =
     DB.initDB()
-    
+
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
         case req@GET -> Root =>
@@ -100,7 +100,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 url <- r.getFirst("URL")
               yield
                 val inDB = DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
-                config.validation.foreach: v =>
+                config.smtp.foreach: v =>
                   val serverURL = url.reverse.dropWhile(_ != '/').reverse
                   EmailValidation.send(v, serverURL, inDB)
                 ServerContent.ok(ServerContent.connectionFunction(None))
