@@ -25,7 +25,6 @@ object AdminPanel:
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
     val versions: Var[Seq[String]] = Var(Seq())
     val selectedUUID: Var[Option[String]] = Var(None)
-    val settingsUUID: Var[Option[String]] = Var(None)
 
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
@@ -54,9 +53,7 @@ object AdminPanel:
         cursor.pointer,
         onClick --> { _ =>
           selectedUUID.update:
-            case Some(uuid) if uuid == key =>
-              settingsUUID.set(None)
-              None
+            case Some(uuid) if uuid == key => None
             case Some(_) => Some(key)
             case None => Some(key)
         })
@@ -77,13 +74,10 @@ object AdminPanel:
     val settingsOnState = ToggleState("SAVE", "SAVE", "btn btnUser switchState", (_: String) => {})
     val settingsOffState = ToggleState("SETTINGS", "SETTINGS", btn_secondary_string + " switchState", (_: String) => {})
 
-    def toBool(opt: Option[String], uuid: String) =
-      opt match
-        case Some(id) if id == uuid => true
-        case _ => false
 
     def expandedUser(user: User, podInfo: Option[PodInfo], space: Var[Option[Storage]]) =
-      lazy val settingsSwitch = toggle(settingsOnState, toBool(settingsUUID.now(), user.uuid), settingsOffState, () => {})
+      val settingsUUID: Var[Option[String]] = Var(None)
+      lazy val settingsSwitch = toggle(settingsOnState, false, settingsOffState, () => {})
       val settings = UIUtils.settings(user.uuid)
       div(
         settingsSwitch.element.amend(margin := "30"),
