@@ -4,6 +4,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.openmole.connect.shared.{Data, Storage}
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.features.unitArrows
 import org.openmole.connect.shared.Data.*
 import org.scalajs.dom
 import scaladget.bootstrapnative.Table.{BasicRow, ExpandedRow}
@@ -58,6 +59,7 @@ object AdminPanel:
             case None => Some(key)
         })
 
+
     def registeringUserBlock(register: RegisterUser) =
       div(Css.centerRowFlex, padding := "10px",
         button(btn_secondary, "Accept", marginRight := "20px", onClick --> { _ =>
@@ -70,26 +72,39 @@ object AdminPanel:
         })
       )
 
-
-    val settingsOnState = ToggleState("SAVE", "SAVE", "btn btnUser switchState", (_: String) => {})
-    val settingsOffState = ToggleState("SETTINGS", "SETTINGS", btn_secondary_string + " switchState", (_: String) => {})
-
-
-    def expandedUser(user: User, podInfo: Option[PodInfo], space: Var[Option[Storage]]) =
-      val settingsUUID: Var[Option[String]] = Var(None)
-      lazy val settingsSwitch = toggle(settingsOnState, false, settingsOffState, () => {})
+    def expandedUser(user: User, podInfo: Option[PodInfo], space: Var[Option[Storage]], settingsOpen: Var[Boolean]) =
       val settings = UIUtils.settings(user.uuid)
+
+      val settingButton =
+        button(
+          `type` := "button",
+          cls := "btn btnUser settings",
+          child <--
+            settingsOpen.signal.map:
+              case true  => "CANCEL"
+              case false => "SETTINGS"
+          ,
+          onClick --> settingsOpen.update(v => !v)
+        )
+
+      val saveButton =
+        button(
+          `type` := "button",
+          cls := "btn btnUser settings", "SAVE",
+          onClick --> {
+            settings.save()
+            settingsOpen.set(false)
+          }
+        )
+
       div(
-        settingsSwitch.element.amend(margin := "30"),
+        settingButton.amend(marginLeft := "30"),
+        child <-- settingsOpen.signal.map(s => if s then saveButton else emptyNode),
         div(
           child <--
-            settingsSwitch.toggled.signal.map:
-              case true =>
-                settingsUUID.set(Some(user.uuid))
-                settings.element
+            settingsOpen.signal.map:
+              case true => settings.element
               case false =>
-                settings.save()
-                settingsUUID.set(None)
                 div(
                   Css.columnFlex, height := "350",
                   UIUtils.userInfoBlock(user, space),
@@ -125,6 +140,7 @@ object AdminPanel:
       (users.signal combineWith pods.signal).map: (us, pods) =>
         us.flatMap: user =>
           pods.get(user.email).map: pod =>
+            val settingsOpen: Var[Boolean] = Var(false)
             UserInfo(
               BasicRow(
                 Seq(
@@ -145,10 +161,10 @@ object AdminPanel:
                 div(
                   child <--
                     (selectedUUID.signal combineWith pod.podInfo.signal).map: (s, pi) =>
-                      if s.contains(user.uuid) then expandedUser(user, pi, pod.storage) else div(),
+                      if s.contains(user.uuid) then expandedUser(user, pi, pod.storage, settingsOpen) else div(),
                   EventStream.periodic(5000).toObservable -->
                     Observer: _ =>
-                      if selectedUUID.now().contains(user.uuid)
+                      if selectedUUID.now().contains(user.uuid) && !settingsOpen.now()
                       then
                         AdminAPIClient.instance(user.uuid).future.foreach(pod.podInfo.set)
                         val stopped = pod.podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)

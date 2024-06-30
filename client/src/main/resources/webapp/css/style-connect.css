@@ -276,8 +276,10 @@ input:checked + .slider:before {
   border-color: #17a2b8;
 }
 
-.btn.switchState {
-    font-size: 13px;
+.btn.settings {
+  margin-top: 15px;
+  margin-right: 15px;
+  font-size: 13px;
 }
 
 .inPwd {

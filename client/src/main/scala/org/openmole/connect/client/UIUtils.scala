@@ -55,7 +55,7 @@ object UIUtils:
 
   def userInfoBlock(user: User, space: Var[Option[Storage]]) =
     div(
-      child <-- space.signal.map: storage =>
+      child <-- space.signal.distinct.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role.toString),
           textBlock("OpenMOLE version", user.omVersion),
