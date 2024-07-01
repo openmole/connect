@@ -174,7 +174,7 @@ object UIUtils:
       sw.isSet.signal --> {
         case true =>
           status match
-            case PodInfo.Status.Terminating | _: PodInfo.Status.Terminated | PodInfo.Status.Inactive =>
+            case _: PodInfo.Status.Terminated | PodInfo.Status.Inactive =>
               waiting.set(true)
               launch(uuid, None)
             case _ =>
