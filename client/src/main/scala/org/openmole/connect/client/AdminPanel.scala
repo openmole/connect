@@ -45,7 +45,7 @@ object AdminPanel:
     UserAPIClient.availableVersions((Some(10), false)).future.foreach(vs => versions.set(vs))
 
     def statusElement(registerinUser: RegisterUser) =
-      registerinUser.status match
+      registerinUser.emailStatus match
         case Data.EmailStatus.Checked => div(Css.badgeConnect, "Email Checked")
         case Data.EmailStatus.Unchecked => div(badge_danger, "Email Unchecked")
 

@@ -2,8 +2,9 @@ package org.openmole.connect.server.db.v1
 
 import better.files.*
 import io.github.arainko.ducktape.*
+import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.tool.*
-import org.openmole.connect.server.{Authentication, Settings, tool}
+import org.openmole.connect.server.{Authentication, OpenMOLE, Settings, tool}
 import org.openmole.connect.shared.Data
 import slick.*
 import slick.jdbc.H2Profile
@@ -41,21 +42,21 @@ object DB:
   type Memory = Int
   type Secret = UUID
 
-  given BaseColumnType[EmailStatus] = MappedColumnType.base[EmailStatus, String] (
-    s => s.toString,
-    v => EmailStatus.valueOf(v)
+  given BaseColumnType[EmailStatus] = MappedColumnType.base[EmailStatus, Int] (
+    s => s.ordinal,
+    v => EmailStatus.fromOrdinal(v)
   )
 
 
-  given BaseColumnType[Role] = MappedColumnType.base[Role, String] (
-    s => s.toString,
-    v => Role.valueOf(v)
+  given BaseColumnType[Role] = MappedColumnType.base[Role, Int] (
+    s => s.ordinal,
+    v => Role.fromOrdinal(v)
   )
 
 
-  given BaseColumnType[UserStatus] = MappedColumnType.base[UserStatus, String](
-    s => s.toString,
-    v => UserStatus.valueOf(v)
+  given BaseColumnType[UserStatus] = MappedColumnType.base[UserStatus, Int](
+    s => s.ordinal,
+    v => UserStatus.fromOrdinal(v)
   )
 
   object User:
@@ -65,13 +66,14 @@ object DB:
 
     def fromData(u: Data.User): Option[User] = user(u.email)
 
-    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID) =
-      User(name, firstName, email, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, status, uuid)
+    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID) =
+      User(name, firstName, email, emailStatus, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, status, uuid)
 
   case class User(
     name: String,
     firstName: String,
     email: Email,
+    emailStatus: EmailStatus,
     password: Password,
     institution: Institution,
     omVersion: Version,
@@ -87,7 +89,7 @@ object DB:
   object RegisterUser:
     def toData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
     def fromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
-    def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid)
+    def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
 
   case class RegisterUser(
     name: String,
@@ -96,7 +98,7 @@ object DB:
     password: Password,
     institution: Institution,
     created: Long = now,
-    status: EmailStatus = Data.EmailStatus.Unchecked,
+    emailStatus: EmailStatus = Data.EmailStatus.Unchecked,
     uuid: UUID = randomUUID,
     validationSecret: Secret = randomUUID)
 
@@ -104,19 +106,22 @@ object DB:
     def uuid = column[UUID]("UUID", O.PrimaryKey)
     def name = column[String]("NAME")
     def firstName = column[String]("FIRST_NAME")
+
     def email = column[Email]("EMAIL", O.Unique)
+    def emailStatus = column[EmailStatus]("EMAIL_STATUS")
+
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
     def role = column[Role]("ROLE")
     def status = column[UserStatus]("STATUS")
-    def omVersion = column[Version]("OMVERSION")
+    def omVersion = column[Version]("OM_VERSION")
     def memory = column[Storage]("MEMORY_LIMIT")
     def cpu = column[Double]("CPU_LIMIT")
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
-    def lastAccess = column[Long]("LASTACCESS")
+    def lastAccess = column[Long]("LAST_ACCESS")
     def created = column[Long]("CREATED")
 
-    def * = (name, firstName, email, password, institution, omVersion, memory, cpu, omMemory, lastAccess, created, role, status, uuid).mapTo[User]
+    def * = (name, firstName, email, emailStatus, password, institution, omVersion, memory, cpu, omMemory, lastAccess, created, role, status, uuid).mapTo[User]
     def mailIndex = index("index_mail", email, unique = true)
 
   val userTable = TableQuery[Users]
@@ -126,14 +131,14 @@ object DB:
     def name = column[String]("NAME")
     def firstName = column[String]("FIRST_NAME")
     def email = column[Email]("EMAIL", O.Unique)
+    def emailStatus = column[EmailStatus]("EMAIL_STATUS")
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
-    def status = column[EmailStatus]("STATUS")
     def validationSecret = column[Secret]("VALIDATION_SECRET")
     def created = column[Long]("CREATED")
 
 
-    def * = (name, firstName, email, password, institution, created, status, uuid, validationSecret).mapTo[RegisterUser]
+    def * = (name, firstName, email, password, institution, created, emailStatus, uuid, validationSecret).mapTo[RegisterUser]
 
   val registerUserTable = TableQuery[RegisterUsers]
 
@@ -162,7 +167,7 @@ object DB:
       runTransaction(schema.createIfNotExists)
 
     runTransaction:
-      val admin = User.withDefault("Admin", "Admin", "admin@openmole.org", salted("admin"), "OpenMOLE", Role.Admin)
+      val admin = User.withDefault("Admin", "Admin", "admin@openmole.org", salted("admin"), "OpenMOLE", role = Role.Admin)
       for
         e <- userTable.result
         _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
@@ -217,7 +222,7 @@ object DB:
         val q =
           for
             ru <- registerUserTable.filter(r => r.uuid === uuid && r.validationSecret === secret)
-          yield ru.status
+          yield ru.emailStatus
 
         q.update(Data.EmailStatus.Checked)
 
