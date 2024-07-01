@@ -99,11 +99,13 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 institution <- r.getFirst("Institution")
                 url <- r.getFirst("URL")
               yield
-                val inDB = DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution))
-                config.smtp.foreach: v =>
-                  val serverURL = url.reverse.dropWhile(_ != '/').reverse
-                  EmailValidation.send(v, serverURL, inDB)
-                ServerContent.ok(ServerContent.connectionFunction(None))
+                DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution)) match
+                  case Some(inDB) =>
+                    config.smtp.foreach: v =>
+                      val serverURL = url.reverse.dropWhile(_ != '/').reverse
+                      EmailValidation.send(v, serverURL, inDB)
+                    ServerContent.ok(ServerContent.connectionFunction(None))
+                  case None => ServerContent.connectionError("A user with this email is already registered")
 
             response.getOrElse(BadRequest("Missing param in request"))
 

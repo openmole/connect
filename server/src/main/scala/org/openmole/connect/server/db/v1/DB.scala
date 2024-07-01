@@ -192,15 +192,24 @@ object DB:
     yield ()
 
 
-  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): RegisterUser =
+  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Option[RegisterUser] =
     runTransaction:
+      val r = userTable.filter(u => u.email === registerUser.email)
       val q = registerUserTable.filter(r => r.email === registerUser.email)
+
+      val insert =
+        for
+          _ <- q.delete
+          _ <- registerUserTable += registerUser
+          r <- q.result
+        yield r
+
       for
-        e <- q.delete
-        _ <- registerUserTable += registerUser
-        r <- q.result
+        ex <- r.result
+        r <- if ex.isEmpty then insert else DBIO.successful(Seq())
       yield r
-    .head
+
+    .headOption
 
   def validateRegistering(uuid: UUID, secret: Secret): Boolean =
     val res =
