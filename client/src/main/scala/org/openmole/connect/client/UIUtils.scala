@@ -87,7 +87,7 @@ object UIUtils:
       input(
         `type` := "checkbox",
         defaultChecked := initialState,
-        onClick --> isSet.set(in.ref.checked)
+        onClick.mapToChecked --> isSet
       )
 
     val element = div(display.flex, flexDirection.row,
