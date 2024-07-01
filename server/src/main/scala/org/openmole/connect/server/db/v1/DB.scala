@@ -162,7 +162,7 @@ object DB:
       runTransaction(schema.createIfNotExists)
 
     runTransaction:
-      val admin = User.withDefault("Admin", "Admin", "admin@admin.com", salted("admin"), "CNRS", Role.Admin)
+      val admin = User.withDefault("Admin", "Admin", "admin@openmole.org", salted("admin"), "OpenMOLE", Role.Admin)
       for
         e <- userTable.result
         _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
