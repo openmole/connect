@@ -30,6 +30,7 @@ object AdminPanel:
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
     def updateUserInfo() =
+      selectedUUID.set(None)
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
       AdminAPIClient.allInstances(()).future.foreach: us =>
         users.set(us.map(_.user))
@@ -73,7 +74,40 @@ object AdminPanel:
       )
 
     def expandedUser(user: User, podInfo: Option[PodInfo], space: Var[Option[Storage]], settingsOpen: Var[Boolean]) =
-      val settings = UIUtils.settings(user.uuid)
+      case class Settings(element: HtmlElement, save: () => Unit)
+      object Settings:
+        def apply(uuid: String): Settings =
+          val passwordClicked = Var(false)
+
+          lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
+            `type` := "password",
+            cls := "inPwd",
+            onClick --> passwordClicked.set(true)
+          )
+
+          lazy val deleteInput: Input = UIUtils.buildInput("DELETE USER")
+
+          Settings(
+            div(margin := "30",
+              Css.columnFlex,
+              passwordInput,
+              deleteInput
+            ),
+            () =>
+              val pwd = passwordInput.ref.value
+              if pwd.nonEmpty && passwordClicked.now()
+              then AdminAPIClient.changePassword(uuid, passwordInput.ref.value)
+
+              val delete = deleteInput.ref.value
+              if delete == "DELETE USER"
+              then
+                AdminAPIClient.deleteUser(uuid)
+                users.update(u => u.filter(u => u.uuid != uuid))
+                pods.update(p => p.removed(uuid))
+                selectedUUID.set(None)
+          )
+
+      val settings = Settings(user.uuid)
 
       val settingButton =
         button(
@@ -90,7 +124,7 @@ object AdminPanel:
       val saveButton =
         button(
           `type` := "button",
-          cls := "btn btnUser settings", "SAVE",
+          cls := "btn btnUser settings", "APPLY",
           onClick --> {
             settings.save()
             settingsOpen.set(false)

@@ -35,6 +35,12 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
+  val deleteUser: Endpoint[String, Unit] =
+    endpoint(
+      post(path / "delete-user", jsonRequest[String]),
+      ok(jsonResponse[Unit])
+    )
+
   val usedSpace: Endpoint[String, Option[Storage]] =
     endpoint(
       post(path / "used-space", jsonRequest[String]),

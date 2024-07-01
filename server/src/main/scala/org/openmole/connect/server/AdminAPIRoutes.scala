@@ -21,6 +21,10 @@ class AdminAPIImpl(k8sService: K8sService)(using Salt, KubeCache, Authentication
   def usersAndPodInfo: Seq[Data.UserAndPodInfo] = users.map(u=> UserAndPodInfo(u, instance(u.uuid)))
   def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
 
+  def deleteUser(uuid: String) =
+    DB.deleteUser(uuid)
+    K8sService.deleteOpenMOLE(uuid)
+
   def launch(uuid: String): Unit =
     if K8sService.deploymentExists(uuid)
     then K8sService.startOpenMOLEPod(uuid)
@@ -41,7 +45,8 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
   val changePasswordRoute = changePassword.implementedBy((uuid, p)=> impl.changePassword(uuid, p))
   val launchRoute = launch.implementedBy(impl.launch)
   val stopRoute = stop.implementedBy(impl.stop)
+  val deleteUserRoute = deleteUser.implementedBy(impl.deleteUser)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, changePasswordRoute, launchRoute, stopRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, changePasswordRoute, launchRoute, stopRoute, deleteUserRoute)
   )

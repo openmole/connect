@@ -264,10 +264,10 @@ object K8sService:
     summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
       getPVCName(uuid).foreach: name =>
-        k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](name).await
+        k8s.usingNamespace(Namespace.openmole).delete[PersistentVolumeClaim](name)
 
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
-      k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions).await
+      k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
 
 
   //  def deployIfNotDeployedYet(k8sService: K8sService, uuid: UUID, omVersion: String, storage: String) =

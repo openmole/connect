@@ -3,6 +3,7 @@ package org.openmole.connect.client
 import org.openmole.connect.shared.*
 import org.openmole.connect.shared.Data.{PodInfo, RegisterUser, Role, User, UserAndPodInfo}
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.features.unitArrows
 import org.openmoleconnect.client.Css
 import scaladget.bootstrapnative.bsn.*
 import org.openmole.connect.shared.Data
@@ -85,10 +86,8 @@ object UIUtils:
     val in: Input =
       input(
         `type` := "checkbox",
-        checked <-- isSet.signal,
-        onInput --> { _ =>
-          isSet.set(in.ref.checked)
-        }
+        defaultChecked := initialState,
+        onClick --> isSet.set(in.ref.checked)
       )
 
     val element = div(display.flex, flexDirection.row,
@@ -143,7 +142,6 @@ object UIUtils:
           case Some(uuid) => AdminAPIClient.stop((uuid)).future
 
   def openmoleBoard(uuid: Option[String] = None, status: PodInfo.Status) =
-
     val waiting: Var[Boolean] = Var(false)
 
     val statusDiv =
@@ -167,8 +165,8 @@ object UIUtils:
 
     def isSwitchActivated(status: PodInfo.Status) =
       status match
-        case _: PodInfo.Status.Waiting | _: PodInfo.Status.Running => true
-        case _ => false
+        case _: PodInfo.Status.Terminated | PodInfo.Status.Inactive => false
+        case _ => true
 
     lazy val sw = switch("Stop OpenMOLE", "Start OpenMOLE", uuid, isSwitchActivated(status))
 
@@ -228,25 +226,6 @@ object UIUtils:
       cls := "formField"
     )
 
-
-  case class Settings(element: HtmlElement, save: () => Unit)
-
-  def settings(uuid: String): Settings =
-    lazy val in: Input = UIUtils.buildInput("New password").amend(
-      `type` := "password",
-      cls := "inPwd"
-    )
-
-    Settings(
-      div(margin := "30",
-        Css.columnFlex,
-        in
-      ),
-      () =>
-        val pwd = in.ref.value
-        if (!pwd.isEmpty)
-        then AdminAPIClient.changePassword(uuid, in.ref.value)
-    )
 
 
   def waiter = span(cls := "loader")
