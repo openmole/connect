@@ -66,8 +66,9 @@ object DB:
 
     def fromData(u: Data.User): Option[User] = user(u.email)
 
-    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID) =
-      User(name, firstName, email, emailStatus, password, institution, "17.0-SNAPSHOT", 2048, 2, 1024, now, now, role, status, uuid)
+    def withDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID)(using DockerHubCache) =
+      val defaultVersion = OpenMOLE.availableVersions(true, Some(1), None, true).last
+      User(name, firstName, email, emailStatus, password, institution, defaultVersion, 2048, 2, 1024, now, now, role, status, uuid)
 
   case class User(
     name: String,
@@ -89,7 +90,7 @@ object DB:
   object RegisterUser:
     def toData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
     def fromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
-    def toUser(r: RegisterUser): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
+    def toUser(r: RegisterUser)(using DockerHubCache): User = User.withDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
 
   case class RegisterUser(
     name: String,
@@ -163,7 +164,7 @@ object DB:
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
 
-  def initDB()(using Salt) =
+  def initDB()(using Salt, DockerHubCache) =
     val schema = databaseInfoTable.schema ++ userTable.schema ++ registerUserTable.schema
     scala.util.Try:
       runTransaction(schema.createIfNotExists)
@@ -234,7 +235,7 @@ object DB:
     runTransaction:
       registerUserTable.filter(_.uuid === uuid).delete
 
-  def promoteRegistering(uuid: UUID): Unit =
+  def promoteRegistering(uuid: UUID)(using DockerHubCache): Unit =
     runTransaction:
       for
         ru <- registerUserTable.filter(_.uuid === uuid).result

@@ -7,10 +7,11 @@ import org.http4s.*
 import org.openmole.connect.server.Authentication.AuthenticationCache
 import org.openmole.connect.server.db.v1.DB.{RegisterUser, Salt, registerUsers}
 import org.openmole.connect.server.K8sService.KubeCache
+import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.db.v1.DB
 import org.openmole.connect.shared.Data.UserAndPodInfo
 
-class AdminAPIImpl(k8sService: K8sService)(using Salt, KubeCache, AuthenticationCache):
+class AdminAPIImpl(k8sService: K8sService)(using Salt, KubeCache, AuthenticationCache, DockerHubCache):
   def users: Seq[Data.User] = DB.users.map(DB.User.toData)
   def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.RegisterUser.toData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid)
