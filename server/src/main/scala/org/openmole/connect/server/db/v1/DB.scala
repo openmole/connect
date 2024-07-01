@@ -114,10 +114,12 @@ object DB:
     def institution = column[Institution]("INSTITUTION")
     def role = column[Role]("ROLE")
     def status = column[UserStatus]("STATUS")
-    def omVersion = column[Version]("OM_VERSION")
     def memory = column[Storage]("MEMORY_LIMIT")
     def cpu = column[Double]("CPU_LIMIT")
     def omMemory = column[Storage]("OPENMOLE_MEMORY")
+
+    def omVersion = column[Version]("OPENMOLE_VERSION")
+
     def lastAccess = column[Long]("LAST_ACCESS")
     def created = column[Long]("CREATED")
 
