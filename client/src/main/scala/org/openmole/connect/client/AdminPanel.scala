@@ -82,16 +82,27 @@ object AdminPanel:
           lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
             `type` := "password",
             cls := "inPwd",
+            width := "400px",
             onClick --> passwordClicked.set(true)
           )
 
-          lazy val deleteInput: Input = UIUtils.buildInput("DELETE USER")
+          lazy val deleteInput: Input = UIUtils.buildInput("DELETE USER").amend(width := "400px")
+
+
 
           Settings(
             div(margin := "30",
-              Css.columnFlex,
-              passwordInput,
-              deleteInput
+              Css.rowFlex,
+              div(styleAttr := "width: 15%;", Css.columnFlex, alignItems.flexEnd,
+                div(Css.centerRowFlex, cls := "settingElement", "Password"),
+                div(Css.centerRowFlex, cls := "settingElement", "Delete"),
+              ),
+              div(styleAttr := "width: 85%;", Css.columnFlex, alignItems.flexStart,
+                div(Css.centerRowFlex, cls := "settingElement", passwordInput),
+                div(Css.centerRowFlex, cls := "settingElement", deleteInput),
+              ),
+//              div(Css.centerRowFlex, "Password", passwordInput),
+//              div(Css.centerRowFlex, "Delete", deleteInput),
             ),
             () =>
               val pwd = passwordInput.ref.value

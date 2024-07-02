@@ -286,3 +286,8 @@ input:checked + .slider:before {
     display: flex;
     align-items: center;
 }
+
+.settingElement {
+  height: 30px;
+  margin: 10px;
+}
