@@ -11,7 +11,7 @@ import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.db.v1.DB
 import org.openmole.connect.shared.Data.UserAndPodInfo
 
-class AdminAPIImpl(k8sService: K8sService)(using Salt, KubeCache, AuthenticationCache, DockerHubCache):
+class AdminAPIImpl(using Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
   def users: Seq[Data.User] = DB.users.map(DB.User.toData)
   def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.RegisterUser.toData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid)
@@ -30,7 +30,7 @@ class AdminAPIImpl(k8sService: K8sService)(using Salt, KubeCache, Authentication
     then K8sService.startOpenMOLEPod(uuid)
     else
       DB.userFromUUID(uuid).foreach: user =>
-        K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+        K8sService.deployOpenMOLE(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
 
   def stop(uuid: String): Unit = K8sService.stopOpenMOLEPod(uuid)
 

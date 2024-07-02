@@ -59,6 +59,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   given authenticationCache: Authentication.AuthenticationCache = Authentication.AuthenticationCache()
   given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
+  given K8sService = k8s
 
   val httpClient =
     HttpClients.
@@ -141,7 +142,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
-            val impl = UserAPIImpl(user, k8s, config.openmole)
+            val impl = UserAPIImpl(user, config.openmole)
             val userAPI = new UserAPIRoutes(impl)
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))
@@ -151,7 +152,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
           ServerContent.authenticated(req): user =>
             if DB.User.isAdmin(user)
             then
-              val impl = AdminAPIImpl(k8s)
+              val impl = AdminAPIImpl()
               val adminAPI = new AdminAPIRoutes(impl)
               val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
               val apiReq = req.withUri(req.uri.withPath(apiPath))

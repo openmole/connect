@@ -11,13 +11,13 @@ import org.openmole.connect.server.db.v1.DB
 import org.openmole.connect.shared.*
 
 
-class UserAPIImpl(user: DB.User, k8sService: K8sService, openmole: ConnectServer.Config.OpenMOLE)(using Salt, KubeCache, AuthenticationCache, DockerHubCache):
+class UserAPIImpl(user: DB.User, openmole: ConnectServer.Config.OpenMOLE)(using Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
   def userData = DB.User.toData(user)
   def instanceStatus = K8sService.podInfo(user.uuid)
   def launch =
     if K8sService.deploymentExists(user.uuid)
     then K8sService.startOpenMOLEPod(user.uuid)
-    else K8sService.deployOpenMOLE(k8sService, user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+    else K8sService.deployOpenMOLE(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
 
   def changePassword(oldPassword: String, newPassword: String) =
     DB.updatePassword(user.uuid, newPassword, Some(oldPassword))
