@@ -60,11 +60,13 @@ object tool:
 
   extension [A, B](cache: com.google.common.cache.Cache[A, B])
     def getOptional(k: A, f: A => Option[B]): Option[B] =
-      Option(cache.getIfPresent(k)) match
-        case Some(v) => Some(v)
-        case None =>
-          f(k) match
-            case Some(v) =>
-              cache.put(k, v)
-              Some(v)
-            case None => None
+      Option(cache.getIfPresent(k)) orElse
+        cache.synchronized:
+          Option(cache.getIfPresent(k)) match
+            case Some(v) => Some(v)
+            case None =>
+              f(k) match
+                case Some(v) =>
+                  cache.put(k, v)
+                  Some(v)
+                case None => None
