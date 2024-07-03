@@ -119,7 +119,7 @@ object K8sService:
     Container(
       name = "openmole",
       image = s"openmole/openmole:${version}",
-      command = List("bin/bash", "-c", s"openmole-docker --port 80 --password password --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole"),
+      command = List("bin/bash", "-c", s"openmole-docker --port 80 --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole"),
       volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/")),
       securityContext = Some(SecurityContext(privileged = Some(true))),
       imagePullPolicy = Container.PullPolicy.Always,
@@ -269,10 +269,6 @@ object K8sService:
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
       k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
 
-
-  //  def deployIfNotDeployedYet(k8sService: K8sService, uuid: UUID, omVersion: String, storage: String) =
-  //    if !deploymentExists(uuid) then deployOpenMOLE(k8sService, uuid, omVersion, storage)
-
   private def podInfo(uuid: UUID, podList: List[PodInfo])(using K8sService): Option[PodInfo] =
     podList.find { _.name.contains(uuid.value) }
 
@@ -286,8 +282,6 @@ object K8sService:
     def ip(uuid: UUID) = podInfo(uuid).flatMap(_.podIP)
     summon[KubeCache].ipCache.getOptional(uuid, ip)
 
-  //  def isServiceUp(uuid: UUID): Boolean =
-  //    podInfo(uuid).flatMap { _.status.contains() }.isDefined
 
   def usedSpace(uuid: UUID)(using K8sService): Option[Storage] =
     import io.kubernetes.client.openapi.*
