@@ -167,10 +167,12 @@ object K8sService:
       // Should we rename it deploymentName?
       val openMOLETemplate = Pod.Template.Spec
         .named("openmole")
+        .withPodSpec(Pod.Spec(terminationGracePeriodSeconds = Some(60)))
         .addContainer(openMOLEContainer)
         .addVolume(Volume(name = "data", source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
         .addLabel(openMOLELabel)
         .addLabel("podName" -> podName)
+
 
       val desiredCount = 1
 
@@ -202,11 +204,11 @@ object K8sService:
       .await
 
   def stopOpenMOLEPod(uuid: UUID)(using KubeCache, K8sService) =
-    summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
       k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
         k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
       .await
+    summon[KubeCache].ipCache.invalidate(uuid)
 
   def startOpenMOLEPod(uuid: UUID)(using K8sService) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
@@ -214,12 +216,13 @@ object K8sService:
     .await
 
   def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
-    summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
       k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
         val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
         k8s.usingNamespace(Namespace.openmole) update d.updateContainer(container)
       .await
+    summon[KubeCache].ipCache.invalidate(uuid)
+
 
   def getPVCName(uuid: UUID)(using K8sService): Option[String] =
     withK8s: k8s =>
