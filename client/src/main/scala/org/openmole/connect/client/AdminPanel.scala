@@ -88,7 +88,18 @@ object AdminPanel:
 
           lazy val deleteInput: Input = UIUtils.buildInput("DELETE USER").amend(width := "400px")
 
+          def save(): Unit =
+            val pwd = passwordInput.ref.value
+            if pwd.nonEmpty && passwordClicked.now()
+            then AdminAPIClient.changePassword(uuid, passwordInput.ref.value)
 
+            val delete = deleteInput.ref.value
+            if delete == "DELETE USER"
+            then
+              AdminAPIClient.deleteUser(uuid)
+              users.update(u => u.filter(u => u.uuid != uuid))
+              pods.update(p => p.removed(uuid))
+              selectedUUID.set(None)
 
           Settings(
             div(margin := "30",
@@ -100,25 +111,12 @@ object AdminPanel:
               div(styleAttr := "width: 85%;", Css.columnFlex, alignItems.flexStart,
                 div(Css.centerRowFlex, cls := "settingElement", passwordInput),
                 div(Css.centerRowFlex, cls := "settingElement", deleteInput),
-              ),
-//              div(Css.centerRowFlex, "Password", passwordInput),
-//              div(Css.centerRowFlex, "Delete", deleteInput),
+              )
             ),
-            () =>
-              val pwd = passwordInput.ref.value
-              if pwd.nonEmpty && passwordClicked.now()
-              then AdminAPIClient.changePassword(uuid, passwordInput.ref.value)
-
-              val delete = deleteInput.ref.value
-              if delete == "DELETE USER"
-              then
-                AdminAPIClient.deleteUser(uuid)
-                users.update(u => u.filter(u => u.uuid != uuid))
-                pods.update(p => p.removed(uuid))
-                selectedUUID.set(None)
+            save
           )
 
-      val settings = Settings(user.uuid)
+      def settings = Settings(user.uuid)
 
       val settingButton =
         button(

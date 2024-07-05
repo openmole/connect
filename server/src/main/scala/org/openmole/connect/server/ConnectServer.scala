@@ -142,7 +142,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
-            val impl = UserAPIImpl(user, config.openmole)
+            val impl = UserAPIImpl(user.uuid, config.openmole)
             val userAPI = new UserAPIRoutes(impl)
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))

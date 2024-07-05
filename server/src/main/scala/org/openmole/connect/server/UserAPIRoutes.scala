@@ -8,21 +8,25 @@ import org.openmole.connect.server.db.v1.DB.Salt
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.db.v1.DB
+import org.openmole.connect.server.db.v1.DB.User.toData
 import org.openmole.connect.shared.*
 
 
-class UserAPIImpl(user: DB.User, openmole: ConnectServer.Config.OpenMOLE)(using Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
-  def userData = DB.User.toData(user)
-  def instanceStatus = K8sService.podInfo(user.uuid)
+class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
+  def user = DB.userFromUUID(uuid).getOrElse(throw RuntimeException(s"Not found user with uuid $uuid"))
+  def instanceStatus = K8sService.podInfo(uuid)
+
   def launch =
-    if K8sService.deploymentExists(user.uuid)
-    then K8sService.startOpenMOLEPod(user.uuid)
-    else K8sService.deployOpenMOLE(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+    if K8sService.deploymentExists(uuid)
+    then K8sService.startOpenMOLEPod(uuid)
+    else
+      val userValue = user
+      K8sService.deployOpenMOLE(userValue.uuid, userValue.omVersion, userValue.openMOLEMemory, userValue.memory, userValue.cpu)
 
   def changePassword(oldPassword: String, newPassword: String) =
-    DB.updatePassword(user.uuid, newPassword, Some(oldPassword))
+    DB.updatePassword(uuid, newPassword, Some(oldPassword))
 
-  def stop = K8sService.stopOpenMOLEPod(user.uuid)
+  def stop = K8sService.stopOpenMOLEPod(uuid)
 
   def availableVersions =
     OpenMOLE.availableVersions(withSnapshot = true, history = openmole.versionHistory, minVersion = openmole.minimumVersion, lastMajors = true)
@@ -30,15 +34,15 @@ class UserAPIImpl(user: DB.User, openmole: ConnectServer.Config.OpenMOLE)(using 
   def setVersion(version: String) =
     val versions = availableVersions
     if versions.contains(version)
-    then DB.updadeOMVersion(user.uuid, version)
+    then DB.updadeOMVersion(uuid, version)
 
-  def usedSpace = K8sService.usedSpace(user.uuid)
+  def usedSpace = K8sService.usedSpace(uuid)
 
 class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
 
-  val userRoute = user.implementedBy { _ => impl.userData }
+  val userRoute = user.implementedBy { _ => DB.User.toData(impl.user) }
   val instanceRoute = instance.implementedBy { _ => impl.instanceStatus }
   val launchRoute = launch.implementedBy { _ => impl.launch }
   val stopRoute = stop.implementedBy { _ => impl.stop }
