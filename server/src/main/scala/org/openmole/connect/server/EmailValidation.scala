@@ -1,7 +1,6 @@
 package org.openmole.connect.server
 
-import org.openmole.connect.server.db.v1.DB
-
+import org.openmole.connect.server.db.DBSchemaV1
 import java.net.URLEncoder
 
 /*
@@ -22,7 +21,7 @@ import java.net.URLEncoder
  */
 
 object EmailValidation:
-  def send(server: ConnectServer.Config.SMTP, url: String, user: DB.RegisterUser) =
+  def send(server: ConnectServer.Config.SMTP, url: String, user: DBSchemaV1.RegisterUser) =
     import cats.effect._
     import cats.data.NonEmptyList
     import emil._, emil.builder._

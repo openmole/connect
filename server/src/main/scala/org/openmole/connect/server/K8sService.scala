@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.models.V1JobStatus
-import org.openmole.connect.server.db.v1.DB.UUID
 import org.openmole.connect.shared.{Data, Storage}
 import org.openmole.connect.shared.Data.*
 import skuber.LabelSelector.dsl.*
@@ -23,7 +22,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import monocle.*
 import monocle.syntax.all.*
-import org.openmole.connect.server.db.v1.DB
+import org.openmole.connect.server.db.DB
 import tool.*
 
 object K8sService:
@@ -147,7 +146,7 @@ object K8sService:
         )
     )
 
-  def deployOpenMOLE(uuid: UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
+  def deployOpenMOLE(uuid: DB.UUID, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
     val k8sService = summon[K8sService]
     summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
@@ -203,19 +202,19 @@ object K8sService:
             k8s update updated
       .await
 
-  def stopOpenMOLEPod(uuid: UUID)(using KubeCache, K8sService) =
+  def stopOpenMOLEPod(uuid: DB.UUID)(using KubeCache, K8sService) =
     withK8s: k8s =>
       k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
         k8s.usingNamespace(Namespace.openmole) update d.withReplicas(0)
       .await
     summon[KubeCache].ipCache.invalidate(uuid)
 
-  def startOpenMOLEPod(uuid: UUID)(using K8sService) = withK8s: k8s =>
+  def startOpenMOLEPod(uuid: DB.UUID)(using K8sService) = withK8s: k8s =>
     k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
       k8s.usingNamespace(Namespace.openmole) update d.withReplicas(1)
     .await
 
-  def updateOpenMOLEPod(uuid: UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
+  def updateOpenMOLEPod(uuid: DB.UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
     withK8s: k8s =>
       k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>
         val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
@@ -224,7 +223,7 @@ object K8sService:
     summon[KubeCache].ipCache.invalidate(uuid)
 
 
-  def getPVCName(uuid: UUID)(using K8sService): Option[String] =
+  def getPVCName(uuid: DB.UUID)(using K8sService): Option[String] =
     withK8s: k8s =>
       val deployment = k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).await
       deployment.focus(_.spec.some.template.spec.some.volumes.index(0).source).getOption match
@@ -232,7 +231,7 @@ object K8sService:
           case _ => None
 
   // FIXME test with no pv name
-  def updateOpenMOLEPersistentVolumeStorage(uuid: UUID, size: Int, storageClassName: Option[String])(using K8sService) = withK8s: k8s =>
+  def updateOpenMOLEPersistentVolumeStorage(uuid: DB.UUID, size: Int, storageClassName: Option[String])(using K8sService) = withK8s: k8s =>
     //stopOpenMOLEPod(uuid)
 
     //val pvcName = s"pvc-$uuid-${util.UUID.randomUUID().toString}"
@@ -261,7 +260,7 @@ object K8sService:
 //    k8s.usingNamespace(Namespace.openmole).delete(pvcName).await
 //    k8s.usingNamespace(Namespace.openmole).update(newPVC).await //createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
 
-  def deleteOpenMOLE(uuid: UUID)(using KubeCache, K8sService): Unit =
+  def deleteOpenMOLE(uuid: DB.UUID)(using KubeCache, K8sService): Unit =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))
 
     summon[KubeCache].ipCache.invalidate(uuid)
@@ -272,21 +271,21 @@ object K8sService:
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
       k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
 
-  private def podInfo(uuid: UUID, podList: List[PodInfo])(using K8sService): Option[PodInfo] =
+  private def podInfo(uuid: DB.UUID, podList: List[PodInfo])(using K8sService): Option[PodInfo] =
     podList.find { _.name.contains(uuid.value) }
 
   // This method was kept to test the LabelSelector method. Is works but requires more API requests => longer
-  def podInfo(uuid: UUID)(using K8sService): Option[PodInfo] =
+  def podInfo(uuid: DB.UUID)(using K8sService): Option[PodInfo] =
     withK8s: k8s =>
       val pods = k8s.usingNamespace(Namespace.openmole).listSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value))
       pods.map { list => list.items.map(toPodInfo).headOption }.await
 
-  def podIP(uuid: UUID)(using KubeCache, K8sService) =
-    def ip(uuid: UUID) = podInfo(uuid).flatMap(_.podIP)
+  def podIP(uuid: DB.UUID)(using KubeCache, K8sService) =
+    def ip(uuid: DB.UUID) = podInfo(uuid).flatMap(_.podIP)
     summon[KubeCache].ipCache.getOptional(uuid, ip)
 
 
-  def usedSpace(uuid: UUID)(using K8sService): Option[Storage] =
+  def usedSpace(uuid: DB.UUID)(using K8sService): Option[Storage] =
     import io.kubernetes.client.openapi.*
     import io.kubernetes.client.*
     import io.kubernetes.client.util.*
@@ -312,7 +311,7 @@ object K8sService:
 
         if proc.waitFor() == 0 then result else None
 
-  def deploymentExists(uuid: UUID)(using K8sService) = podInfo(uuid).isDefined
+  def deploymentExists(uuid: DB.UUID)(using K8sService) = podInfo(uuid).isDefined
 
   def podInfos(using K8sService): Seq[PodInfo] =
     val pods = listPods

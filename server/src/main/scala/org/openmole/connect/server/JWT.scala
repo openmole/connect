@@ -1,7 +1,7 @@
 package org.openmole.connect.server
 
 import org.json4s.DefaultFormats
-import org.openmole.connect.server.db.v1.DB.*
+import org.openmole.connect.server.db.DB
 import org.openmole.connect.server.JWT.TokenData.inOneMonth
 import pdi.jwt.*
 
@@ -75,8 +75,8 @@ object JWT:
 
     def fromTokenContent(content: String)(using secret: Secret) =
       Jwt.decode(content, secret, Seq(JWT.algorithm)).map: jwtClaim =>
-        val uuid: UUID = Json.fromJson(jwtClaim.content, Json.key.uuid)
-        val password: Password = Json.fromJson(jwtClaim.content, Json.key.password)
+        val uuid: DB.UUID = Json.fromJson(jwtClaim.content, Json.key.uuid)
+        val password: DB.Password = Json.fromJson(jwtClaim.content, Json.key.password)
         TokenData(uuid, password, jwtClaim.issuedAt.get, jwtClaim.expiration.get)
       .toOption.filter { t => !hasExpired(t) }
 
@@ -99,5 +99,5 @@ object JWT:
       )
 
 
-  case class TokenData(uuid: UUID, password: Password, issued: Long = tool.now, expirationTime: Long = inOneMonth)
+  case class TokenData(uuid: DB.UUID, password: DB.Password, issued: Long = tool.now, expirationTime: Long = inOneMonth)
 

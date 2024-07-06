@@ -4,15 +4,15 @@ import cats.effect.*
 import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
 import org.openmole.connect.server.Authentication.AuthenticationCache
-import org.openmole.connect.server.db.v1.DB.Salt
+import org.openmole.connect.server.db.*
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
-import org.openmole.connect.server.db.v1.DB
-import org.openmole.connect.server.db.v1.DB.User.toData
+import org.openmole.connect.server.db.DBSchemaV1
+import DBSchemaV1.User.toData
 import org.openmole.connect.shared.*
 
 
-class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
+class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
   def user = DB.userFromUUID(uuid).getOrElse(throw RuntimeException(s"Not found user with uuid $uuid"))
   def instanceStatus = K8sService.podInfo(uuid)
 
@@ -42,7 +42,7 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
 
-  val userRoute = user.implementedBy { _ => DB.User.toData(impl.user) }
+  val userRoute = user.implementedBy { _ => DBSchemaV1.User.toData(impl.user) }
   val instanceRoute = instance.implementedBy { _ => impl.instanceStatus }
   val launchRoute = launch.implementedBy { _ => impl.launch }
   val stopRoute = stop.implementedBy { _ => impl.stop }
