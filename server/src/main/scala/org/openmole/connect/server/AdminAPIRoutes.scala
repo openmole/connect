@@ -11,8 +11,8 @@ import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.Data.UserAndPodInfo
 
 class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
-  def users: Seq[Data.User] = DB.users.map(DB.User.toData)
-  def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.RegisterUser.toData)
+  def users: Seq[Data.User] = DB.users.map(DB.userToData)
+  def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.registerUserToData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid)
   def deleteRegisterUser(uuid: String): Unit = DB.deleteRegistering(uuid)
   def usedSpace(uuid: String): Option[Storage] = K8sService.usedSpace(uuid)

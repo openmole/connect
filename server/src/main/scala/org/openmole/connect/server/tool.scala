@@ -13,6 +13,7 @@ import java.io.{PrintWriter, StringWriter}
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.util.logging.Logger
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -70,3 +71,5 @@ object tool:
                   cache.put(k, v)
                   Some(v)
                 case None => None
+                
+  def log(m: String) = Logger.getAnonymousLogger.info(m)              

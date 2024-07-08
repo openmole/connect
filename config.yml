@@ -2,6 +2,9 @@ salt: "some-salt"
 secret: "some-secret"
 kube:
   storageClassName: null
+  storageSize: 10240
 openmole:
   versionHistory: 3
+
+
 

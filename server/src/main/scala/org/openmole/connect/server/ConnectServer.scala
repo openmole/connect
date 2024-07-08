@@ -85,7 +85,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
         case req@GET -> Root / Data.validateRoute =>
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
-              val res = DB.validateRegistering(uuid, secret)
+              val res = DB.validateUserEmail(uuid, secret)
               if res then Ok("Thank you, your email has benn validated") else NotFound("validation not found")
             case None => BadRequest("Expected uuid and secret")
 
@@ -101,10 +101,10 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 url <- r.getFirst("URL")
               yield
                 DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution)) match
-                  case Some(inDB) =>
+                  case Some((inDB, secret)) =>
                     config.smtp.foreach: v =>
                       val serverURL = url.reverse.dropWhile(_ != '/').reverse
-                      EmailValidation.send(v, serverURL, inDB)
+                      EmailValidation.send(v, serverURL, inDB, secret)
                     ServerContent.ok(ServerContent.connectionFunction(None))
                   case None => ServerContent.connectionError("A user with this email is already registered")
 
@@ -131,7 +131,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
           ServerContent.authenticated(req): admin =>
             req.params.get("uuid") match
               case Some(uuid) =>
-                if DB.User.isAdmin(admin)
+                if DB.userIsAdmin(admin)
                 then
                   DB.userFromUUID(uuid) match
                     case Some(user) => ServerContent.redirect(s"/").map(ServerContent.addJWTToken(user.uuid, user.password))
@@ -150,7 +150,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req if req.uri.path.startsWith(Root / Data.adminAPIRoute) =>
           ServerContent.authenticated(req): user =>
-            if DB.User.isAdmin(user)
+            if DB.userIsAdmin(user)
             then
               val impl = AdminAPIImpl()
               val adminAPI = new AdminAPIRoutes(impl)

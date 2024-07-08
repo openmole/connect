@@ -1,4 +1,4 @@
-package org.openmoleconnect.application
+package org.openmole.connect.application
 
 import org.openmole.connect.server.*
 

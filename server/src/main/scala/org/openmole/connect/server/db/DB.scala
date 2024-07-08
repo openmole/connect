@@ -13,7 +13,12 @@ import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
 import slick.model.ForeignKey
 import org.openmole.connect.shared.Data
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.openmole.connect.server.tool.*
+import io.github.arainko.ducktape.*
+import org.http4s.headers.Upgrade
+import slick.jdbc.meta.MTable
 
 /*
  * Copyright (C) 2024 Romain Reuillon
@@ -34,11 +39,21 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object DB:
 
-  import DBSchemaV1.{*, given}
+  import DBSchemaV2.{*, given}
+  export DBSchemaV2.{User, RegisterUser, ValidationSecret}
+  val version = dbVersion
 
-  export DBSchemaV1.User
-  export DBSchemaV1.RegisterUser
+  def userIsAdmin(u: User) = u.role == Role.Admin
+  def userToData(u: User): Data.User = u.to[Data.User]
+  def userFromData(u: Data.User): Option[User] = user(u.email)
 
+  def userWithDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID)(using DockerHubCache) =
+    val defaultVersion = OpenMOLE.availableVersions(true, Some(1), None, true).head
+    User(name, firstName, email, emailStatus, password, institution, defaultVersion, 2048, 2, 1024, now, now, role, status, uuid)
+
+  def registerUserToData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
+  def registerUserFromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
+  def registerUserToUser(r: RegisterUser)(using DockerHubCache): User = userWithDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
 
   def randomUUID = java.util.UUID.randomUUID().toString
 
@@ -70,32 +85,6 @@ object DB:
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action), Duration.Inf)
 
-
-  def initDB()(using Salt, DockerHubCache) =
-    val schema = databaseInfoTable.schema ++ userTable.schema ++ registerUserTable.schema
-    scala.util.Try:
-      runTransaction(schema.createIfNotExists)
-
-    runTransaction:
-      val admin = User.withDefault("Admin", "Admin", "admin@openmole.org", salted("admin"), "OpenMOLE", role = Role.Admin)
-      for
-        e <- userTable.result
-        _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
-      yield ()
-
-    // TODO remove for testing only
-    //val user = User.withDefault("user", "Ali", "user@user.com", salted("user"), "CNRS")
-    // val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
-    //addUser(user)
-    //addRegisteringUser(newUser)
-
-    runTransaction:
-      for
-        e <- databaseInfoTable.result
-        _ <- if e.isEmpty then databaseInfoTable += DatabaseInfo.Data(dbVersion) else DBIO.successful(())
-      yield ()
-
-
   def addUser(user: User): Unit =
     runTransaction:
       addUserTransaction(user)
@@ -107,36 +96,54 @@ object DB:
     yield ()
 
 
-  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Option[RegisterUser] =
+  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Option[(RegisterUser, Secret)] =
+    val secret = randomUUID
+
     runTransaction:
       val r = userTable.filter(u => u.email === registerUser.email)
       val q = registerUserTable.filter(r => r.email === registerUser.email)
+
+      val createSecret =
+        for
+          _ <- validationSecretTable.filter(_.uuid === registerUser.uuid).delete
+          _ <- validationSecretTable += DB.ValidationSecret(registerUser.uuid, secret)
+        yield secret
 
       val insert =
         for
           _ <- q.delete
           _ <- registerUserTable += registerUser
           r <- q.result
+          s <- createSecret
         yield r
+
 
       for
         ex <- r.result
         r <- if ex.isEmpty then insert else DBIO.successful(Seq())
       yield r
 
-    .headOption
+    .headOption.map: u =>
+      (u, secret)
 
-  def validateRegistering(uuid: UUID, secret: Secret): Boolean =
+  def validateUserEmail(uuid: UUID, secret: Secret): Boolean =
     val res =
       runTransaction:
-        val q =
-          for
-            ru <- registerUserTable.filter(r => r.uuid === uuid && r.validationSecret === secret)
-          yield ru.emailStatus
+        val q1 = registerUserTable.filter(r => r.uuid === uuid).map(_.emailStatus)
+        val q2 = userTable.filter(r => r.uuid === uuid).map(_.emailStatus)
+        val secretQuery = validationSecretTable.filter(s => s.uuid === uuid && s.validationSecret === secret)
 
-        q.update(Data.EmailStatus.Checked)
+        secretQuery.result.flatMap: s =>
+          if s.nonEmpty
+          then
+            for
+              u1 <- q1.update(Data.EmailStatus.Checked)
+              u2 <- q2.update(Data.EmailStatus.Checked)
+              _ <- secretQuery.delete
+            yield Seq(u1, u2)
+          else DBIO.successful(Seq())
 
-    res >= 1
+    res.exists(_ >= 1)
 
   def deleteRegistering(uuid: UUID): Int =
     runTransaction:
@@ -146,7 +153,7 @@ object DB:
     runTransaction:
       for
         ru <- registerUserTable.filter(_.uuid === uuid).result
-        user = ru.map(RegisterUser.toUser)
+        user = ru.map(registerUserToUser)
         _ <- DBIO.sequence(user.map(addUserTransaction))
         _ <- registerUserTable.filter(_.uuid === uuid).delete
       yield ()
@@ -210,3 +217,64 @@ object DB:
       userTable.filter(_.uuid === uuid).delete
 
   def salted(password: Password)(using salt: Salt) = tool.hash(password, Salt.value(salt))
+
+
+  /* Initialize database */
+
+  object DatabaseInfo:
+    case class Data(version: Int)
+
+  class DatabaseInfo(tag: Tag) extends Table[DatabaseInfo.Data](tag, "DB_INFO"):
+    def version = column[Int]("VERSION")
+
+    def * = version.mapTo[DatabaseInfo.Data]
+
+  val databaseInfoTable = TableQuery[DatabaseInfo]
+
+  case class Upgrade(upgrade: DBIO[Unit], version: Int)
+  def upgrades: Seq[Upgrade] = Seq(DBSchemaV1.upgrade, DBSchemaV2.upgrade)
+
+  def initDB()(using Salt, DockerHubCache) =
+    runTransaction:
+      def createDBInfo: DBIO[Int] =
+        for
+          _ <- databaseInfoTable.schema.createIfNotExists
+          v <- databaseInfoTable.map(_.version).result
+        yield v.headOption.getOrElse(0)
+
+      def updateVersion =
+        for
+          _ <- databaseInfoTable.delete
+          _ <- databaseInfoTable += DatabaseInfo.Data(DB.version)
+        yield ()
+
+      def upgradesValue(version: Int) =
+        for
+          u <- upgrades.dropWhile(_.version <= version)
+          _ = tool.log(s"upgrade db to version ${u.version}")
+        yield u.upgrade
+
+      def create =
+        for
+          v <- createDBInfo
+          _ = tool.log(s"found db version $v")
+          _ <- if v > DB.version then DBIO.failed(new RuntimeException(s"Can't downgrade DB (version ${v} to ${DB.version})")) else DBIO.successful(())
+          ups <- DBIO.sequence(upgradesValue(v))
+          _ <- updateVersion
+        yield ()
+
+      create
+
+    runTransaction:
+      val admin = userWithDefault("Admin", "Admin", "admin@openmole.org", salted("admin"), "OpenMOLE", role = Role.Admin)
+      for
+        e <- userTable.result
+        _ <- if e.isEmpty then userTable += admin else DBIO.successful(())
+      yield ()
+
+    // TODO remove for testing only
+    //val user = User.withDefault("user", "Ali", "user@user.com", salted("user"), "CNRS")
+    // val newUser = RegisterUser("user2", "Sarah","user2@user2.com", salted("user2"), "CNRS", DB.checked)
+    //addUser(user)
+    //addRegisteringUser(newUser)
+

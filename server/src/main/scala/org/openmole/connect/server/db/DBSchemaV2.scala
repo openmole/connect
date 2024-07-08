@@ -1,11 +1,11 @@
 package org.openmole.connect.server.db
 
 import better.files.*
+import io.github.arainko.ducktape.*
+import org.openmole.connect.server.*
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.tool.*
-import org.openmole.connect.server.*
 import org.openmole.connect.shared.Data
-
 import slick.*
 import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
@@ -17,10 +17,10 @@ import java.util
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
-object DBSchemaV1:
+object DBSchemaV2:
 
   // USERS
-  def dbVersion = 1
+  def dbVersion = 2
 
   import DB.*
 
@@ -66,8 +66,7 @@ object DBSchemaV1:
     institution: Institution,
     created: Long = now,
     emailStatus: Data.EmailStatus = Data.EmailStatus.Unchecked,
-    uuid: UUID = randomUUID,
-    validationSecret: Secret = randomUUID)
+    uuid: UUID = DB.randomUUID)
 
   class Users(tag: Tag) extends Table[User](tag, "USERS"):
     def uuid = column[UUID]("UUID", O.PrimaryKey)
@@ -103,15 +102,47 @@ object DBSchemaV1:
     def emailStatus = column[Data.EmailStatus]("EMAIL_STATUS")
     def password = column[Password]("PASSWORD")
     def institution = column[Institution]("INSTITUTION")
-    def validationSecret = column[Secret]("VALIDATION_SECRET")
     def created = column[Long]("CREATED")
 
-    def * = (name, firstName, email, password, institution, created, emailStatus, uuid, validationSecret).mapTo[RegisterUser]
+    def * = (name, firstName, email, password, institution, created, emailStatus, uuid).mapTo[RegisterUser]
 
   val registerUserTable = TableQuery[RegisterUsers]
 
+  case class ValidationSecret(
+    uuid: UUID,
+    secret: Secret)
+
+  class ValidationSecrets(tag: Tag) extends Table[ValidationSecret](tag, "VALIDATION_SECRETS"):
+    def uuid = column[UUID]("UUID", O.PrimaryKey)
+    def validationSecret = column[DB.Secret]("VALIDATION_SECRET")
+
+    def * = (uuid, validationSecret).mapTo[ValidationSecret]
+
+  val validationSecretTable = TableQuery[ValidationSecrets]
+
+  object DatabaseInfo:
+    case class Data(version: Int)
+
+  class DatabaseInfo(tag: Tag) extends Table[DatabaseInfo.Data](tag, "DB_INFO"):
+    def version = column[Int]("VERSION")
+
+    def * = (version).mapTo[DatabaseInfo.Data]
+
+  val databaseInfoTable = TableQuery[DatabaseInfo]
+
   def upgrade =
-    val schema = userTable.schema ++ registerUserTable.schema
-    def upgrade = schema.createIfNotExists
-    Upgrade(upgrade = upgrade, version = dbVersion)
+    val schema = validationSecretTable.schema.createIfNotExists
+
+    val modif =
+      sqlu"""
+        INSERT INTO VALIDATION_SECRETS (UUID, VALIDATION_SECRET)
+          SELECT UUID, VALIDATION_SECRET FROM REGISTERING_USERS;
+
+        ALTER TABLE REGISTERING_USERS DROP COLUMN VALIDATION_SECRET;"""
+
+    Upgrade(
+      upgrade = DBIO.seq(schema, modif),
+      version = dbVersion
+    )
+
 

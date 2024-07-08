@@ -1,6 +1,6 @@
 package org.openmole.connect.server
 
-import org.openmole.connect.server.db.DBSchemaV1
+import org.openmole.connect.server.db.DB
 import java.net.URLEncoder
 
 /*
@@ -21,14 +21,14 @@ import java.net.URLEncoder
  */
 
 object EmailValidation:
-  def send(server: ConnectServer.Config.SMTP, url: String, user: DBSchemaV1.RegisterUser) =
+  def send(server: ConnectServer.Config.SMTP, url: String, user: DB.RegisterUser, validationSecret: DB.Secret) =
     import cats.effect._
     import cats.data.NonEmptyList
     import emil._, emil.builder._
     import emil.javamail._
     import cats.effect.unsafe.implicits.global
 
-    val link = s"$url${org.openmole.connect.shared.Data.validateRoute}?uuid=${user.uuid}&secret=${user.validationSecret}"
+    val link = s"$url${org.openmole.connect.shared.Data.validateRoute}?uuid=${user.uuid}&secret=${validationSecret}"
 
     val mail: Mail[IO] = MailBuilder.build(
       From(server.from),

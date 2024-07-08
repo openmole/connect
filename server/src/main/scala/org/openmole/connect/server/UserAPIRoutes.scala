@@ -7,8 +7,6 @@ import org.openmole.connect.server.Authentication.AuthenticationCache
 import org.openmole.connect.server.db.*
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
-import org.openmole.connect.server.db.DBSchemaV1
-import DBSchemaV1.User.toData
 import org.openmole.connect.shared.*
 
 
@@ -42,7 +40,7 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
 
-  val userRoute = user.implementedBy { _ => DBSchemaV1.User.toData(impl.user) }
+  val userRoute = user.implementedBy { _ => DB.userToData(impl.user) }
   val instanceRoute = instance.implementedBy { _ => impl.instanceStatus }
   val launchRoute = launch.implementedBy { _ => impl.launch }
   val stopRoute = stop.implementedBy { _ => impl.stop }
