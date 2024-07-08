@@ -104,7 +104,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                   case Some((inDB, secret)) =>
                     config.smtp.foreach: v =>
                       val serverURL = url.reverse.dropWhile(_ != '/').reverse
-                      EmailValidation.send(v, serverURL, inDB, secret)
+                      Email.sendValidationLink(v, serverURL, inDB, secret)
                     ServerContent.ok(ServerContent.connectionFunction(None))
                   case None => ServerContent.connectionError("A user with this email is already registered")
 

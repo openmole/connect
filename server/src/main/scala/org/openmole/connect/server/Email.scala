@@ -20,14 +20,14 @@ import java.net.URLEncoder
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-object EmailValidation:
-  def send(server: ConnectServer.Config.SMTP, url: String, user: DB.RegisterUser, validationSecret: DB.Secret) =
-    import cats.effect._
-    import cats.data.NonEmptyList
-    import emil._, emil.builder._
-    import emil.javamail._
-    import cats.effect.unsafe.implicits.global
+object Email:
 
+  import cats.effect._
+  import cats.data.NonEmptyList
+  import emil._, emil.builder._
+  import emil.javamail._
+
+  def sendValidationLink(server: ConnectServer.Config.SMTP, url: String, user: DB.RegisterUser, validationSecret: DB.Secret) =
     val link = s"$url${org.openmole.connect.shared.Data.validateRoute}?uuid=${user.uuid}&secret=${validationSecret}"
 
     val mail: Mail[IO] = MailBuilder.build(
@@ -43,6 +43,22 @@ object EmailValidation:
       """.stripMargin)
     )
 
+    sendMail(server, mail)
+
+  def sendNotification(server: ConnectServer.Config.SMTP, to: DB.Email, subject: String, content: String) =
+    val mail: Mail[IO] = MailBuilder.build(
+      From(server.from),
+      To(to),
+      Subject(s"[OpenMOLE] ${subject}"),
+      CustomHeader(Header("User-Agent", "User")),
+      //TextBody("Hello!\n\nThis is a mail."),
+      HtmlBody(content)
+    )
+
+    sendMail(server, mail)
+
+  def sendMail(server: ConnectServer.Config.SMTP, mail: Mail[IO]) =
+    import cats.effect.unsafe.implicits.global
     val myemil = JavaMailEmil[IO]()
     val smtpConf = MailConfig(s"smtp://${server.server}:${server.port}", server.user, server.password, SSLType.StartTLS)
 
