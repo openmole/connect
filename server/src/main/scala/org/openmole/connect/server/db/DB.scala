@@ -195,6 +195,9 @@ object DB:
       q.update(version)
 
   def users: Seq[User] = runTransaction(userTable.result)
+  def admins: Seq[User] =
+    runTransaction:
+      userTable.filter(_.role === Role.Admin).result
 
   def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 

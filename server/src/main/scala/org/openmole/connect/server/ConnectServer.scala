@@ -83,10 +83,21 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok(ServerContent.connectionFunction(None))
 
         case req@GET -> Root / Data.validateRoute =>
+          def sendNotification(r: Seq[DB.RegisterUser]) =
+            if r.nonEmpty
+            then
+              config.smtp.foreach: smtp =>
+                val emails = DB.admins.map(_.email)
+                Email.sendNotification(smtp, emails, s"${r.size} user waiting for validation",s"A user mail has been checked. ${r.size} waiting for validation.")
+
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
               val res = DB.validateUserEmail(uuid, secret)
-              if res then Ok("Thank you, your email has benn validated") else NotFound("validation not found")
+              sendNotification(DB.registerUsers)
+
+              if res
+              then Ok("Thank you, your email has benn validated")
+              else NotFound("validation not found")
             case None => BadRequest("Expected uuid and secret")
 
         case req@POST -> Root / Data.registerRoute =>

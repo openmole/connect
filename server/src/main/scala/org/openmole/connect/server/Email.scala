@@ -45,10 +45,10 @@ object Email:
 
     sendMail(server, mail)
 
-  def sendNotification(server: ConnectServer.Config.SMTP, to: DB.Email, subject: String, content: String) =
+  def sendNotification(server: ConnectServer.Config.SMTP, to: Seq[DB.Email], subject: String, content: String) =
     val mail: Mail[IO] = MailBuilder.build(
       From(server.from),
-      To(to),
+      Tos(to.map(t => MailAddress.unsafe(None, t))),
       Subject(s"[OpenMOLE] ${subject}"),
       CustomHeader(Header("User-Agent", "User")),
       //TextBody("Hello!\n\nThis is a mail."),
