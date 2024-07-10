@@ -8,6 +8,7 @@ import com.raquo.laminar.api.features.unitArrows
 import org.openmole.connect.shared.Data.*
 import org.scalajs.dom
 import scaladget.bootstrapnative.Table.{BasicRow, ExpandedRow}
+import scaladget.bootstrapnative.Selector
 import scaladget.bootstrapnative.bsn.{toggle, *}
 import scaladget.tools.*
 import ConnectUtils.*
@@ -30,7 +31,6 @@ object AdminPanel:
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
 
     def updateUserInfo() =
-      selectedUUID.set(None)
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
       AdminAPIClient.allInstances(()).future.foreach: us =>
         users.set(us.map(_.user))
@@ -78,6 +78,7 @@ object AdminPanel:
       object Settings:
         def apply(uuid: String): Settings =
           val passwordClicked = Var(false)
+          val selectedRole = Var[Option[Role]](None)
 
           lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
             `type` := "password",
@@ -88,10 +89,23 @@ object AdminPanel:
 
           lazy val deleteInput: Input = UIUtils.buildInput("DELETE USER").amend(width := "400px")
 
+          lazy val roleChanger =
+            Selector.options[Role](
+              Role.values.toSeq,
+              user.role.ordinal,
+              Seq(cls := "btn btnUser", width := "160"),
+              naming = _.toString,
+              decorations = Map()
+            )
+
           def save(): Unit =
             val pwd = passwordInput.ref.value
             if pwd.nonEmpty && passwordClicked.now()
             then AdminAPIClient.changePassword(uuid, passwordInput.ref.value)
+
+            selectedRole.now().foreach: role =>
+              AdminAPIClient.setRole((uuid, role)).future.andThen: _ =>
+                updateUserInfo()
 
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
@@ -106,12 +120,15 @@ object AdminPanel:
               Css.rowFlex,
               div(styleAttr := "width: 15%;", Css.columnFlex, alignItems.flexEnd,
                 div(Css.centerRowFlex, cls := "settingElement", "Password"),
+                div(Css.centerRowFlex, cls := "settingElement", "Role"),
                 div(Css.centerRowFlex, cls := "settingElement", "Delete"),
               ),
               div(styleAttr := "width: 85%;", Css.columnFlex, alignItems.flexStart,
                 div(Css.centerRowFlex, cls := "settingElement", passwordInput),
+                div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
                 div(Css.centerRowFlex, cls := "settingElement", deleteInput),
-              )
+              ),
+              roleChanger.content.signal.changes.toObservable --> selectedRole.toObserver
             ),
             save
           )

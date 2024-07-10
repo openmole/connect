@@ -19,6 +19,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache
   def instance(uuid: String): Option[Data.PodInfo] = K8sService.podInfo(uuid)
   def usersAndPodInfo: Seq[Data.UserAndPodInfo] = users.map(u=> UserAndPodInfo(u, instance(u.uuid)))
   def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
+  def setRole(uuid: String, role: Data.Role) = DB.updateRole(uuid, role)
 
   def deleteUser(uuid: String) =
     DB.deleteUser(uuid)
@@ -45,7 +46,8 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
   val launchRoute = launch.implementedBy(impl.launch)
   val stopRoute = stop.implementedBy(impl.stop)
   val deleteUserRoute = deleteUser.implementedBy(impl.deleteUser)
+  val setRoleRoute = setRole.implementedBy(impl.setRole)
 
   val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, changePasswordRoute, launchRoute, stopRoute, deleteUserRoute)
+    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, changePasswordRoute, launchRoute, stopRoute, deleteUserRoute, setRoleRoute)
   )

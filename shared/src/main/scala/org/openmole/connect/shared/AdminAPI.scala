@@ -64,6 +64,12 @@ trait AdminAPI
       post(path / "change-password", jsonRequest[(String, String)]),
       ok(jsonResponse[Boolean])
     )
+
+  val setRole: Endpoint[(String, Data.Role), Unit] =
+    endpoint(
+      post(path / "set-role", jsonRequest[(String, Data.Role)]),
+      ok(jsonResponse[Unit])
+    )
     
   val launch: Endpoint[String, Unit] =
     endpoint(

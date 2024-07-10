@@ -199,9 +199,13 @@ object DB:
       val q = userTable.filter(_.uuid === uuid).map(_.omVersion)
       q.update(version)
 
-//  def updateRole(UUID: UUID, role: Role) =
-//    runTransaction:
-//      val
+  def updateRole(uuid: UUID, role: Role) =
+    runTransaction:
+      val q = userTable.filter(_.uuid === uuid).map(_.role)
+      for
+        _ <- q.update(role)
+        _ <- checkAtLeastOneAdmin
+      yield ()
 
   def users: Seq[User] = runTransaction(userTable.result)
   def admins: Seq[User] =
