@@ -149,15 +149,15 @@ object DB:
     runTransaction:
       registerUserTable.filter(_.uuid === uuid).delete
 
-  def promoteRegistering(uuid: UUID)(using DockerHubCache): Unit =
+  def promoteRegistering(uuid: UUID)(using DockerHubCache): Option[User] =
     runTransaction:
       for
         ru <- registerUserTable.filter(_.uuid === uuid).result
         user = ru.map(registerUserToUser)
         _ <- DBIO.sequence(user.map(addUserTransaction))
         _ <- registerUserTable.filter(_.uuid === uuid).delete
-      yield ()
-
+      yield user
+    .headOption
 
   def userFromUUID(uuid: UUID): Option[User] =
     runTransaction:

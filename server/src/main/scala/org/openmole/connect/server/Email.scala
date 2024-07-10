@@ -27,41 +27,74 @@ object Email:
   import emil._, emil.builder._
   import emil.javamail._
 
-  def sendValidationLink(server: ConnectServer.Config.SMTP, url: String, user: DB.RegisterUser, validationSecret: DB.Secret) =
+
+  object Sender:
+    import io.github.arainko.ducktape.*
+    def apply(server: Option[ConnectServer.Config.SMTP]): Sender =
+      server match
+        case Some(config) => config.to[SMTP]
+        case None => NoSender
+
+
+    case class SMTP(server: String, port: Int, user: String, password: String, from: String) extends Sender
+    object NoSender extends Sender
+
+
+  sealed trait Sender
+
+  def sendValidationLink(url: String, user: DB.RegisterUser, validationSecret: DB.Secret)(using Sender) =
     val link = s"$url${org.openmole.connect.shared.Data.validateRoute}?uuid=${user.uuid}&secret=${validationSecret}"
 
-    val mail: Mail[IO] = MailBuilder.build(
-      From(server.from),
-      To(user.email),
-      Subject("[OpenMOLE] Email Validation"),
-      CustomHeader(Header("User-Agent", "User")),
-      //TextBody("Hello!\n\nThis is a mail."),
-      HtmlBody(s"""Dear ${user.firstName} ${user.name},<br/><br/>
-        |Please validate your email for the OpenMOLE service by clinking on this link:<br/>
-        |<a href="$link">$link</a><br/><br/>
-        |Best Regards
-      """.stripMargin)
-    )
+    sendMail: server =>
+      MailBuilder.build(
+        From(server.from),
+        To(user.email),
+        Subject("[OpenMOLE] Email Validation"),
+        CustomHeader(Header("User-Agent", "User")),
+        //TextBody("Hello!\n\nThis is a mail."),
+        HtmlBody(s"""Dear ${user.firstName} ${user.name},<br/><br/>
+          |Please validate your email for the OpenMOLE service by clinking on this link:<br/>
+          |<a href="$link">$link</a><br/><br/>
+          |Best Regards
+        """.stripMargin)
+      )
 
-    sendMail(server, mail)
+  def sendValidated(user: DB.User)(using Sender) =
+    sendMail: server =>
+      MailBuilder.build(
+        From(server.from),
+        To(user.email),
+        Subject("[OpenMOLE] Account Validated"),
+        CustomHeader(Header("User-Agent", "User")),
+        //TextBody("Hello!\n\nThis is a mail."),
+        HtmlBody(
+          s"""Dear ${user.firstName} ${user.name},<br/><br/>
+             |your account as been approved on to the OpenMOLE service.<br/>
+             |You should now be able to login.<br/><br/>
+             |Best Regards
+        """.stripMargin)
+      )
 
-  def sendNotification(server: ConnectServer.Config.SMTP, to: Seq[DB.Email], subject: String, content: String) =
-    val mail: Mail[IO] = MailBuilder.build(
-      From(server.from),
-      Tos(to.map(t => MailAddress.unsafe(None, t))),
-      Subject(s"[OpenMOLE] ${subject}"),
-      CustomHeader(Header("User-Agent", "User")),
-      //TextBody("Hello!\n\nThis is a mail."),
-      HtmlBody(content)
-    )
 
-    sendMail(server, mail)
+  def sendNotification(to: Seq[DB.Email], subject: String, content: String)(using Sender) =
+    sendMail: server =>
+      MailBuilder.build(
+        From(server.from),
+        Tos(to.map(t => MailAddress.unsafe(None, t))),
+        Subject(s"[OpenMOLE] ${subject}"),
+        CustomHeader(Header("User-Agent", "User")),
+        //TextBody("Hello!\n\nThis is a mail."),
+        HtmlBody(content)
+      )
 
-  def sendMail(server: ConnectServer.Config.SMTP, mail: Mail[IO]) =
-    import cats.effect.unsafe.implicits.global
-    val myemil = JavaMailEmil[IO]()
-    val smtpConf = MailConfig(s"smtp://${server.server}:${server.port}", server.user, server.password, SSLType.StartTLS)
+  def sendMail(mail: Sender.SMTP => Mail[IO])(using sender: Sender) =
+    sender match
+      case server: Sender.SMTP =>
+        import cats.effect.unsafe.implicits.global
+        val myemil = JavaMailEmil[IO]()
+        val smtpConf = MailConfig(s"smtp://${server.server}:${server.port}", server.user, server.password, SSLType.StartTLS)
 
-    val sendIO: IO[NonEmptyList[String]] = myemil(smtpConf).send(mail)
-    sendIO.unsafeRunSync()
+        val sendIO: IO[NonEmptyList[String]] = myemil(smtpConf).send(mail(server))
+        sendIO.unsafeRunSync()
+      case Sender.NoSender =>
 

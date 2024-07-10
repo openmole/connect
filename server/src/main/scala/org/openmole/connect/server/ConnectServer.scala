@@ -60,6 +60,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
   given K8sService = k8s
+  given Email.Sender = Email.Sender(config.smtp)
 
   val httpClient =
     HttpClients.
@@ -86,9 +87,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
           def sendNotification(r: Seq[DB.RegisterUser]) =
             if r.nonEmpty
             then
-              config.smtp.foreach: smtp =>
-                val emails = DB.admins.map(_.email)
-                Email.sendNotification(smtp, emails, s"${r.size} user waiting for validation",s"A user mail has been checked. ${r.size} waiting for validation.")
+              def emails = DB.admins.map(_.email)
+              Email.sendNotification(emails, s"${r.size} user waiting for validation",s"A user mail has been checked. ${r.size} waiting for validation.")
 
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
@@ -113,9 +113,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               yield
                 DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution)) match
                   case Some((inDB, secret)) =>
-                    config.smtp.foreach: v =>
-                      val serverURL = url.reverse.dropWhile(_ != '/').reverse
-                      Email.sendValidationLink(v, serverURL, inDB, secret)
+                    def serverURL = url.reverse.dropWhile(_ != '/').reverse
+                    Email.sendValidationLink(serverURL, inDB, secret)
                     ServerContent.ok(ServerContent.connectionFunction(None))
                   case None => ServerContent.connectionError("A user with this email is already registered")
 
