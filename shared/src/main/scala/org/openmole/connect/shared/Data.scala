@@ -1,7 +1,5 @@
 package org.openmole.connect.shared
 
-import java.util.UUID
-
 object Data:
   val connectionRoute = "connection"
   val registerRoute = "register"

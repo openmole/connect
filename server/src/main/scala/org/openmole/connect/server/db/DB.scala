@@ -83,7 +83,7 @@ object DB:
     Database.forURL(url = s"jdbc:h2:${dbFile.pathAsString}")
 
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
-    Await.result(db.run(action), Duration.Inf)
+    Await.result(db.run(action.transactionally), Duration.Inf)
 
   def addUser(user: User): Unit =
     runTransaction:
@@ -95,6 +95,11 @@ object DB:
       _ <- if e.isEmpty then userTable += user else DBIO.successful(())
     yield ()
 
+  private def checkAtLeastOneAdmin =
+    for
+      e <- userTable.filter(_.role === Role.Admin).result
+      _ <- if e.isEmpty then DBIO.failed(new RuntimeException("Should be at least one admin account")) else DBIO.successful(())
+    yield ()
 
   def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Option[(RegisterUser, Secret)] =
     val secret = randomUUID
@@ -194,6 +199,10 @@ object DB:
       val q = userTable.filter(_.uuid === uuid).map(_.omVersion)
       q.update(version)
 
+//  def updateRole(UUID: UUID, role: Role) =
+//    runTransaction:
+//      val
+
   def users: Seq[User] = runTransaction(userTable.result)
   def admins: Seq[User] =
     runTransaction:
@@ -217,7 +226,11 @@ object DB:
   def deleteUser(uuid: UUID)(using Authentication.AuthenticationCache) =
     summon[Authentication.AuthenticationCache].user.invalidate(uuid)
     runTransaction:
-      userTable.filter(_.uuid === uuid).delete
+      for
+        _ <- userTable.filter(_.uuid === uuid).delete
+        _ <- checkAtLeastOneAdmin
+      yield ()
+
 
   def salted(password: Password)(using salt: Salt) = tool.hash(password, Salt.value(salt))
 

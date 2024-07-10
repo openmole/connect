@@ -96,7 +96,7 @@ object AdminPanel:
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
             then
-              AdminAPIClient.deleteUser(uuid)
+              AdminAPIClient.deleteUser(uuid).future
               users.update(u => u.filter(u => u.uuid != uuid))
               pods.update(p => p.removed(uuid))
               selectedUUID.set(None)
@@ -116,7 +116,7 @@ object AdminPanel:
             save
           )
 
-      def settings = Settings(user.uuid)
+      val settings = Settings(user.uuid)
 
       val settingButton =
         button(

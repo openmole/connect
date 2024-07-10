@@ -72,4 +72,4 @@ object tool:
                   Some(v)
                 case None => None
                 
-  def log(m: String) = Logger.getAnonymousLogger.info(m)              
+  def log(m: String) = Logger.getAnonymousLogger.info(m)
