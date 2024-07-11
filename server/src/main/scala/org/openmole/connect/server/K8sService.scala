@@ -241,15 +241,14 @@ object K8sService:
           case _ => None
 
   // FIXME test with no pv name
-  def updateOpenMOLEPersistentVolumeStorage(uuid: DB.UUID, size: Int, storageClassName: Option[String])(using K8sService) = withK8s: k8s =>
+  def updateOpenMOLEPersistentVolumeStorage(uuid: DB.UUID, size: Int)(using  K8sService) = withK8s: k8s =>
     //stopOpenMOLEPod(uuid)
-
     //val pvcName = s"pvc-$uuid-${util.UUID.randomUUID().toString}"
     //val newPVC = persistentVolumeClaim(pvcName, size, storageClassName)
 
     //k8s.usingNamespace(Namespace.openmole).create(newPVC).await
     getPVCName(uuid).foreach: pvcName =>
-      k8s.usingNamespace(Namespace.openmole).update(persistentVolumeClaim(pvcName, size, storageClassName)).await
+      k8s.usingNamespace(Namespace.openmole).update(persistentVolumeClaim(pvcName, size, summon[K8sService].storageClassName)).await
 
 //    val deployment = k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).await
 //
