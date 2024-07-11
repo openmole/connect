@@ -97,6 +97,12 @@ object AdminPanel:
               decorations = Map()
             )
 
+          lazy val memoryInput: Input =
+            UIUtils.buildInput("").amend(width := "160", `type` := "number", value := user.memory.toString)
+
+          lazy val cpuInput: Input =
+            UIUtils.buildInput("").amend(width := "160", `type` := "number", stepAttr := "0.01", value := user.cpu.toString)
+
           def save(): Unit =
             val pwd = passwordInput.ref.value
             if pwd.nonEmpty && passwordClicked.now()
@@ -105,6 +111,15 @@ object AdminPanel:
             selectedRole.now().foreach: role =>
               AdminAPIClient.setRole((uuid, role)).future.andThen: _ =>
                 updateUserInfo()
+
+            util.Try(memoryInput.ref.value.toInt).foreach: m =>
+              if m != user.memory
+              then AdminAPIClient.setMemory((uuid, m)).future.andThen(_ => updateUserInfo())
+
+            util.Try(cpuInput.ref.value.toDouble).foreach: cpu =>
+              if cpu != user.cpu
+              then AdminAPIClient.setCPU((uuid, cpu)).future.andThen(_ => updateUserInfo())
+
 
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
@@ -118,11 +133,15 @@ object AdminPanel:
             div(margin := "30",
               Css.rowFlex,
               div(styleAttr := "width: 15%;", Css.columnFlex, alignItems.flexEnd,
+                div(Css.centerRowFlex, cls := "settingElement", "Memory"),
+                div(Css.centerRowFlex, cls := "settingElement", "CPU"),
                 div(Css.centerRowFlex, cls := "settingElement", "Password"),
                 div(Css.centerRowFlex, cls := "settingElement", "Role"),
                 div(Css.centerRowFlex, cls := "settingElement", "Delete"),
               ),
               div(styleAttr := "width: 85%;", Css.columnFlex, alignItems.flexStart,
+                div(Css.centerRowFlex, cls := "settingElement", memoryInput),
+                div(Css.centerRowFlex, cls := "settingElement", cpuInput),
                 div(Css.centerRowFlex, cls := "settingElement", passwordInput),
                 div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
                 div(Css.centerRowFlex, cls := "settingElement", deleteInput),

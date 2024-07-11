@@ -32,7 +32,9 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
   def setVersion(version: String) =
     val versions = availableVersions
     if versions.contains(version)
-    then DB.updadeOMVersion(uuid, version)
+    then DB.updateOMVersion(uuid, version)
+
+  def setOMemory(memory: Int) = DB.updateOMMemory(uuid, math.min(memory, user.memory))
 
   def usedSpace = K8sService.usedSpace(uuid)
 
@@ -40,15 +42,15 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
 
-  val userRoute = user.implementedBy { _ => DB.userToData(impl.user) }
-  val instanceRoute = instance.implementedBy { _ => impl.instanceStatus }
-  val launchRoute = launch.implementedBy { _ => impl.launch }
-  val stopRoute = stop.implementedBy { _ => impl.stop }
-  val availableVersionsRoute = availableVersions.implementedBy { _ => impl.availableVersions }
-  val changePasswordRoute = changePassword.implementedBy { (o, n) => impl.changePassword(o, n) }
-  val setOpenMOLEVersionRoute = setOpenMOLEVersion.implementedBy { v => impl.setVersion(v) }
-  val usedSpaceRoute = usedSpace.implementedBy(_ => impl.usedSpace)
-
-  val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(userRoute, instanceRoute, launchRoute, stopRoute, availableVersionsRoute, changePasswordRoute, setOpenMOLEVersionRoute, usedSpaceRoute)
-  )
+  val routes: HttpRoutes[IO] = HttpRoutes.of:
+    routesFromEndpoints(
+      user.implementedBy { _ => DB.userToData(impl.user) },
+      instance.implementedBy { _ => impl.instanceStatus },
+      launch.implementedBy { _ => impl.launch },
+      stop.implementedBy { _ => impl.stop },
+      availableVersions.implementedBy { _ => impl.availableVersions },
+      changePassword.implementedBy(impl.changePassword),
+      setOpenMOLEVersion.implementedBy(impl.setVersion),
+      usedSpace.implementedBy(_ => impl.usedSpace),
+      setOpenMOLEMemory.implementedBy(impl.setOMemory)
+    )

@@ -20,6 +20,8 @@ class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache
   def usersAndPodInfo: Seq[Data.UserAndPodInfo] = users.map(u=> UserAndPodInfo(u, instance(u.uuid)))
   def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
   def setRole(uuid: String, role: Data.Role) = DB.updateRole(uuid, role)
+  def setMemory(uuid: String, memory: Int) = DB.updateMemory(uuid, memory)
+  def setCPU(uuid: String, cpu: Double) = DB.updateCPU(uuid, cpu)
 
   def deleteUser(uuid: String) =
     DB.deleteUser(uuid)
@@ -35,19 +37,21 @@ class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache
   def stop(uuid: String): Unit = K8sService.stopOpenMOLEPod(uuid)
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
-  val usersRoute = users.implementedBy { _ =>  impl.users }
-  val registeringUsersRoute = registeringUsers.implementedBy { _ => impl.registeringUsers }
-  val promoteRoute = promoteRegisteringUser.implementedBy{ r => impl.promoteRegisterUser(r)}
-  val deleteRegisterRoute = deleteRegisteringUser.implementedBy(impl.deleteRegisterUser)
-  val usedSpaceRoute = usedSpace.implementedBy(impl.usedSpace)
-  val instanceRoute = instance.implementedBy(impl.instance)
-  val allInstancesRoute = allInstances.implementedBy(_=> impl.usersAndPodInfo)
-  val changePasswordRoute = changePassword.implementedBy((uuid, p)=> impl.changePassword(uuid, p))
-  val launchRoute = launch.implementedBy(impl.launch)
-  val stopRoute = stop.implementedBy(impl.stop)
-  val deleteUserRoute = deleteUser.implementedBy(impl.deleteUser)
-  val setRoleRoute = setRole.implementedBy(impl.setRole)
 
-  val routes: HttpRoutes[IO] = HttpRoutes.of(
-    routesFromEndpoints(usersRoute, registeringUsersRoute, promoteRoute, deleteRegisterRoute, usedSpaceRoute, instanceRoute, allInstancesRoute, changePasswordRoute, launchRoute, stopRoute, deleteUserRoute, setRoleRoute)
-  )
+  val routes: HttpRoutes[IO] = HttpRoutes.of:
+    routesFromEndpoints(
+      users.implementedBy { _ =>  impl.users },
+      registeringUsers.implementedBy { _ => impl.registeringUsers },
+      promoteRegisteringUser.implementedBy(impl.promoteRegisterUser),
+      deleteRegisteringUser.implementedBy(impl.deleteRegisterUser),
+      usedSpace.implementedBy(impl.usedSpace),
+      allInstances.implementedBy(_=> impl.usersAndPodInfo),
+      changePassword.implementedBy(impl.changePassword),
+      launch.implementedBy(impl.launch),
+      stop.implementedBy(impl.stop),
+      deleteUser.implementedBy(impl.deleteUser),
+      setRole.implementedBy(impl.setRole),
+      setMemory.implementedBy(impl.setMemory),
+      setCPU.implementedBy(impl.setCPU)
+    )
+

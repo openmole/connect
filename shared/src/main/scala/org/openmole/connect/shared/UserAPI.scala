@@ -59,6 +59,12 @@ trait UserAPI
       ok(jsonResponse[Unit])
     )
 
+  val setOpenMOLEMemory: Endpoint[Int, Unit] =
+    endpoint(
+      post(path / "set-openmole-memory", jsonRequest[Int]),
+      ok(jsonResponse[Unit])
+    )
+
 //  val userWithData: Endpoint[Option[UserData], Option[UserData]] =
 //    endpoint(
 //      post(path / "user-with-data", jsonRequest[Option[UserData]]),

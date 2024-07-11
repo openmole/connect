@@ -70,7 +70,19 @@ trait AdminAPI
       post(path / "set-role", jsonRequest[(String, Data.Role)]),
       ok(jsonResponse[Unit])
     )
-    
+
+  val setMemory: Endpoint[(String, Int), Unit] =
+    endpoint(
+      post(path / "set-memory", jsonRequest[(String, Int)]),
+      ok(jsonResponse[Unit])
+    )
+
+  val setCPU: Endpoint[(String, Double), Unit] =
+    endpoint(
+      post(path / "set-cpu", jsonRequest[(String, Double)]),
+      ok(jsonResponse[Unit])
+    )
+
   val launch: Endpoint[String, Unit] =
     endpoint(
       post(path / "launch", jsonRequest[String]),

@@ -60,9 +60,9 @@ object UIUtils:
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role.toString),
           textBlock("OpenMOLE version", user.omVersion),
-          textBlock("CPU", user.cpu.toString),
-          textBlock("Memory", s"${toGB(user.memory)} GB"),
-          textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory)} GB"),
+          textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory, true)} GB"),
+          textBlock("Max CPU", user.cpu.toString),
+          textBlock("Max Memory", s"${toGB(user.memory, true)} GB"),
           storage.toSeq.map: storage =>
             memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
         )

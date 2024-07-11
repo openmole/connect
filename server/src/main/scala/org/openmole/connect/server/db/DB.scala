@@ -194,11 +194,30 @@ object DB:
       val q = userTable.filter(_.uuid === uuid).map(_.lastAccess)
       q.update(tool.now)
 
-  def updadeOMVersion(uuid: UUID, version: String)(using Authentication.AuthenticationCache)  =
+  def updateOMVersion(uuid: UUID, version: String)(using Authentication.AuthenticationCache)  =
     summon[Authentication.AuthenticationCache].user.invalidate(uuid)
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.omVersion)
       q.update(version)
+
+
+  def updateOMMemory(uuid: UUID, memory: Int)(using Authentication.AuthenticationCache)  =
+    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+    runTransaction:
+      val q = userTable.filter(_.uuid === uuid).map(_.omMemory)
+      q.update(memory)
+
+  def updateMemory(uuid: UUID, memory: Int)(using Authentication.AuthenticationCache) =
+    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+    runTransaction:
+      val q = userTable.filter(_.uuid === uuid).map(_.memory)
+      q.update(memory)
+
+  def updateCPU(uuid: UUID, cpu: Double)(using Authentication.AuthenticationCache) =
+    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+    runTransaction:
+      val q = userTable.filter(_.uuid === uuid).map(_.cpu)
+      q.update(cpu)
 
   def updateRole(uuid: UUID, role: Role)(using Authentication.AuthenticationCache) =
     summon[Authentication.AuthenticationCache].user.invalidate(uuid)

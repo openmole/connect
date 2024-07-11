@@ -34,24 +34,31 @@ object UserPanel:
     case class Settings(user: User):
       val selectedVersion = Var[Option[String]](None)
 
+      lazy val openMOLEMemoryInput: Input =
+        UIUtils.buildInput("").amend(width := "160", `type` := "number", value := user.openMOLEMemory.toString)
+
       def content =
         Signal.fromFuture(UserAPIClient.availableVersions(()).future).map: versions =>
           lazy val versionChanger =
             Selector.options[String](
               versions.toSeq.flatten,
               versions.toSeq.flatten.indexOf(user.omVersion),
-              Seq(cls := "btn btnUser", width := "160"),
+              Seq(cls := "btn btnUser"),
               naming = identity,
               decorations = Map()
             )
 
+
           div(margin := "30",
             Css.rowFlex,
             div(styleAttr := "width: 50%;", Css.columnFlex, alignItems.flexEnd,
-              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Version")
+              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Version"),
+              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Memory"),
             ),
             div(styleAttr := "width: 50%;", Css.columnFlex, alignItems.flexStart,
-              div(Css.centerRowFlex, cls := "settingElement", versionChanger.selector)
+              div(Css.centerRowFlex, cls := "settingElement", versionChanger.selector.amend(width := "160")),
+              div(Css.centerRowFlex, cls := "settingElement", openMOLEMemoryInput),
+
             ),
             versionChanger.content.signal.changes.toObservable --> selectedVersion.toObserver
           )
@@ -60,9 +67,12 @@ object UserPanel:
       def save(): Unit =
         selectedVersion.now().foreach: v =>
           if v != user.omVersion
-          then
-            UserAPIClient.setOpenMOLEVersion(v).future.andThen: _ =>
-              reload.set(())
+          then UserAPIClient.setOpenMOLEVersion(v).future.andThen(_ => reload.set(()))
+
+        util.Try(openMOLEMemoryInput.ref.value.toInt).foreach: m =>
+          if m != user.openMOLEMemory
+          then UserAPIClient.setOpenMOLEMemory(m).future.andThen(_ => reload.set(()))
+
 
 
     def settingButton(user: User) =
