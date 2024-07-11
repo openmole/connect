@@ -18,7 +18,6 @@ import org.openmoleconnect.client.Css
 
 object AdminPanel:
 
-  @JSExportTopLevel("admin")
   def admin() =
 
     case class Pod(podInfo: Var[Option[PodInfo]], storage: Var[Option[Storage]])
@@ -141,8 +140,8 @@ object AdminPanel:
           cls := "btn btnUser settings",
           child <--
             settingsOpen.signal.map:
-              case true  => "CANCEL"
-              case false => "SETTINGS"
+              case true  => "Cancel"
+              case false => "Settings"
           ,
           onClick --> settingsOpen.update(v => !v)
         )
@@ -150,7 +149,7 @@ object AdminPanel:
       val saveButton =
         button(
           `type` := "button",
-          cls := "btn btnUser settings", "APPLY",
+          cls := "btn btnUser settings", "Apply",
           onClick --> {
             settings.save()
             settingsOpen.set(false)
@@ -247,11 +246,4 @@ object AdminPanel:
             )
       )
 
-
-    lazy val appContainer = dom.document.querySelector("#appContainer")
-    render(
-      appContainer,
-      div(
-        UIUtils.mainPanel(adminTable.render.amend(cls := "border", width := "800"))
-      )
-    )
+    adminTable.render.amend(cls := "border", width := "800")

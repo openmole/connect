@@ -77,7 +77,6 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       HttpRoutes.of:
         case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) if user.role == Data.Role.Admin => ServerContent.ok("admin();").map(ServerContent.addJWTToken(user.uuid, user.password))
             case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 

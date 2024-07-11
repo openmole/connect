@@ -68,10 +68,13 @@ object UIUtils:
         )
     )
 
-  def mainPanel(panel: HtmlElement) =
+  def mainPanel(panel: HtmlElement, admin: HtmlElement = div()) =
     div(margin := "40px auto",
       img(src := "img/logo.png", Css.centerRowFlex, width := "500", margin.auto),
-      a(cls := "bi-power power", href := s"/${Data.disconnectRoute}", Css.rowFlex),
+      div(display.flex, alignItems.center, flexDirection.row, justifyContent.spaceBetween, width := "800", marginTop := "20",
+        admin,
+        a(cls := "bi-power power", href := s"/${Data.disconnectRoute}"),
+      ),
       div(marginTop := "50px", panel)
     )
 
@@ -161,7 +164,7 @@ object UIUtils:
           case PodInfo.Status.Inactive => div()
       )
 
-    def impersonationLink(uuid: String) = a("Log as user", href := s"/${Data.impersonateRoute}?uuid=$uuid", cls := "statusLine", marginTop := "20")
+    def impersonationLink(uuid: String) = a("Log as user", href := s"/${Data.impersonateRoute}?uuid=$uuid", cls := "statusLine")
 
     def isSwitchActivated(status: PodInfo.Status) =
       status match
@@ -188,11 +191,11 @@ object UIUtils:
       div(
         child <--
           waiting.signal.map:
-            case true => div(Css.rowFlex, justifyContent.flexEnd, marginRight := "30", waiter)
+            case true => div(Css.rowFlex, justifyContent.flexEnd, cls := "statusLine", marginTop := "10", waiter)
             case false =>
               div(
                 Css.columnFlex, justifyContent.flexEnd,
-                sw.element.amend(Css.rowFlex, justifyContent.flexEnd, marginRight := "30"),
+                sw.element.amend(Css.rowFlex, justifyContent.flexEnd, cls := "statusLine", marginTop := "10"),
                 statusDiv.amend(marginTop := "20")
               )
       ),
