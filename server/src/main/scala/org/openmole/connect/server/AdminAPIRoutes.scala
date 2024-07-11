@@ -27,12 +27,8 @@ class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache
     DB.deleteUser(uuid)
     K8sService.deleteOpenMOLE(uuid)
 
-  def launch(uuid: String): Unit =
-    if K8sService.deploymentExists(uuid)
-    then K8sService.startOpenMOLEPod(uuid)
-    else
-      DB.userFromUUID(uuid).foreach: user =>
-        K8sService.deployOpenMOLE(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+  def launch(uuid: String) =
+    DB.userFromUUID(uuid).foreach(u => K8sService.launch(u))
 
   def stop(uuid: String): Unit = K8sService.stopOpenMOLEPod(uuid)
 

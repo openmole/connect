@@ -61,8 +61,8 @@ object UIUtils:
           badgeBlock("Role", user.role.toString),
           textBlock("OpenMOLE version", user.omVersion),
           textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory, true)} GB"),
-          textBlock("Max CPU", user.cpu.toString),
           textBlock("Max Memory", s"${toGB(user.memory, true)} GB"),
+          textBlock("Max CPU", user.cpu.toString),
           storage.toSeq.map: storage =>
             memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
         )

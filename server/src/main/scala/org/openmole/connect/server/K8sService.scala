@@ -202,6 +202,16 @@ object K8sService:
             k8s update updated
       .await
 
+
+  def launch(user: DB.User)(using KubeCache, K8sService): Unit =
+    if K8sService.deploymentExists(user.uuid)
+    then
+      K8sService.updateOpenMOLEPod(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+      K8sService.startOpenMOLEPod(user.uuid)
+    else
+      DB.userFromUUID(user.uuid).foreach: user =>
+        K8sService.deployOpenMOLE(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+
   def stopOpenMOLEPod(uuid: DB.UUID)(using KubeCache, K8sService) =
     withK8s: k8s =>
       k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).map: d =>

@@ -14,12 +14,7 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
   def user = DB.userFromUUID(uuid).getOrElse(throw RuntimeException(s"Not found user with uuid $uuid"))
   def instanceStatus = K8sService.podInfo(uuid)
 
-  def launch =
-    if K8sService.deploymentExists(uuid)
-    then K8sService.startOpenMOLEPod(uuid)
-    else
-      val userValue = user
-      K8sService.deployOpenMOLE(userValue.uuid, userValue.omVersion, userValue.openMOLEMemory, userValue.memory, userValue.cpu)
+  def launch = K8sService.launch(user)
 
   def changePassword(oldPassword: String, newPassword: String) =
     DB.updatePassword(uuid, newPassword, Some(oldPassword))
