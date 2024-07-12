@@ -280,7 +280,7 @@ object ServerContent:
     html(
       head(
         meta(httpEquiv := "Content-Type", content := "text/html; charset=UTF-8"),
-        //link(rel := "stylesheet", `type` := "text/css", href := "css/deps.css"),
+        link(rel := "icon", href := "img/favicon.svg", `type` := "img/svg+xml"),
         link(rel := "stylesheet", `type` := "text/css", href := "css/style-connect.css"),
         link(rel := "stylesheet", `type` := "text/css", href := "css/bootstrap.css"),
         link(rel := "stylesheet", `type` := "text/css", href := "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css"),
