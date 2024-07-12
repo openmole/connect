@@ -48,6 +48,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
       deleteUser.implementedBy(impl.deleteUser),
       setRole.implementedBy(impl.setRole),
       setMemory.implementedBy(impl.setMemory),
-      setCPU.implementedBy(impl.setCPU)
+      setCPU.implementedBy(impl.setCPU),
+      instance.implementedBy(impl.instance)
     )
 
