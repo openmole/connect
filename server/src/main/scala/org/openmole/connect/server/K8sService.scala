@@ -242,14 +242,13 @@ object K8sService:
           case _ => None
 
   def updateOpenMOLEPersistentVolumeStorage(uuid: DB.UUID, size: Int)(using  K8sService) =
-
     getPVCName(uuid).foreach: pvcName =>
       withK8s: k8s =>
         val pvcs = k8s.list[PersistentVolumeClaimList](namespace = Some(Namespace.openmole)).await
         val newPVC =
           pvcs.find(_.name == pvcName).focus(_.some.spec.some.resources.some).set:
             Resource.Requirements(
-              requests = Map(Resource.storage -> s"${size}Mi")
+              requests = Map(Resource.storage -> s"${size}Gi")
             )
         newPVC.foreach(np => k8s.update(np, namespace = Some(Namespace.openmole)).await)
 
