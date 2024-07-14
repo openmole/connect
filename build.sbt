@@ -16,7 +16,7 @@ val scaladgetVersion = "1.10.0"
 val scalajsDomVersion = "1.10.0"
 val scalaJWTVersion = "4.2.0"
 val rosHttpVersion = "3.0.0"
-val skuberVersion = "2.6.7"
+val skuberVersion = "4.0.3"
 val httpComponentsVersion = "4.5.12"
 val slickVersion = "3.5.1"
 val h2Version = "2.2.224"
@@ -60,54 +60,23 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
   libraryDependencies ++= Seq(
     "org.openmole.scaladget" %%% "tools" % scaladgetVersion,
     "org.openmole.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-   // "com.lihaoyi" %%% "autowire" % autowireVersion,
-   // "io.suzaku" %%% "boopickle" % boopickleVersion,
     "com.raquo" %%% "laminar" % laminarVersion,
     "org.endpoints4s" %%% "xhr-client" % "5.3.0"
   )
 ) dependsOn (shared)
-//lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) settings (defaultSettings) settings(
-//  skip in packageJSDependencies := false,
-//  libraryDependencies ++= Seq(
-////    "com.lihaoyi" %%% "scalatags" % scalatagsVersion,
-////    "org.openmole.scaladget" %%% "tools" % scaladgetVersion,
-////    "org.openmole.scaladget" %%% "bootstrapnative" % scaladgetVersion,
-//    //"org.scala-js" %%% "scalajs-dom" % scalajsDomVersion,
-//    "com.lihaoyi" %%% "autowire" % autowireVersion,
-//    "io.suzaku" %%% "boopickle" % boopickleVersion,
-//    "org.endpoints4s" %%% "xhr-client" % "5.1.0"
-//  )
-//) dependsOn (shared)
 
 lazy val server = project.in(file("server")) settings (defaultSettings) settings (
   libraryDependencies ++= Seq(
     "org.endpoints4s" %% "http4s-server" % endpointHTT4ServerVersion excludeAll(ExclusionRule(organization = "com.lihaoyi")),
     "org.http4s" %% "http4s-blaze-server" % http4sVersion,
-    //"org.http4s" %% "http4s-blaze-client" % "0.23.16",
     "io.circe" %% "circe-parser" % circeVersion,
-    "io.circe" % "circe-yaml_3" % "1.15.0",
-    //"com.raquo" %% "domtypes" % "18.0.0",
+    "io.circe" %% "circe-yaml" % "1.15.0",
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
-//    "org.scalatra" %% "scalatra" % scalatraVersion,
-//    "org.eclipse.jetty" % "jetty-webapp" % jettyVersion,
-//    "org.eclipse.jetty" % "jetty-server" % jettyVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
-    //"com.pauldijou" %% "jwt-core" % scalaJWTVersion,
-   // "org.scalaj" %% "scalaj-http" % "2.4.2",
-    //"io.skuber" %% "skuber" % skuberVersion,
-    //"io.monix" %% "monix" % "3.0.0",
-//    "com.pauldijou" %% "jwt-core" % scalaJWTVersion,
-//    "org.scalaj" %% "scalaj-http" % "2.4.2",
-    "io.skuber" %% "skuber" % skuberVersion cross CrossVersion.for3Use2_13,
-    //"io.monix" %% "monix" % "3.0.0",
-   "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
-
-    //"org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
-    //"org.apache.httpcomponents" % "httpmime" % httpComponentsVersion,
+    "io.github.hagay3" %% "skuber" % "4.0.3",
+    "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
     "com.typesafe.slick" %% "slick" % slickVersion,
     "com.h2database" % "h2" % h2Version,
-//    "io.suzaku" %% "boopickle" % boopickleVersion,
-//    "com.lihaoyi" %% "autowire" % autowireVersion,
     "dev.profunktor" %% "http4s-jwt-auth" % "1.2.2",
     "com.github.pathikrit" %% "better-files" % "3.9.2",
     "commons-codec" % "commons-codec" % "1.16.1",

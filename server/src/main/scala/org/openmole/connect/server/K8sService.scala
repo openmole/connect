@@ -1,7 +1,5 @@
 package org.openmole.connect.server
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.models.V1JobStatus
 import org.openmole.connect.shared.{Data, Storage}
@@ -22,6 +20,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import monocle.*
 import monocle.syntax.all.*
+import org.apache.pekko.actor.ActorSystem
 import org.openmole.connect.server.db.DB
 import tool.*
 
@@ -87,7 +86,7 @@ object K8sService:
   def withK8s[T](kubeAction: KubeAction[T])(using K8sService) =
     val k8s = k8sInit(summon[K8sService].system)
     try kubeAction(k8s)
-    finally k8s.close()
+    finally k8s.close
 
   def getIngress(using K8sService) = withK8s: k8s =>
     val allIngressMapFut = k8s.listInNamespace[IngressList]("ingress-nginx")
@@ -121,7 +120,7 @@ object K8sService:
       command = List("bin/bash", "-c", s"openmole-docker --port 80 --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole"),
       volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/")),
       securityContext = Some(SecurityContext(privileged = Some(true))),
-      imagePullPolicy = Container.PullPolicy.Always,
+      imagePullPolicy = Some(Container.PullPolicy.Always),
       resources = Some(Resource.Requirements(limits = limits))
     ).exposePort(80)
 
