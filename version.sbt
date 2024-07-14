@@ -1,1 +1,1 @@
-Global / version := "dev"
+Global / version := "1.0-SNAPSHOT"
