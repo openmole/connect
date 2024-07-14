@@ -40,7 +40,6 @@ val skuberProject = RootProject(uri("https://github.com/doriordan/skuber.git#30r
 
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
-  version := "1.0-SNAPSHOT",
   scalaVersion := "3.3.3",
   resolvers := Resolvers
 )
@@ -74,6 +73,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
     "io.github.hagay3" %% "skuber" % "4.0.3",
+    "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
+    "com.lihaoyi" %% "upickle" % "3.3.1",
     "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
     "com.typesafe.slick" %% "slick" % slickVersion,
     "com.h2database" % "h2" % h2Version,

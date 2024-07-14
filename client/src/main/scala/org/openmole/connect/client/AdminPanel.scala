@@ -77,6 +77,7 @@ object AdminPanel:
       object Settings:
         def apply(uuid: String): Settings =
           val passwordClicked = Var(false)
+          val storageChanged = Var(false)
           val selectedRole = Var[Option[Role]](None)
 
           lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
@@ -103,6 +104,9 @@ object AdminPanel:
           lazy val cpuInput: Input =
             UIUtils.buildInput("").amend(width := "160", `type` := "number", stepAttr := "0.01", value := user.cpu.toString)
 
+          lazy val storageInput: Input =
+            UIUtils.buildInput("").amend(width := "160", `type` := "number", onChange --> storageChanged.set(true))
+
           def save(): Unit =
             val pwd = passwordInput.ref.value
             if pwd.nonEmpty && passwordClicked.now()
@@ -120,6 +124,11 @@ object AdminPanel:
               if cpu != user.cpu
               then AdminAPIClient.setCPU((uuid, cpu)).future.andThen(_ => updateUserInfo())
 
+            val s = storageInput.ref.value
+            if storageChanged.now() && !s.isEmpty
+            then
+              util.Try(s.toInt).foreach: s =>
+                AdminAPIClient.setStorage((uuid, s)).future.andThen(_ => updateUserInfo())
 
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
@@ -133,8 +142,9 @@ object AdminPanel:
             div(margin := "30",
               Css.rowFlex,
               div(styleAttr := "width: 15%;", Css.columnFlex, alignItems.flexEnd,
-                div(Css.centerRowFlex, cls := "settingElement", "Memory"),
+                div(Css.centerRowFlex, cls := "settingElement", "Memory (MB)"),
                 div(Css.centerRowFlex, cls := "settingElement", "CPU"),
+                div(Css.centerRowFlex, cls := "settingElement", "Storage (MB)"),
                 div(Css.centerRowFlex, cls := "settingElement", "Role"),
                 div(Css.centerRowFlex, cls := "settingElement", "Password"),
                 div(Css.centerRowFlex, cls := "settingElement", "Delete"),
@@ -142,6 +152,7 @@ object AdminPanel:
               div(styleAttr := "width: 85%;", Css.columnFlex, alignItems.flexStart,
                 div(Css.centerRowFlex, cls := "settingElement", memoryInput),
                 div(Css.centerRowFlex, cls := "settingElement", cpuInput),
+                div(Css.centerRowFlex, cls := "settingElement", storageInput),
                 div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
                 div(Css.centerRowFlex, cls := "settingElement", passwordInput),
                 div(Css.centerRowFlex, cls := "settingElement", deleteInput),

@@ -2,6 +2,8 @@ package org.openmole.connect.server
 
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.models.V1JobStatus
+import io.kubernetes.client.openapi.apis.{ApiextensionsV1Api, CoreV1Api}
+import io.kubernetes.client.openapi.models.V1PersistentVolumeClaim
 import org.openmole.connect.shared.{Data, Storage}
 import org.openmole.connect.shared.Data.*
 import skuber.LabelSelector.dsl.*
@@ -239,34 +241,17 @@ object K8sService:
           case Some(v: Volume.PersistentVolumeClaimRef) => Some(v.claimName)
           case _ => None
 
-  // FIXME test with no pv name
-  def updateOpenMOLEPersistentVolumeStorage(uuid: DB.UUID, size: Int)(using  K8sService) = withK8s: k8s =>
-    //stopOpenMOLEPod(uuid)
-    //val pvcName = s"pvc-$uuid-${util.UUID.randomUUID().toString}"
-    //val newPVC = persistentVolumeClaim(pvcName, size, storageClassName)
+  def updateOpenMOLEPersistentVolumeStorage(uuid: DB.UUID, size: Int)(using  K8sService) =
 
-    //k8s.usingNamespace(Namespace.openmole).create(newPVC).await
     getPVCName(uuid).foreach: pvcName =>
-      k8s.usingNamespace(Namespace.openmole).update(persistentVolumeClaim(pvcName, size, summon[K8sService].storageClassName)).await
-
-//    val deployment = k8s.usingNamespace(Namespace.openmole).get[Deployment](uuid.value).await
-//
-//    k8s.usingNamespace(Namespace.openmole).update[Deployment]:
-//      deployment.focus(_.spec.some.template.spec.some.volumes).set:
-//        List(Volume(name = "data", source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
-
-//    deployment.withTemplate:
-//      deployment.spec.get.template.spec.get.volumes
-//      d.spec.map: s =>
-//        s.template.spec.map: t =>
-//          t.volumes.head.source match
-//            case v: Volume.PersistentVolumeClaimRef => println(v.claimName)
-//            case _ =>
-//
-//    //val pvc = k8s.usingNamespace(Namespace.openmole).get[PersistentVolumeClaim](s"pvc-${uuid.value}").await
-//
-//    k8s.usingNamespace(Namespace.openmole).delete(pvcName).await
-//    k8s.usingNamespace(Namespace.openmole).update(newPVC).await //createPersistentVolumeClaim(s"pvc-${uuid.value}", newStorage, storageClassName))
+      withK8s: k8s =>
+        val pvcs = k8s.list[PersistentVolumeClaimList](namespace = Some(Namespace.openmole)).await
+        val newPVC =
+          pvcs.find(_.name == pvcName).focus(_.some.spec.some.resources.some).set:
+            Resource.Requirements(
+              requests = Map(Resource.storage -> s"${size}Mi")
+            )
+        newPVC.foreach(np => k8s.update(np, namespace = Some(Namespace.openmole)).await)
 
   def deleteOpenMOLE(uuid: DB.UUID)(using KubeCache, K8sService): Unit =
     //k8s.usingNamespace(Namespace.openmole).deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName",uuid.value))

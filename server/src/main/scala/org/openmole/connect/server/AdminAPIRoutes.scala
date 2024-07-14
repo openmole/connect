@@ -22,6 +22,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache
   def setRole(uuid: String, role: Data.Role) = DB.updateRole(uuid, role)
   def setMemory(uuid: String, memory: Int) = DB.updateMemory(uuid, memory)
   def setCPU(uuid: String, cpu: Double) = DB.updateCPU(uuid, cpu)
+  def setStorage(uuid: String, space: Int) = K8sService.updateOpenMOLEPersistentVolumeStorage(uuid, space)
 
   def deleteUser(uuid: String) =
     DB.deleteUser(uuid)
@@ -49,6 +50,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
       setRole.implementedBy(impl.setRole),
       setMemory.implementedBy(impl.setMemory),
       setCPU.implementedBy(impl.setCPU),
-      instance.implementedBy(impl.instance)
+      instance.implementedBy(impl.instance),
+      setStorage.implementedBy(impl.setStorage)
     )
 

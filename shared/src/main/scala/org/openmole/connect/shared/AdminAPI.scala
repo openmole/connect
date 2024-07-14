@@ -83,6 +83,12 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
+  val setStorage: Endpoint[(String, Int), Unit] =
+    endpoint(
+      post(path / "set-storage", jsonRequest[(String, Int)]),
+      ok(jsonResponse[Unit])
+    )
+
   val launch: Endpoint[String, Unit] =
     endpoint(
       post(path / "launch", jsonRequest[String]),
