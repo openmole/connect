@@ -152,7 +152,10 @@ object DB:
 
   def deleteRegistering(uuid: UUID): Int =
     runTransaction:
-      registerUserTable.filter(_.uuid === uuid).delete
+      for
+        r <- registerUserTable.filter(_.uuid === uuid).delete
+        _ <- validationSecretTable.filter(_.uuid === uuid).delete
+      yield r
 
   def promoteRegistering(uuid: UUID)(using DockerHubCache): Option[User] =
     runTransaction:
