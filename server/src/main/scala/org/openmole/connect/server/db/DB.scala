@@ -254,6 +254,8 @@ object DB:
       for
         _ <- userTable.filter(_.uuid === uuid).delete
         _ <- checkAtLeastOneAdmin
+        _ <- registerUserTable.filter(_.uuid === uuid).delete
+        _ <- validationSecretTable.filter(_.uuid === uuid).delete
       yield ()
 
 
