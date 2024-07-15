@@ -40,9 +40,14 @@ object UserPanel:
       def content =
         Signal.fromFuture(UserAPIClient.availableVersions(()).future).map: versions =>
           lazy val versionChanger =
+            val index =
+              versions.toSeq.flatten.indexOf(user.omVersion) match
+                case -1 => 0
+                case x => x
+
             Selector.options[String](
               versions.toSeq.flatten,
-              versions.toSeq.flatten.indexOf(user.omVersion),
+              index,
               Seq(cls := "btn btnUser"),
               naming = identity,
               decorations = Map()
