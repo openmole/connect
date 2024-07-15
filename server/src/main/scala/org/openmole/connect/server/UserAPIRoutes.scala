@@ -22,7 +22,7 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
   def stop = K8sService.stopOpenMOLEPod(uuid)
 
   def availableVersions =
-    OpenMOLE.availableVersions(withSnapshot = true, history = openmole.versionHistory, minVersion = openmole.minimumVersion, lastMajors = true)
+    OpenMOLE.availableVersions(withSnapshot = true, history = openmole.versionHistory, min = openmole.minimumVersion, lastMajors = true)
 
   def setVersion(version: String) =
     val versions = availableVersions

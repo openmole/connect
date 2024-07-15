@@ -25,38 +25,57 @@ import java.util.concurrent.TimeUnit
  */
 
 object OpenMOLE:
-  val versionPattern = "[0-9]*\\.[0-9]*"
-  val snapshotPattern = versionPattern + "-SNAPSHOT"
+  val stablePattern = "[0-9]*\\.[0-9]*"
+  val snapshotPattern = stablePattern + "-SNAPSHOT"
+  val rcPattern = stablePattern + "-RC[0-9]*"
 
   def wellFormedVersion(v: String) =
-    v.matches(versionPattern) || v.matches(snapshotPattern)
+    v.matches(stablePattern) || v.matches(snapshotPattern)
 
-  def availableVersions(withSnapshot: Boolean = true, history: Option[Int], minVersion: Option[Int], lastMajors: Boolean)(using DockerHubCache): Seq[String] =
+  def availableVersions(withSnapshot: Boolean = true, history: Option[Int] = None, min: Option[Int] = None, lastMajors: Boolean = false)(using DockerHubCache): Seq[String] =
     val tags = summon[DockerHubCache].get()
-    val snapshot: Seq[String] = if withSnapshot then tags.find(_.endsWith("SNAPSHOT")).toSeq else Seq()
 
-    val wellFormed = tags.filter(_.matches(versionPattern))
+    val stableFormed = tags.filter(v => v.matches(stablePattern))
+    val rcFormed = tags.filter(v => v.matches(rcPattern))
+    val snapshotFormed = tags.filter(v => v.matches(snapshotPattern))
 
-    val majors: Seq[String] =
-      val ms = wellFormed.flatMap(_.split('.').headOption).distinct
-      val majors =
-        val h =
-          history match
-            case Some(h) => ms.take(h)
-            case None => ms
+    def allMajors =
+      tags.flatMap: t =>
+        util.Try(t.split('.').headOption.map(_.toInt)).toOption.flatten
+      .distinct
 
-        minVersion match
-          case Some(m) =>
-            def accept(v: String) = util.Try(v.toInt).map(_ >= m).getOrElse(false)
-            h.filter(accept)
-          case None => h
+    val majors =
+      val h =
+        history match
+          case Some(h) => allMajors.take(h)
+          case None => allMajors
 
-      majors.flatMap: m =>
-        if lastMajors
-        then wellFormed.find(_.startsWith(m))
-        else wellFormed.filter(_.startsWith(m))
+      min match
+        case Some(m) => h.filter(_ >= m)
+        case None => h
 
-    snapshot ++ majors
+    val minorVersionMap =
+      majors.map: m =>
+        m -> stableFormed.filter(_.startsWith(s"$m."))
+      .toMap
+
+    val rcVersionMap =
+      majors.map: m =>
+        m -> rcFormed.filter(_.startsWith(s"$m."))
+      .toMap
+
+    val snapshotVersionMap =
+      majors.map: m =>
+        m -> snapshotFormed.filter(_.startsWith(s"$m."))
+      .toMap
+
+    majors.flatMap: maj =>
+      if minorVersionMap(maj).nonEmpty
+      then if lastMajors then minorVersionMap(maj).headOption.toSeq else minorVersionMap(maj)
+      else
+        val rc = if lastMajors then rcVersionMap(maj).headOption.toSeq else rcVersionMap(maj)
+        snapshotVersionMap(maj) ++ rcVersionMap(maj)
+
 
   object DockerHubCache:
     def apply(): DockerHubCache =
