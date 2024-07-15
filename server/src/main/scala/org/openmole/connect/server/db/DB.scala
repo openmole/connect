@@ -48,7 +48,7 @@ object DB:
   def userFromData(u: Data.User): Option[User] = user(u.email)
 
   def userWithDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID)(using DockerHubCache) =
-    val defaultVersion = OpenMOLE.availableVersions(true, Some(1), None, true).head
+    val defaultVersion = OpenMOLE.availableVersions(true, Some(1), None, true).headOption.getOrElse("latest")
     User(name, firstName, email, emailStatus, password, institution, defaultVersion, 2048, 2, 1024, now, now, role, status, uuid)
 
   def registerUserToData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]

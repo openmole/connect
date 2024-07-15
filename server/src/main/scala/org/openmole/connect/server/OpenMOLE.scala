@@ -74,7 +74,8 @@ object OpenMOLE:
       then if lastMajors then minorVersionMap(maj).headOption.toSeq else minorVersionMap(maj)
       else
         val rc = if lastMajors then rcVersionMap(maj).headOption.toSeq else rcVersionMap(maj)
-        snapshotVersionMap(maj) ++ rcVersionMap(maj)
+        val snap = if withSnapshot then snapshotVersionMap(maj) else Seq()
+        snap ++ rc
 
 
   object DockerHubCache:
