@@ -119,6 +119,8 @@ object UserPanel:
       )
 
     def userPanel(user: User) =
+      var refreshing = false
+
       def content =
         settings.signal.flatMap:
           case Some(settings) => settings.content
@@ -126,11 +128,16 @@ object UserPanel:
             div(
               EventStream.periodic(5000).toObservable -->
                 Observer: _ =>
-                  UserAPIClient.instance(()).future.foreach: i =>
-                    podInfo.set(i)
-                  val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
-                  if space.now().isEmpty && !stopped
-                  then UserAPIClient.usedSpace(()).future.foreach(space.set),
+                  if !refreshing
+                  then
+                    refreshing = true
+                    try
+                      UserAPIClient.instance(()).future.foreach(podInfo.set)
+                      val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
+                      if space.now().isEmpty && !stopped
+                      then UserAPIClient.usedSpace(()).future.foreach(space.set)
+                    finally refreshing = false
+              ,
               div(maxWidth := "1000",
                 ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
                 UIUtils.userInfoBlock(user, space),
