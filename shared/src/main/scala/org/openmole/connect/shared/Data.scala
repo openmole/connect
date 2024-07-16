@@ -5,6 +5,7 @@ object Data:
   val registerRoute = "register"
   val validateRoute = "validate"
 
+  val openAPIRoute = "api"
   val userAPIRoute = "user"
   val adminAPIRoute = "admin"
   val openMOLERoute = "openmole"

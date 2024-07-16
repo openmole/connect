@@ -89,6 +89,24 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
+  val setInstitution: Endpoint[(String, String), Unit] =
+    endpoint(
+      post(path / "set-institution", jsonRequest[(String, String)]),
+      ok(jsonResponse[Unit])
+    )
+
+  val setName: Endpoint[(String, String), Unit] =
+    endpoint(
+      post(path / "set-name", jsonRequest[(String, String)]),
+      ok(jsonResponse[Unit])
+    )
+
+  val setFirstName: Endpoint[(String, String), Unit] =
+    endpoint(
+      post(path / "set-first-name", jsonRequest[(String, String)]),
+      ok(jsonResponse[Unit])
+    )
+
   val launch: Endpoint[String, Unit] =
     endpoint(
       post(path / "launch", jsonRequest[String]),

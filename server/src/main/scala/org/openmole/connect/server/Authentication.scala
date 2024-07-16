@@ -11,20 +11,19 @@ import org.openmole.connect.shared.Data
 
 object Authentication:
 
-  object AuthenticationCache:
+  object UserCache:
     type Cached = DB.User
     case class Key(uuid: DB.UUID, password: DB.Password)
 
     import com.google.common.cache.*
     import java.util.concurrent.TimeUnit
 
-    def apply(): AuthenticationCache =
+    def apply(): UserCache =
       val user = tool.cache[Key, Cached]()
-      AuthenticationCache(user)
+      UserCache(user)
 
 
-  case class AuthenticationCache(user: com.google.common.cache.Cache[AuthenticationCache.Key, AuthenticationCache.Cached])
-
+  case class UserCache(user: com.google.common.cache.Cache[UserCache.Key, UserCache.Cached])
 
 
   def authorizationCookieKey = "authorized_openmole_cookie"
@@ -37,15 +36,15 @@ object Authentication:
 
     cookie
 
-  def authenticatedUser[T](request: Request[IO])(using JWT.Secret, AuthenticationCache): Option[DB.User] =
+  def authenticatedUser[T](request: Request[IO])(using JWT.Secret, UserCache): Option[DB.User] =
     authorizationToken(request) match
       case Some(t) =>
-        def queryUser(k: AuthenticationCache.Key) =
+        def queryUser(k: UserCache.Key) =
           val user = DB.userFromSaltedPassword(k.uuid, k.password)
           user.foreach(u => DB.updadeLastAccess(k.uuid))
           user
 
-        summon[AuthenticationCache].user.getOptional(AuthenticationCache.Key(t.uuid, t.password), queryUser)
+        summon[UserCache].user.getOptional(UserCache.Key(t.uuid, t.password), queryUser)
       case _ => None
 
   def isAuthenticated(request: Request[IO])(using JWT.Secret) =

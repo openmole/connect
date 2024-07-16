@@ -21,15 +21,22 @@ import endpoints4s.xhr
 import endpoints4s.xhr.EndpointsSettings
 import org.openmole.connect.shared.*
 
+object APIClient
+  extends API
+    with xhr.future.Endpoints
+    with xhr.JsonEntitiesFromCodecs:
+  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some(Data.openAPIRoute))
+
+
 object UserAPIClient
   extends UserAPI
     with xhr.future.Endpoints
     with xhr.JsonEntitiesFromCodecs:
-  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some("user"))
+  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some(Data.userAPIRoute))
 
 object AdminAPIClient
   extends AdminAPI
     with xhr.future.Endpoints
     with xhr.JsonEntitiesFromCodecs:
-  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some("admin"))
+  lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some(Data.adminAPIRoute))
 

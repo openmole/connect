@@ -65,6 +65,12 @@ trait UserAPI
       ok(jsonResponse[Unit])
     )
 
+  val setInstitution: Endpoint[String, Unit] =
+    endpoint(
+      post(path / "set-institution", jsonRequest[String]),
+      ok(jsonResponse[Unit])
+    )
+
 //  val userWithData: Endpoint[Option[UserData], Option[UserData]] =
 //    endpoint(
 //      post(path / "user-with-data", jsonRequest[Option[UserData]]),

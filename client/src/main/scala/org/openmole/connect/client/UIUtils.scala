@@ -209,6 +209,12 @@ object UIUtils:
       )
     )
 
+  def institutionsList =
+    dataList(idAttr := "institutions",
+      children <--
+        Signal.fromFuture(APIClient.institutions(()).future).map: inst =>
+          inst.toSeq.flatten.map(i => option(value := i))
+    )
 
   def versionChanger(currentVersion: String, availableVersions: Seq[String]) =
     lazy val versionChanger: Options[String] =

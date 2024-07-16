@@ -56,7 +56,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
   given salt: DB.Salt = DB.Salt(config.salt)
-  given authenticationCache: Authentication.AuthenticationCache = Authentication.AuthenticationCache()
+  given authenticationCache: Authentication.UserCache = Authentication.UserCache()
   given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
   given K8sService = k8s
@@ -148,7 +148,14 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 else
                   Forbidden(s"User ${admin.name} is not admin")
               case None => BadRequest("No uuid parameter found")
-
+              
+        case req if req.uri.path.startsWith(Root / Data.openAPIRoute) =>
+          val impl = APIImpl()
+          val userAPI = new APIRoutes(impl)
+          val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
+          val apiReq = req.withUri(req.uri.withPath(apiPath))
+          userAPI.routes.apply(apiReq).getOrElseF(NotFound())
+          
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
             val impl = UserAPIImpl(user.uuid, config.openmole)
@@ -262,7 +269,7 @@ object ServerContent:
     Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(Some(error))).render)
       .map(_.withContentType(`Content-Type`(MediaType.text.html)))
 
-  def authenticated[T](req: Request[IO])(using JWT.Secret, Authentication.AuthenticationCache)(f: DB.User => T) =
+  def authenticated[T](req: Request[IO])(using JWT.Secret, Authentication.UserCache)(f: DB.User => T) =
     Authentication.authenticatedUser(req) match
       case Some(user) => f(user)
       case None =>

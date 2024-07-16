@@ -10,6 +10,7 @@ import org.openmole.connect.shared.Data.*
 import org.scalajs.dom.{HTMLFormElement, document}
 
 import scala.scalajs.js.annotation.JSExportTopLevel
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /*
  * Copyright (C) 11/07/19 // mathieu.leclaire@openmole.org
@@ -56,7 +57,7 @@ object Connection:
     // def errorMsgObserver(errorMsg: Var[Option[String]]) =
 
 
-    def checkFieldBlock(id: Int, field: String, checker: String => Option[String]) =
+    def checkFieldBlock(id: Int, field: String, checker: String => Option[String], inputAttributes: Seq[Modifier[HtmlElement]] = Seq()) =
       val errorMsg: Var[Option[String]] = Var(None)
       lazy val in: Input = UIUtils.buildInput(field).amend(
         onInput --> { _ =>
@@ -70,7 +71,7 @@ object Connection:
             }
             em
           }
-        })
+        }).amend(inputAttributes)
       div(Css.centerRowFlex,
         div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))),
         in
@@ -120,7 +121,8 @@ object Connection:
           checkFieldBlock(0, "First name", (s: String) => validNotNullString(s, "First name")),
           checkFieldBlock(1, "Name", (s: String) => validNotNullString(s, "Name")),
           checkFieldBlock(2, "Email", (s: String) => validEmail(s)),
-          checkFieldBlock(3, "Institution", (s: String) => validNotNullString(s, "Institution")),
+          checkFieldBlock(3, "Institution", (s: String) => validNotNullString(s, "Institution"), inputAttributes = Seq(listId := "institutions")),
+          UIUtils.institutionsList,
           passwds._1,
           passwds._2,
           buttonGroup.amend(

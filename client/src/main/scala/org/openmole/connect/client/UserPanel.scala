@@ -6,7 +6,7 @@ import com.raquo.laminar.api.features.unitArrows
 import org.openmole.connect
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.client.ConnectUtils.OpenMOLEPodStatus
-import org.openmole.connect.client.UIUtils.DetailedInfo
+import org.openmole.connect.client.UIUtils.{DetailedInfo, institutionsList}
 import org.openmole.connect.shared.{Data, Storage}
 import org.scalajs.dom
 import scaladget.bootstrapnative.*
@@ -15,8 +15,10 @@ import org.openmole.connect.shared.Data.*
 import org.openmoleconnect.client.Css
 import scaladget.bootstrapnative.Selector.Options
 
+import scala.collection.mutable.ListBuffer
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 object UserPanel:
 
@@ -37,6 +39,8 @@ object UserPanel:
       lazy val openMOLEMemoryInput: Input =
         UIUtils.buildInput("").amend(width := "160", `type` := "number", value := user.openMOLEMemory.toString)
 
+      lazy val institutionInput: Input = UIUtils.buildInput(user.institution).amend(width := "400px", listId := "institutions")
+
       def content =
         Signal.fromFuture(UserAPIClient.availableVersions(()).future).map: versions =>
           lazy val versionChanger =
@@ -53,30 +57,39 @@ object UserPanel:
               decorations = Map()
             )
 
-
           div(margin := "30",
             Css.rowFlex,
-            div(styleAttr := "width: 50%;", Css.columnFlex, alignItems.flexEnd,
+            div(styleAttr := "width: 30%;", Css.columnFlex, alignItems.flexEnd,
               div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Version"),
-              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Memory"),
+              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Memory (MB)"),
+              div(Css.centerRowFlex, cls := "settingElement", "Institution"),
             ),
-            div(styleAttr := "width: 50%;", Css.columnFlex, alignItems.flexStart,
+            div(styleAttr := "width: 70%;", Css.columnFlex, alignItems.flexStart,
               div(Css.centerRowFlex, cls := "settingElement", versionChanger.selector.amend(width := "160")),
               div(Css.centerRowFlex, cls := "settingElement", openMOLEMemoryInput),
-
+              div(Css.centerRowFlex, cls := "settingElement", institutionInput),
+              institutionsList
             ),
             versionChanger.content.signal.changes.toObservable --> selectedVersion.toObserver
           )
 
 
       def save(): Unit =
+        val futures = ListBuffer[Future[_]]()
+
         selectedVersion.now().foreach: v =>
           if v != user.omVersion
-          then UserAPIClient.setOpenMOLEVersion(v).future.andThen(_ => reload.set(()))
+          then futures += UserAPIClient.setOpenMOLEVersion(v).future
 
         util.Try(openMOLEMemoryInput.ref.value.toInt).foreach: m =>
           if m != user.openMOLEMemory
-          then UserAPIClient.setOpenMOLEMemory(m).future.andThen(_ => reload.set(()))
+          then futures += UserAPIClient.setOpenMOLEMemory(m).future
+
+        val institution = institutionInput.ref.value
+        if institution.nonEmpty
+        then futures += UserAPIClient.setInstitution(institution).future
+
+        Future.sequence(futures).andThen(_ => reload.set(()))
 
 
 

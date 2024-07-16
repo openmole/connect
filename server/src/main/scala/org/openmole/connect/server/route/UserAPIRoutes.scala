@@ -3,14 +3,14 @@ package org.openmole.connect.server
 import cats.effect.*
 import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
-import org.openmole.connect.server.Authentication.AuthenticationCache
+import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.db.*
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.*
 
 
-class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService):
+class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService):
   def user = DB.userFromUUID(uuid).getOrElse(throw RuntimeException(s"Not found user with uuid $uuid"))
   def instanceStatus = K8sService.podInfo(uuid)
 
@@ -33,6 +33,8 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
 
   def usedSpace = K8sService.usedSpace(uuid)
 
+  def setInstitution(i: String) = DB.updateInstitution(uuid, i)
+
 class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
@@ -47,5 +49,6 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
       changePassword.implementedBy(impl.changePassword),
       setOpenMOLEVersion.implementedBy(impl.setVersion),
       usedSpace.implementedBy(_ => impl.usedSpace),
-      setOpenMOLEMemory.implementedBy(impl.setOMemory)
+      setOpenMOLEMemory.implementedBy(impl.setOMemory),
+      setInstitution.implementedBy(impl.setInstitution)
     )

@@ -16,6 +16,9 @@ import org.openmole.connect.client.UIUtils.DetailedInfo
 import org.openmole.connect.shared.Data.PodInfo.Status.Terminated
 import org.openmoleconnect.client.Css
 
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.Future
+
 object AdminPanel:
 
   def admin() =
@@ -76,9 +79,15 @@ object AdminPanel:
       case class Settings(element: HtmlElement, save: () => Unit)
       object Settings:
         def apply(uuid: String): Settings =
+
           val passwordClicked = Var(false)
           val storageChanged = Var(false)
           val selectedRole = Var[Option[Role]](None)
+
+          lazy val firstNameInput: Input = UIUtils.buildInput(user.firstName).amend(width := "400px")
+          lazy val nameInput: Input = UIUtils.buildInput(user.name).amend(width := "400px")
+          lazy val institutionInput: Input = UIUtils.buildInput(user.institution).amend(width := "400px", listId := "institutions")
+
 
           lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
             `type` := "password",
@@ -108,35 +117,48 @@ object AdminPanel:
             UIUtils.buildInput("").amend(width := "160", `type` := "number", onChange --> storageChanged.set(true))
 
           def save(): Unit =
+            val futures = ListBuffer[Future[_]]()
+
             val pwd = passwordInput.ref.value
             if pwd.nonEmpty && passwordClicked.now()
             then AdminAPIClient.changePassword(uuid, passwordInput.ref.value)
 
+            val firstName = firstNameInput.ref.value
+            if firstName.nonEmpty
+            then futures += AdminAPIClient.setFirstName((uuid, firstName)).future
+
+            val name = nameInput.ref.value
+            if name.nonEmpty
+            then futures += AdminAPIClient.setName((uuid, name)).future
+
+            val institution = institutionInput.ref.value
+            if institution.nonEmpty
+            then futures += AdminAPIClient.setInstitution((uuid, institution)).future
+
             selectedRole.now().foreach: role =>
-              AdminAPIClient.setRole((uuid, role)).future.andThen: _ =>
-                updateUserInfo()
+              futures += AdminAPIClient.setRole((uuid, role)).future
 
             util.Try(memoryInput.ref.value.toInt).foreach: m =>
               if m != user.memory
-              then AdminAPIClient.setMemory((uuid, m)).future.andThen(_ => updateUserInfo())
+              then futures += AdminAPIClient.setMemory((uuid, m)).future
 
             util.Try(cpuInput.ref.value.toDouble).foreach: cpu =>
               if cpu != user.cpu
-              then AdminAPIClient.setCPU((uuid, cpu)).future.andThen(_ => updateUserInfo())
+              then futures += AdminAPIClient.setCPU((uuid, cpu)).future
 
             val s = storageInput.ref.value
             if storageChanged.now() && !s.isEmpty
             then
               util.Try(s.toInt).foreach: s =>
-                AdminAPIClient.setStorage((uuid, s)).future.andThen(_ => updateUserInfo())
+                futures += AdminAPIClient.setStorage((uuid, s)).future
 
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
             then
-              AdminAPIClient.deleteUser(uuid).future
-              users.update(u => u.filter(u => u.uuid != uuid))
-              pods.update(p => p.removed(uuid))
+              futures += AdminAPIClient.deleteUser(uuid).future
               selectedUUID.set(None)
+
+            Future.sequence(futures).andThen(_ => updateUserInfo())
 
           Settings(
             div(margin := "30",
@@ -145,6 +167,11 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", "Memory (MB)"),
                 div(Css.centerRowFlex, cls := "settingElement", "CPU"),
                 div(Css.centerRowFlex, cls := "settingElement", "Storage (GB)"),
+
+                div(Css.centerRowFlex, cls := "settingElement", "First Name"),
+                div(Css.centerRowFlex, cls := "settingElement", "Last Name"),
+                div(Css.centerRowFlex, cls := "settingElement", "Institution"),
+
                 div(Css.centerRowFlex, cls := "settingElement", "Role"),
                 div(Css.centerRowFlex, cls := "settingElement", "Password"),
                 div(Css.centerRowFlex, cls := "settingElement", "Delete"),
@@ -153,6 +180,12 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", memoryInput),
                 div(Css.centerRowFlex, cls := "settingElement", cpuInput),
                 div(Css.centerRowFlex, cls := "settingElement", storageInput),
+
+                div(Css.centerRowFlex, cls := "settingElement", firstNameInput),
+                div(Css.centerRowFlex, cls := "settingElement", nameInput),
+                div(Css.centerRowFlex, cls := "settingElement", institutionInput),
+                UIUtils.institutionsList,
+
                 div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
                 div(Css.centerRowFlex, cls := "settingElement", passwordInput),
                 div(Css.centerRowFlex, cls := "settingElement", deleteInput),

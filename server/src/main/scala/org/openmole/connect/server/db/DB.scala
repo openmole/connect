@@ -201,33 +201,43 @@ object DB:
       val q = userTable.filter(_.uuid === uuid).map(_.lastAccess)
       q.update(tool.now)
 
-  def updateOMVersion(uuid: UUID, version: String)(using Authentication.AuthenticationCache)  =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+  def updateOMVersion(uuid: UUID, version: String)(using Authentication.UserCache)  =
+    summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.omVersion)
       q.update(version)
 
 
-  def updateOMMemory(uuid: UUID, memory: Int)(using Authentication.AuthenticationCache)  =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+  def updateOMMemory(uuid: UUID, memory: Int)(using Authentication.UserCache)  =
+    summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.omMemory)
       q.update(memory)
 
-  def updateMemory(uuid: UUID, memory: Int)(using Authentication.AuthenticationCache) =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+  def updateMemory(uuid: UUID, memory: Int)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.memory)
       q.update(memory)
 
-  def updateCPU(uuid: UUID, cpu: Double)(using Authentication.AuthenticationCache) =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
-    runTransaction:
-      val q = userTable.filter(_.uuid === uuid).map(_.cpu)
-      q.update(cpu)
+  def updateCPU(uuid: UUID, cpu: Double)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
+    runTransaction(userTable.filter(_.uuid === uuid).map(_.cpu).update(cpu))
 
-  def updateRole(uuid: UUID, role: Role)(using Authentication.AuthenticationCache) =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+  def updateName(uuid: UUID, name: String)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
+    runTransaction(userTable.filter(_.uuid === uuid).map(_.name).update(name))
+
+  def updateFirstName(uuid: UUID, name: String)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
+    runTransaction(userTable.filter(_.uuid === uuid).map(_.firstName).update(name))
+
+  def updateInstitution(uuid: UUID, institution: String)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
+    runTransaction(userTable.filter(_.uuid === uuid).map(_.institution).update(institution))
+
+  def updateRole(uuid: UUID, role: Role)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.role)
       for
@@ -240,10 +250,12 @@ object DB:
     runTransaction:
       userTable.filter(_.role === Role.Admin).result
 
+  def institutions: Seq[Institution] = runTransaction(userTable.map(_.institution).distinct.result)
+
   def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 
-  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.AuthenticationCache): Boolean =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.UserCache): Boolean =
+    summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
       val q =
         for
@@ -255,8 +267,8 @@ object DB:
         yield user.password
       q.update(salted(password)).map(_ > 0)
 
-  def deleteUser(uuid: UUID)(using Authentication.AuthenticationCache) =
-    summon[Authentication.AuthenticationCache].user.invalidate(uuid)
+  def deleteUser(uuid: UUID)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
       for
         _ <- userTable.filter(_.uuid === uuid).delete

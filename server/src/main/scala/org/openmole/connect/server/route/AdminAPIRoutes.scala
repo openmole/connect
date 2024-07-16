@@ -4,13 +4,13 @@ import endpoints4s.http4s.server
 import org.openmole.connect.shared.*
 import cats.effect.*
 import org.http4s.*
-import org.openmole.connect.server.Authentication.AuthenticationCache
+import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.db.DB
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.Data.UserAndPodInfo
 
-class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache, K8sService, Email.Sender):
+class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender):
   def users: Seq[Data.User] = DB.users.map(DB.userToData)
   def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.registerUserToData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid).foreach(Email.sendValidated)
@@ -23,6 +23,9 @@ class AdminAPIImpl(using DB.Salt, KubeCache, AuthenticationCache, DockerHubCache
   def setMemory(uuid: String, memory: Int) = DB.updateMemory(uuid, memory)
   def setCPU(uuid: String, cpu: Double) = DB.updateCPU(uuid, cpu)
   def setStorage(uuid: String, space: Int) = K8sService.updateOpenMOLEPersistentVolumeStorage(uuid, space)
+  def setInstitution(uuid: String, institution: String) = DB.updateInstitution(uuid, institution)
+  def setFirstName(uuid: String, firstName: String) = DB.updateFirstName(uuid, firstName)
+  def setName(uuid: String, name: String) = DB.updateName(uuid, name)
 
   def deleteUser(uuid: String) =
     DB.deleteUser(uuid)
@@ -51,6 +54,9 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
       setMemory.implementedBy(impl.setMemory),
       setCPU.implementedBy(impl.setCPU),
       instance.implementedBy(impl.instance),
-      setStorage.implementedBy(impl.setStorage)
+      setStorage.implementedBy(impl.setStorage),
+      setName.implementedBy(impl.setName),
+      setFirstName.implementedBy(impl.setFirstName),
+      setInstitution.implementedBy(impl.setInstitution)
     )
 
