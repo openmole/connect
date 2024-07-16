@@ -39,9 +39,8 @@ object AdminPanel:
         val map =
           for
             u <- us
-          yield u.user.email -> Pod(Var(u.podInfo), Var(None))
+          yield u.user.uuid -> Pod(Var(u.podInfo), Var(None))
         pods.set(map.toMap)
-
 
     updateUserInfo()
 
@@ -87,7 +86,6 @@ object AdminPanel:
           lazy val firstNameInput: Input = UIUtils.buildInput(user.firstName).amend(width := "400px")
           lazy val nameInput: Input = UIUtils.buildInput(user.name).amend(width := "400px")
           lazy val institutionInput: Input = UIUtils.buildInput(user.institution).amend(width := "400px", listId := "institutions")
-
 
           lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
             `type` := "password",
@@ -195,7 +193,7 @@ object AdminPanel:
             save
           )
 
-      val settings = Settings(user.uuid)
+      lazy val settings = Settings(user.uuid)
 
       val settingButton =
         button(
@@ -261,7 +259,7 @@ object AdminPanel:
     def registeredInfos =
       (users.signal combineWith pods.signal).map: (us, pods) =>
         us.flatMap: user =>
-          pods.get(user.email).map: pod =>
+          pods.get(user.uuid).map: pod =>
             val settingsOpen: Var[Boolean] = Var(false)
             UserInfo(
               BasicRow(
