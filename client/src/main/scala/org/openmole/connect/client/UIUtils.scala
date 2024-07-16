@@ -68,14 +68,17 @@ object UIUtils:
         )
     )
 
-  def mainPanel(panel: HtmlElement, admin: HtmlElement = div()) =
+  def mainPanel(panel: HtmlElement, name: HtmlElement, admin: HtmlElement = div()) =
     div(margin := "40px auto",
       img(src := "img/logo.png", Css.centerRowFlex, width := "500", margin.auto),
-      div(display.flex, alignItems.center, flexDirection.row, justifyContent.spaceBetween, width := "800", marginTop := "20",
+      div(display.flex, alignItems.center, flexDirection.row, justifyContent.spaceBetween, marginTop := "50",
         admin,
-        a(cls := "bi-power power", href := s"/${Data.disconnectRoute}"),
+        div(display.flex, alignItems.center, flexDirection.row,
+          name,
+          a(cls := "bi-power power", href := s"/${Data.disconnectRoute}"),
+        )
       ),
-      div(marginTop := "50px", panel)
+      div(marginTop := "10px", display.flex, flexDirection.column, panel)
     )
 
   def instanceFuture(uuid: Option[String]) =
@@ -234,7 +237,6 @@ object UIUtils:
       placeholder := attr,
       cls := "formField"
     )
-
 
 
   def waiter = span(cls := "loader")

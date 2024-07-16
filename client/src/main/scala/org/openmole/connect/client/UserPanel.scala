@@ -131,7 +131,7 @@ object UserPanel:
                   val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
                   if space.now().isEmpty && !stopped
                   then UserAPIClient.usedSpace(()).future.foreach(space.set),
-              div(maxWidth := "1000", margin := "40px auto",
+              div(maxWidth := "1000",
                 ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
                 UIUtils.userInfoBlock(user, space),
                 div(
@@ -154,8 +154,7 @@ object UserPanel:
             case true => "User"
           ,
           `type` := "button",
-          cls := "btn btnUser settings"
-          ,
+          cls := "btn btnUser settings",
           onClick --> admin.update(!_)
         )
 
@@ -179,6 +178,7 @@ object UserPanel:
                   case false => userPanel(u)
                   case true => AdminPanel.admin()
               ),
+              div(s"${u.firstName} ${u.name}", marginRight := "20", fontFamily := "gi"),
               buttons(u)
             ).amend(width := "800")
 
