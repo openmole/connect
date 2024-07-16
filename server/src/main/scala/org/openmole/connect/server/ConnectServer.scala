@@ -95,7 +95,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               sendNotification(DB.registerUsers)
 
               if res
-              then Ok("Thank you, your email has benn validated")
+              then Ok("Thank you, your email has been validated")
               else NotFound("validation not found")
             case None => BadRequest("Expected uuid and secret")
 
