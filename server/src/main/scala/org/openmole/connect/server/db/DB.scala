@@ -245,6 +245,10 @@ object DB:
         _ <- checkAtLeastOneAdmin
       yield ()
 
+  def updateEmailStatus(uuid: UUID, emailStatus: EmailStatus)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].user.invalidate(uuid)
+    runTransaction(userTable.filter(_.uuid === uuid).map(_.emailStatus).update(emailStatus))
+
   def users: Seq[User] = runTransaction(userTable.result)
   def admins: Seq[User] =
     runTransaction:

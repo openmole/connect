@@ -1,6 +1,8 @@
 package org.openmole.connect.server
 
 import org.openmole.connect.server.db.DB
+import org.openmole.connect.shared.Data.EmailStatus
+
 import java.net.URLEncoder
 
 /*
@@ -74,6 +76,25 @@ object Email:
              |Best Regards
         """.stripMargin)
       )
+
+  def sendInactive(user: DB.User, inactive: Int, remaining: Int)(using Sender) =
+    if EmailStatus.hasBeenChecked(user.emailStatus)
+    then
+      sendMail: server =>
+        MailBuilder.build(
+          From(server.from),
+          To(user.email),
+          Subject("[OpenMOLE] Inactive account, shutdown scheduled"),
+          CustomHeader(Header("User-Agent", "User")),
+          //TextBody("Hello!\n\nThis is a mail."),
+          HtmlBody(
+            s"""Dear ${user.firstName} ${user.name},<br/><br/>
+               |your account as been inactive for the past $inactive days on to the OpenMOLE service.<br/>
+               |If you don't use it, your OpenMOLE instance will be automatically shutdown in $remaining days.<br/><br/>
+               |Best Regards
+          """.stripMargin)
+        )
+
 
 
   def sendNotification(to: Seq[DB.Email], subject: String, content: String)(using Sender) =

@@ -8,7 +8,7 @@ import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.db.DB
 import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
-import org.openmole.connect.shared.Data.UserAndPodInfo
+import org.openmole.connect.shared.Data.{EmailStatus, UserAndPodInfo}
 
 class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender):
   def users: Seq[Data.User] = DB.users.map(DB.userToData)
@@ -26,6 +26,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sServi
   def setInstitution(uuid: String, institution: String) = DB.updateInstitution(uuid, institution)
   def setFirstName(uuid: String, firstName: String) = DB.updateFirstName(uuid, firstName)
   def setName(uuid: String, name: String) = DB.updateName(uuid, name)
+  def setEmailStatus(uuid: String, s: EmailStatus) = DB.updateEmailStatus(uuid, s)
 
   def deleteUser(uuid: String) =
     DB.deleteUser(uuid)
@@ -57,6 +58,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
       setStorage.implementedBy(impl.setStorage),
       setName.implementedBy(impl.setName),
       setFirstName.implementedBy(impl.setFirstName),
-      setInstitution.implementedBy(impl.setInstitution)
+      setInstitution.implementedBy(impl.setInstitution),
+      setEmailStatus.implementedBy(impl.setEmailStatus)
     )
 

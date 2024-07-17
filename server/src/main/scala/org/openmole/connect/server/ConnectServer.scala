@@ -38,8 +38,15 @@ object ConnectServer:
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
+    case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
 
-  case class Config(salt: String, secret: String, kube: Config.Kube, openmole: Config.OpenMOLE, smtp: Option[Config.SMTP] = None)
+  case class Config(
+    salt: String,
+    secret: String,
+    kube: Config.Kube,
+    openmole: Config.OpenMOLE,
+    smtp: Option[Config.SMTP] = None,
+    shutdown: Option[Config.Shutdown] = None)
 
   def read(file: File): Config =
     import better.files.*
@@ -72,6 +79,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
   def start() =
     DB.initDB()
+    ScheduledTask.schedule(config.shutdown)
 
     val serverRoutes: HttpRoutes[IO] =
       HttpRoutes.of:
@@ -148,14 +156,14 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 else
                   Forbidden(s"User ${admin.name} is not admin")
               case None => BadRequest("No uuid parameter found")
-              
+
         case req if req.uri.path.startsWith(Root / Data.openAPIRoute) =>
           val impl = APIImpl()
           val userAPI = new APIRoutes(impl)
           val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
           val apiReq = req.withUri(req.uri.withPath(apiPath))
           userAPI.routes.apply(apiReq).getOrElseF(NotFound())
-          
+
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
             val impl = UserAPIImpl(user.uuid, config.openmole)

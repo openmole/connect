@@ -82,6 +82,7 @@ object AdminPanel:
           val passwordClicked = Var(false)
           val storageChanged = Var(false)
           val selectedRole = Var[Option[Role]](None)
+          val selectedEmailStatus = Var[Option[EmailStatus]](None)
 
           lazy val firstNameInput: Input = UIUtils.buildInput(user.firstName).amend(width := "400px")
           lazy val nameInput: Input = UIUtils.buildInput(user.name).amend(width := "400px")
@@ -100,6 +101,15 @@ object AdminPanel:
             Selector.options[Role](
               Role.values.toSeq,
               user.role.ordinal,
+              Seq(cls := "btn btnUser", width := "160"),
+              naming = _.toString,
+              decorations = Map()
+            )
+
+          lazy val emailStatusChanger =
+            Selector.options[EmailStatus](
+              EmailStatus.values.toSeq,
+              user.emailStatus.ordinal,
               Seq(cls := "btn btnUser", width := "160"),
               naming = _.toString,
               decorations = Map()
@@ -136,6 +146,9 @@ object AdminPanel:
             selectedRole.now().foreach: role =>
               futures += AdminAPIClient.setRole((uuid, role)).future
 
+            selectedEmailStatus.now().foreach: es =>
+              futures += AdminAPIClient.setEmailStatus((uuid, es)).future
+
             util.Try(memoryInput.ref.value.toInt).foreach: m =>
               if m != user.memory
               then futures += AdminAPIClient.setMemory((uuid, m)).future
@@ -171,6 +184,7 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", "Institution"),
 
                 div(Css.centerRowFlex, cls := "settingElement", "Role"),
+                div(Css.centerRowFlex, cls := "settingElement", "Email Status"),
                 div(Css.centerRowFlex, cls := "settingElement", "Password"),
                 div(Css.centerRowFlex, cls := "settingElement", "Delete"),
               ),
@@ -185,10 +199,13 @@ object AdminPanel:
                 UIUtils.institutionsList,
 
                 div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
+                div(Css.centerRowFlex, cls := "settingElement", emailStatusChanger.selector),
+
                 div(Css.centerRowFlex, cls := "settingElement", passwordInput),
                 div(Css.centerRowFlex, cls := "settingElement", deleteInput),
               ),
-              roleChanger.content.signal.changes.toObservable --> selectedRole.toObserver
+              roleChanger.content.signal.changes.toObservable --> selectedRole.toObserver,
+              emailStatusChanger.content.signal.changes.toObservable --> selectedEmailStatus.toObserver
             ),
             save
           )

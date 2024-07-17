@@ -15,11 +15,10 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
   def instanceStatus = K8sService.podInfo(uuid)
 
   def launch = K8sService.launch(user)
+  def stop = K8sService.stopOpenMOLEPod(uuid)
 
   def changePassword(oldPassword: String, newPassword: String) =
     DB.updatePassword(uuid, newPassword, Some(oldPassword))
-
-  def stop = K8sService.stopOpenMOLEPod(uuid)
 
   def availableVersions =
     OpenMOLE.availableVersions(withSnapshot = true, history = openmole.versionHistory, min = openmole.minimumVersion, lastMajors = true)

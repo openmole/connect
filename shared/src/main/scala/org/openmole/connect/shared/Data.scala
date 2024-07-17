@@ -18,6 +18,9 @@ object Data:
   enum Role:
     case Admin, User
 
+  object EmailStatus:
+    def hasBeenChecked(s: EmailStatus) = s == EmailStatus.Checked
+
   enum EmailStatus:
     case Unchecked, Checked
 
@@ -64,6 +67,7 @@ object Data:
     name: String,
     firstName: String,
     email: String,
+    emailStatus: EmailStatus,
     institution: String,
     role: Role,
     status: UserStatus,

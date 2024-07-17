@@ -3,7 +3,7 @@ package org.openmole.connect.shared
 import endpoints4s.{algebra, circe}
 import io.circe.*
 import io.circe.generic.auto.*
-import org.openmole.connect.shared.Data.{PodInfo, User, RegisterUser}
+import org.openmole.connect.shared.Data.{EmailStatus, PodInfo, RegisterUser, User}
 
 
 trait AdminAPI
@@ -104,6 +104,12 @@ trait AdminAPI
   val setFirstName: Endpoint[(String, String), Unit] =
     endpoint(
       post(path / "set-first-name", jsonRequest[(String, String)]),
+      ok(jsonResponse[Unit])
+    )
+
+  val setEmailStatus: Endpoint[(String, EmailStatus), Unit] =
+    endpoint(
+      post(path / "set-email-status", jsonRequest[(String, EmailStatus)]),
       ok(jsonResponse[Unit])
     )
 
