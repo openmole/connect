@@ -28,7 +28,7 @@ import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
 object ScheduledTask:
   def schedule(shutdown: Option[ConnectServer.Config.Shutdown])(using K8sService, Sender, KubeCache) =
     shutdown.foreach: s =>
-      val check = () => checkShutdown(s.days, s.remind.getOrElse(Seq()).toSet)
+      val check = () => checkShutdown(s.days, s.remind.getOrElse(Seq(1, 3, 7)).toSet)
       scheduleTask(s.checkAt.getOrElse(6), check)
 
 
