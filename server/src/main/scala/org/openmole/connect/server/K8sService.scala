@@ -205,7 +205,7 @@ object K8sService:
 
 
   def launch(user: DB.User)(using KubeCache, K8sService): Unit =
-    if K8sService.deploymentExists(user.uuid)
+    if K8sService.podExists(user.uuid)
     then
       K8sService.updateOpenMOLEPod(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
       K8sService.startOpenMOLEPod(user.uuid)
@@ -303,7 +303,7 @@ object K8sService:
 
         if proc.waitFor() == 0 then result else None
 
-  def deploymentExists(uuid: DB.UUID)(using K8sService) = podInfo(uuid).isDefined
+  def podExists(uuid: DB.UUID)(using K8sService) = podInfo(uuid).isDefined
 
   def podInfos(using K8sService): Seq[PodInfo] =
     val pods = listPods
