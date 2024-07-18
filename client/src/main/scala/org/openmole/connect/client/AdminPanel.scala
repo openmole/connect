@@ -122,7 +122,10 @@ object AdminPanel:
             UIUtils.buildInput("").amend(width := "160", `type` := "number", stepAttr := "0.01", value := user.cpu.toString)
 
           lazy val storageInput: Input =
-            UIUtils.buildInput("").amend(width := "160", `type` := "number", onChange --> storageChanged.set(true))
+            val pvcSizeSignal = Signal.fromFuture(AdminAPIClient.pvcSize(uuid).future).map:
+              case Some(Some(v)) => v.toString
+              case _ => ""
+            UIUtils.buildInput("").amend(width := "160", `type` := "number", onChange --> storageChanged.set(true), placeholder <-- pvcSizeSignal)
 
           def save(): Unit =
             val futures = ListBuffer[Future[_]]()

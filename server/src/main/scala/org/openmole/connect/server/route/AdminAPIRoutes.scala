@@ -6,7 +6,7 @@ import cats.effect.*
 import org.http4s.*
 import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.db.DB
-import org.openmole.connect.server.K8sService.KubeCache
+import org.openmole.connect.server.K8sService.{KubeCache, getPVCSize}
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.Data.{EmailStatus, UserAndPodInfo}
 
@@ -39,6 +39,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sServi
     DB.userFromUUID(uuid).foreach(u => K8sService.launch(u))
 
   def stop(uuid: String): Unit = K8sService.stopOpenMOLEPod(uuid)
+  def pvcSize(uuid: String) = K8sService.getPVCSize(uuid)
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
 
@@ -62,6 +63,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
       setName.implementedBy(impl.setName),
       setFirstName.implementedBy(impl.setFirstName),
       setInstitution.implementedBy(impl.setInstitution),
-      setEmailStatus.implementedBy(impl.setEmailStatus)
+      setEmailStatus.implementedBy(impl.setEmailStatus),
+      pvcSize.implementedBy(impl.pvcSize)
     )
 

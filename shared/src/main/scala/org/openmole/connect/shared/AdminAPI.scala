@@ -47,6 +47,12 @@ trait AdminAPI
       ok(jsonResponse[Option[Storage]])
     )
 
+  val pvcSize: Endpoint[String, Option[Int]] =
+    endpoint(
+      post(path / "pvc-size", jsonRequest[String]),
+      ok(jsonResponse[Option[Int]])
+    )
+
   val instance: Endpoint[String, Option[Data.PodInfo]] =
     endpoint(
       post(path / "instance", jsonRequest[String]),
