@@ -17,7 +17,10 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sServi
   def deleteRegisterUser(uuid: String): Unit = DB.deleteRegistering(uuid)
   def usedSpace(uuid: String): Option[Storage] = K8sService.usedSpace(uuid)
   def instance(uuid: String): Option[Data.PodInfo] = K8sService.podInfo(uuid)
-  def usersAndPodInfo: Seq[Data.UserAndPodInfo] = users.map(u=> UserAndPodInfo(u, instance(u.uuid)))
+  def usersAndPodInfo: Seq[Data.UserAndPodInfo] =
+    val podList = K8sService.listPods.flatMap(p => p.userUUID.map(_ -> p)).toMap
+    users.map(u => Data.UserAndPodInfo(u, podList.get(u.uuid)))
+
   def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
   def setRole(uuid: String, role: Data.Role) = DB.updateRole(uuid, role)
   def setMemory(uuid: String, memory: Int) = DB.updateMemory(uuid, memory)

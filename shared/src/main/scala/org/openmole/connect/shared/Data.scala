@@ -60,7 +60,7 @@ object Data:
     restarts: Option[Int],
     createTime: Option[Long],
     podIP: Option[String],
-    userEmail: Option[String])
+    userUUID: Option[String])
 
   case class User(
     uuid: String,
