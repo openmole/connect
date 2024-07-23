@@ -156,13 +156,17 @@ object DB:
 
     res.exists(_ >= 1)
 
+  def removeExpiredPasswords =
+    val deadline = tool.now - ConnectServer.Config.resetPasswordExpire * 1000
+    validationSecretTable.filter(s => s.secretType === SecretType.PasswordReset && s.creationTime < deadline).delete
+
   def addResetPassword(user: User): Secret =
     val secret = ValidationSecret(user.uuid, randomUUID, tool.now, SecretType.PasswordReset)
     val deadline = tool.now - ConnectServer.Config.resetPasswordExpire * 1000
 
     runTransaction:
       for
-        _ <- validationSecretTable.filter(s => s.secretType === SecretType.PasswordReset && s.creationTime < deadline).delete
+        _ <- removeExpiredPasswords
         _ <- validationSecretTable += secret
       yield secret.secret
 
@@ -171,6 +175,7 @@ object DB:
       runTransaction:
         val secretQuery = validationSecretTable.filter(s => s.uuid === uuid && s.validationSecret === secret && s.secretType === SecretType.PasswordReset)
         for
+          _ <- removeExpiredPasswords
           s <- secretQuery.result
           _ <- if s.nonEmpty then updatePasswordQuery(uuid, password) else DBIO.successful(())
           _ <- secretQuery.delete
