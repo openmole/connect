@@ -61,6 +61,24 @@ object Email:
         """.stripMargin)
       )
 
+  def sendResetPasswordLink(url: String, user: DB.User, validationSecret: DB.Secret)(using Sender) =
+    val link = s"$url${org.openmole.connect.shared.Data.resetPasswordRoute}?uuid=${user.uuid}&secret=${validationSecret}"
+
+    sendMail: server =>
+      MailBuilder.build(
+        From(server.from),
+        To(user.email),
+        Subject("[OpenMOLE] Password Reset"),
+        CustomHeader(Header("User-Agent", "User")),
+        HtmlBody(
+          s"""Dear ${user.firstName} ${user.name},<br/><br/>
+             |you can reset your password on the OpenMOLE service by clinking on this link (valid for ${ConnectServer.Config.resetPasswordExpire} hours):<br/>
+             |<a href="$link">$link</a><br/><br/>
+             |Best Regards
+        """.stripMargin)
+      )
+
+
   def sendValidated(user: DB.User)(using Sender) =
     sendMail: server =>
       MailBuilder.build(
@@ -68,7 +86,6 @@ object Email:
         To(user.email),
         Subject("[OpenMOLE] Account Validated"),
         CustomHeader(Header("User-Agent", "User")),
-        //TextBody("Hello!\n\nThis is a mail."),
         HtmlBody(
           s"""Dear ${user.firstName} ${user.name},<br/><br/>
              |your account as been approved on to the OpenMOLE service.<br/>

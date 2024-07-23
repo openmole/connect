@@ -32,9 +32,13 @@ import org.openmole.connect.server.db.DB
 import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
 
+
 object ConnectServer:
 
   object Config:
+    // Hours
+    val resetPasswordExpire = 24
+
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
@@ -139,6 +143,39 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                       case Some(u) => ServerContent.connectionError("User account has not been validated by an admin")
                       case None => ServerContent.connectionError("Invalid email or password")
               case None => BadRequest("Missing email or password")
+
+        case req@POST -> Root / Data.`askPasswordResetRoute` =>
+          req.decode[UrlForm]: r =>
+            r.getFirst("Email") zip r.getFirst("URL") match
+              case Some((email, url)) =>
+                def serverURL = url.reverse.dropWhile(_ != '/').reverse
+                DB.userFromEmail(email) match
+                  case Some(user) =>
+                    val secret = DB.addResetPassword(user)
+                    tool.log(serverURL)
+                    Email.sendResetPasswordLink(serverURL, user, secret)
+                    ServerContent.redirect("/")
+                  case None => ServerContent.connectionError("Unknown Email")
+              case None => BadRequest("Missing email")
+
+        case req@POST -> Root / Data.resetPasswordRoute =>
+          req.decode[UrlForm]: r =>
+            val response =
+              for
+                password <- r.getFirst("Password")
+                uuid <- r.getFirst("UUID")
+                secret <- r.getFirst("Secret")
+              yield
+                if DB.resetPassword(uuid, secret, password)
+                then ServerContent.redirect("/")
+                else ServerContent.connectionError("Invalid secret")
+
+            response.getOrElse(BadRequest("Missing param in request"))
+
+        case req@GET -> Root / Data.`resetPasswordRoute` =>
+          req.params.get("uuid") zip req.params.get("secret") match
+            case Some((uuid, secret)) => ServerContent.ok(s"""resetPassword("$uuid", "$secret")""")
+            case None => BadRequest("Expected uuid and secret")
 
         case req @ GET -> Root / Data.disconnectRoute =>
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))

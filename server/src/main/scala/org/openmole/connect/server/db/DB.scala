@@ -45,7 +45,7 @@ object DB:
 
   def userIsAdmin(u: User) = u.role == Role.Admin
   def userToData(u: User): Data.User = u.to[Data.User]
-  def userFromData(u: Data.User): Option[User] = user(u.email)
+  def userFromData(u: Data.User): Option[User] = userFromEmail(u.email)
 
   def userWithDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID)(using DockerHubCache) =
     val defaultVersion =
@@ -81,7 +81,7 @@ object DB:
   type Secret = UUID
 
   enum SecretType:
-    case Email
+    case EmailValidation, PasswordReset
 
   val dbFile = Settings.location.toScala / "db"
 
@@ -118,7 +118,7 @@ object DB:
       val createSecret =
         for
           _ <- validationSecretTable.filter(_.uuid === registerUser.uuid).delete
-          _ <- validationSecretTable += DB.ValidationSecret(registerUser.uuid, secret)
+          _ <- validationSecretTable += DB.ValidationSecret(registerUser.uuid, secret, `type` = SecretType.EmailValidation)
         yield secret
 
       val insert =
@@ -128,7 +128,6 @@ object DB:
           r <- q.result
           s <- createSecret
         yield r
-
 
       for
         ex <- r.result
@@ -143,7 +142,7 @@ object DB:
       runTransaction:
         val q1 = registerUserTable.filter(r => r.uuid === uuid).map(_.emailStatus)
         val q2 = userTable.filter(r => r.uuid === uuid).map(_.emailStatus)
-        val secretQuery = validationSecretTable.filter(s => s.uuid === uuid && s.validationSecret === secret)
+        val secretQuery = validationSecretTable.filter(s => s.uuid === uuid && s.validationSecret === secret && s.secretType === SecretType.EmailValidation)
 
         secretQuery.result.flatMap: s =>
           if s.nonEmpty
@@ -156,6 +155,28 @@ object DB:
           else DBIO.successful(Seq())
 
     res.exists(_ >= 1)
+
+  def addResetPassword(user: User): Secret =
+    val secret = ValidationSecret(user.uuid, randomUUID, tool.now, SecretType.PasswordReset)
+    val deadline = tool.now - ConnectServer.Config.resetPasswordExpire * 1000
+
+    runTransaction:
+      for
+        _ <- validationSecretTable.filter(s => s.secretType === SecretType.PasswordReset && s.creationTime < deadline).delete
+        _ <- validationSecretTable += secret
+      yield secret.secret
+
+  def resetPassword(uuid: DB.UUID, secret: Secret, password: Password)(using Salt, Authentication.UserCache): Boolean =
+    val success =
+      runTransaction:
+        val secretQuery = validationSecretTable.filter(s => s.uuid === uuid && s.validationSecret === secret && s.secretType === SecretType.PasswordReset)
+        for
+          s <- secretQuery.result
+          _ <- if s.nonEmpty then updatePasswordQuery(uuid, password) else DBIO.successful(())
+          _ <- secretQuery.delete
+        yield s.nonEmpty
+    if success then summon[Authentication.UserCache].user.invalidate(uuid)
+    success
 
   def deleteRegistering(uuid: UUID): Int =
     runTransaction:
@@ -179,7 +200,7 @@ object DB:
       userTable.filter(u => u.uuid === uuid).result
     .headOption
 
-  def user(email: Email): Option[User] =
+  def userFromEmail(email: Email): Option[User] =
     runTransaction:
       userTable.filter(u => u.email === email).result
     .headOption
@@ -261,18 +282,21 @@ object DB:
 
   def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 
+  def updatePasswordQuery(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt) =
+    val q =
+      for
+        user <- userTable
+        if user.uuid === uuid &&
+          (old match
+            case Some(pwd) => user.password === salted(pwd)
+            case None => true)
+      yield user.password
+    q.update(salted(password)).map(_ > 0)
+
   def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.UserCache): Boolean =
     summon[Authentication.UserCache].user.invalidate(uuid)
     runTransaction:
-      val q =
-        for
-          user <- userTable
-          if user.uuid === uuid &&
-            (old match
-              case Some(pwd) => user.password === salted(pwd)
-              case None => true)
-        yield user.password
-      q.update(salted(password)).map(_ > 0)
+      updatePasswordQuery(uuid, password, old)
 
   def deleteUser(uuid: UUID)(using Authentication.UserCache) =
     summon[Authentication.UserCache].user.invalidate(uuid)

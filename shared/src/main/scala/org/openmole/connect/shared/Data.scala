@@ -4,6 +4,8 @@ object Data:
   val connectionRoute = "connection"
   val registerRoute = "register"
   val validateRoute = "validate"
+  val askPasswordResetRoute = "ask-password-reset"
+  val resetPasswordRoute = "password-reset"
 
   val openAPIRoute = "api"
   val userAPIRoute = "user"
