@@ -88,7 +88,8 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "dev.optics" %% "monocle-macro" % "3.2.0",
     "com.google.guava" % "guava" % "33.2.1-jre",
     "com.github.eikek" %% "emil-common" % "0.15.0",  // the core library
-    "com.github.eikek" %% "emil-javamail" % "0.15.0" // implementation module
+    "com.github.eikek" %% "emil-javamail" % "0.15.0", // implementation module
+    "org.slf4j" % "slf4j-jdk14" % "2.0.13"
 
   )
 ) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
