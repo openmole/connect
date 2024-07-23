@@ -39,8 +39,8 @@ import slick.jdbc.meta.MTable
 
 object DB:
 
-  import DBSchemaV2.{*, given}
-  export DBSchemaV2.{User, RegisterUser, ValidationSecret}
+  import DBSchemaV3.{*, given}
+  export DBSchemaV3.{User, RegisterUser, ValidationSecret}
   val version = dbVersion
 
   def userIsAdmin(u: User) = u.role == Role.Admin
@@ -79,6 +79,9 @@ object DB:
   type Storage = Int
   type Memory = Int
   type Secret = UUID
+
+  enum SecretType:
+    case Email
 
   val dbFile = Settings.location.toScala / "db"
 
@@ -298,7 +301,7 @@ object DB:
   val databaseInfoTable = TableQuery[DatabaseInfo]
 
   case class Upgrade(upgrade: DBIO[Unit], version: Int)
-  def upgrades: Seq[Upgrade] = Seq(DBSchemaV1.upgrade, DBSchemaV2.upgrade)
+  def upgrades: Seq[Upgrade] = Seq(DBSchemaV1.upgrade, DBSchemaV2.upgrade, DBSchemaV3.upgrade)
 
   def initDB()(using Salt, DockerHubCache) =
     runTransaction:

@@ -268,7 +268,7 @@ object K8sService:
       val deleteOptions = DeleteOptions(propagationPolicy = Some(DeletePropagation.Foreground))
       k8s.usingNamespace(Namespace.openmole).deleteWithOptions[Deployment](uuid.value, deleteOptions)
 
-  private def podInfo(uuid: DB.UUID, podList: List[PodInfo])(using K8sService): Option[PodInfo] =
+  private def podInfo(uuid: DB.UUID, podList: List[PodInfo]): Option[PodInfo] =
     podList.find { _.name.contains(uuid.value) }
 
   // This method was kept to test the LabelSelector method. Is works but requires more API requests => longer

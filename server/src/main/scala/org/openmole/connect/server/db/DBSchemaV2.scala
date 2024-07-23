@@ -1,28 +1,19 @@
 package org.openmole.connect.server.db
 
-import better.files.*
-import io.github.arainko.ducktape.*
 import org.openmole.connect.server.*
-import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.tool.*
 import org.openmole.connect.shared.Data
 import slick.*
 import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
-import slick.model.ForeignKey
-
-import java.sql.DriverManager
-import java.text.SimpleDateFormat
-import java.util
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
 
 object DBSchemaV2:
+  import Data.*
+  import DB.{Email, Password, Institution, Version, Memory, UUID, Secret, Upgrade, Storage, randomUUID}
 
   // USERS
   def dbVersion = 2
 
-  import DB.*
 
   given BaseColumnType[EmailStatus] = MappedColumnType.base[EmailStatus, Int] (
     s => s.ordinal,
