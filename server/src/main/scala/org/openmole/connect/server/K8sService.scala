@@ -80,7 +80,7 @@ object K8sService:
       containerStatus.map(_.restartCount),
       pod.metadata.creationTimestamp.map(_.toEpochSecond),
       pod.status.flatMap(_.podIP),
-      pod.metadata.labels.get("podName")
+      pod.metadata.labels.get("user") orElse pod.metadata.labels.get("podName")
     )
 
   type KubeAction[+T] = KubernetesClient => T
@@ -90,22 +90,22 @@ object K8sService:
     try kubeAction(k8s)
     finally k8s.close
 
-  def getIngress(using K8sService) = withK8s: k8s =>
-    val allIngressMapFut = k8s.listInNamespace[IngressList]("ingress-nginx")
-    val allIngressFuture = allIngressMapFut.map { allIngressMap => allIngressMap.items }
-
-    def listIngress(ingresses: List[Ingress]) = ingresses.headOption
-
-    allIngressFuture.map { ingresses => listIngress(ingresses) }.await
-
-  def ingressIP(using K8sService): Option[String] =
-    for
-      i <- getIngress
-      s <- i.status
-      b <- s.loadBalancer
-      ig <- b.ingress.headOption
-      ip <- ig.ip
-    yield ip
+//  def getIngress(using K8sService) = withK8s: k8s =>
+//    val allIngressMapFut = k8s.listInNamespace[IngressList]("ingress-nginx")
+//    val allIngressFuture = allIngressMapFut.map { allIngressMap => allIngressMap.items }
+//
+//    def listIngress(ingresses: List[Ingress]) = ingresses.headOption
+//
+//    allIngressFuture.map { ingresses => listIngress(ingresses) }.await
+//
+//  def ingressIP(using K8sService): Option[String] =
+//    for
+//      i <- getIngress
+//      s <- i.status
+//      b <- s.loadBalancer
+//      ig <- b.ingress.headOption
+//      ip <- ig.ip
+//    yield ip
 
   def createOpenMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
@@ -173,7 +173,6 @@ object K8sService:
         .addLabel(openMOLELabel)
         .addLabel("podName" -> podName)
         .addLabel("user" -> uuid)
-
 
       val desiredCount = 1
 
