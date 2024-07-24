@@ -27,7 +27,6 @@ object APIClient
     with xhr.JsonEntitiesFromCodecs:
   lazy val settings: EndpointsSettings = EndpointsSettings().withBaseUri(Some(Data.openAPIRoute))
 
-
 object UserAPIClient
   extends UserAPI
     with xhr.future.Endpoints

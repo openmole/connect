@@ -111,26 +111,6 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               else NotFound("validation not found")
             case None => BadRequest("Expected uuid and secret")
 
-        case req@POST -> Root / Data.registerRoute =>
-          req.decode[UrlForm]: r =>
-            val response =
-              for
-                email <- r.getFirst("Email")
-                password <- r.getFirst("Password")
-                name <- r.getFirst("Name")
-                firstName <- r.getFirst("First name")
-                institution <- r.getFirst("Institution")
-                url <- r.getFirst("URL")
-              yield
-                DB.addRegisteringUser(DB.RegisterUser(name, firstName, email, DB.salted(password), institution)) match
-                  case Some((inDB, secret)) =>
-                    def serverURL = url.reverse.dropWhile(_ != '/').reverse
-                    Email.sendValidationLink(serverURL, inDB, secret)
-                    ServerContent.ok(ServerContent.connectionFunction(None))
-                  case None => ServerContent.connectionError("A user with this email is already registered")
-
-            response.getOrElse(BadRequest("Missing param in request"))
-
         case req@POST -> Root / Data.connectionRoute =>
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
@@ -183,6 +163,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
         case req @ GET -> Root / Data.impersonateRoute =>
           ServerContent.authenticated(req): admin =>
+          //onMountBind(ctx => ctx.thisNode.ref.elements.namedItem("URL"). := "test")
             req.params.get("uuid") match
               case Some(uuid) =>
                 if DB.userIsAdmin(admin)

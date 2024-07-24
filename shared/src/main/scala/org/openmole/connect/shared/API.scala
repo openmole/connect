@@ -16,3 +16,9 @@ trait API
       get(path / "institutions"),
       ok(jsonResponse[Seq[String]])
     )
+
+  val signup: Endpoint[(String, String, String, String, String, String), Option[String]] =
+    endpoint(
+      post(path / "signup", jsonRequest[(String, String, String, String, String, String)]),
+      ok(jsonResponse[Option[String]])
+    )

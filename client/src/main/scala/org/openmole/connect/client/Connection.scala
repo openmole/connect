@@ -51,7 +51,9 @@ object Connection:
       else None
 
     def validPassword(password: String, password2: String) =
-      if password == password2 && password.nonEmpty then None else Some("Passwords are different")
+      if (password.isEmpty || password2.isEmpty) || password == password2
+      then None
+      else Some("Passwords are different")
 
     def validNotNullString(st: String, field: String): Option[String] =
       if st.isEmpty then Some(s"${field} is mandatory") else None
@@ -67,7 +69,6 @@ object Connection:
           UIUtils.buildInput("Email"),
           UIUtils.buildInput("Password").amend(`type` := "password"),
           connectButton
-          //onMountBind(ctx => ctx.thisNode.ref.elements.namedItem("URL"). := "test")
         ),
         button("Sign Up", cls := "linkLike", onClick --> { _ => displayedForm.set(Form.SignUp) }),
         button("Lost Password", cls := "linkLike", onClick --> { _ => displayedForm.set(Form.AskPasswordReset) }),
@@ -75,71 +76,78 @@ object Connection:
       )
 
     lazy val signupForm: ReactiveHtmlElement[HTMLFormElement] =
-      val signupError: Var[Seq[Int]] = Var(0 to 4)
+      case class FormField(input: Input, error: Signal[Boolean], html: HtmlElement)
 
-      def checkFieldBlock(id: Int, field: String, checker: String => Option[String], inputAttributes: Seq[Modifier[HtmlElement]] = Seq()) =
-        val errorMsg: Var[Option[String]] = Var(None)
-        lazy val in: Input = UIUtils.buildInput(field).amend(
-          onInput --> { _ =>
-            errorMsg.set {
-              val em = checker(in.ref.value)
-              signupError.update: se =>
-                (em match
-                  case Some(_) => se :+ id
-                  case _ => se.filterNot(_ == id)
-                  ).distinct
+      def checkFieldBlock(field: String, checker: String => Option[String], inputAttributes: Seq[Modifier[HtmlElement]] = Seq()) =
+        val error: Var[Option[String]] = Var(None)
 
-              em
+        lazy val in: Input =
+          UIUtils.buildInput(field).amend(
+            onInput --> { _ =>
+              error.set(checker(in.ref.value))
             }
-          }).amend(inputAttributes)
+          ).amend(inputAttributes)
 
-        div(Css.centerRowFlex,
-          div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))),
-          in
-        )
+        val html =
+          div(Css.centerRowFlex,
+            div(cls := "inputError", child <-- error.signal.map(_.getOrElse(""))),
+            in
+          )
+
+        FormField(in, error.signal.map(_.isDefined), html)
 
       def checkPasswordBlock(checker: (String, String) => Option[String]) =
         val errorMsg: Var[Option[String]] = Var(None)
         val in: Input = UIUtils.buildInput("Password").amend(`type` := "password")
         lazy val in2: Input = UIUtils.buildInput("Confirm password").amend(`type` := "password",
           onInput --> { _ =>
-            errorMsg.set {
-              val em = checker(in.ref.value, in2.ref.value)
-              signupError.update { se =>
-                (em match
-                  case Some(_) => se :+ 4
-                  case _ => se.filterNot(_ == 4)
-                  ).distinct
-              }
-              em
-            }
+            errorMsg.set(checker(in.ref.value, in2.ref.value))
           }
         )
-        (div(Css.centerRowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in),
-          div(Css.centerRowFlex, div(cls := "inputError", in2))
+
+        (
+          FormField(in, errorMsg.signal.map(_.isDefined), div(Css.centerRowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in)),
+          FormField(in2, Signal.fromValue(false),  div(Css.centerRowFlex, div(cls := "inputError", in2)))
         )
 
 
-      val passwds = checkPasswordBlock(validPassword)
+      val (p1, p2) = checkPasswordBlock(validPassword)
+      val firstName = checkFieldBlock("First name", s => validNotNullString(s, "First name"))
+      val name = checkFieldBlock("Name", s => validNotNullString(s, "Name"))
+      val email = checkFieldBlock("Email", s => validEmail(s))
+      val institution = checkFieldBlock("Institution", s => validNotNullString(s, "Institution"), inputAttributes = Seq(listId := "institutions"))
+      val urlField = UIUtils.buildInput("URL").amend(value := document.location.toString, styleAttr := "display:none")
+
+      val all = Seq(p1, p1, firstName, name, email, institution)
+
       form(
         method := "POST",
-        action := registerRoute,
         onKeyDown --> { event => if event.keyCode == 13 then event.preventDefault() },
         div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
-          checkFieldBlock(0, "First name", (s: String) => validNotNullString(s, "First name")),
-          checkFieldBlock(1, "Name", (s: String) => validNotNullString(s, "Name")),
-          checkFieldBlock(2, "Email", (s: String) => validEmail(s)),
-          checkFieldBlock(3, "Institution", (s: String) => validNotNullString(s, "Institution"), inputAttributes = Seq(listId := "institutions")),
+          firstName.html,
+          name.html,
+          email.html,
+          institution.html,
           UIUtils.institutionsList,
-          passwds._1,
-          passwds._2,
+          p1.html,
+          p2.html,
           buttonGroup.amend(
             button("Cancel", btn_secondary, onClick --> { _ => displayedForm.set(Form.SignIn()) }),
             button("Sign up", btn_primary,
-              cls.toggle("disabled") <-- signupError.signal.map(_.nonEmpty)
+              cls.toggle("disabled") <-- Signal.combineSeq(all.map(_.error)).map(errors => errors.contains(true) || all.exists(_.input.ref.value.isEmpty)),
+              onClick.preventDefault -->
+                APIClient.signup(
+                  firstName.input.ref.value,
+                  name.input.ref.value,
+                  email.input.ref.value,
+                  p1.input.ref.value,
+                  institution.input.ref.value,
+                  urlField.ref.value
+                ).future.foreach: m =>
+                  displayedForm.set(Form.SignIn(m))
             )
           ),
-          UIUtils.buildInput("URL").amend(value := document.location.toString, styleAttr := "display:none"),
+          urlField
         )
       )
 
