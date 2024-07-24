@@ -22,3 +22,15 @@ trait API
       post(path / "signup", jsonRequest[(String, String, String, String, String, String)]),
       ok(jsonResponse[Option[String]])
     )
+
+  val askResetPassword: Endpoint[(String, String), Option[String]] =
+    endpoint(
+      post(path / "ask-reset-password", jsonRequest[(String, String)]),
+      ok(jsonResponse[Option[String]])
+    )
+
+  val resetPassword: Endpoint[(String, String, String), Option[String]] =
+    endpoint(
+      post(path / "reset-password", jsonRequest[(String, String, String)]),
+      ok(jsonResponse[Option[String]])
+    )

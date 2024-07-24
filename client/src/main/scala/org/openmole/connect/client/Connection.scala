@@ -45,20 +45,27 @@ object Connection:
   def page(initialForm: Form) =
     val displayedForm: Var[Form] = Var(initialForm)
 
-    def validEmail(email: String): Option[String] =
-      if """^[-a-z0-9!#$%&'*+/=?^_`{|}~]+(\.[-a-z0-9!#$%&'*+/=?^_`{|}~]+)*@([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)*(aero|arpa|asia|biz|cat|com|coop|edu|gov|info|int|jobs|mil|mobi|museum|name|net|org|pro|tel|travel|[a-z][a-z])$""".r.findFirstIn(email) == None
-      then Some("Invalid email")
-      else None
+    case class FormField(input: Input, error: Signal[Boolean], html: HtmlElement)
 
-    def validPassword(password: String, password2: String) =
-      if (password.isEmpty || password2.isEmpty) || password == password2
-      then None
-      else Some("Passwords are different")
+    def passwordBlock =
+      val p1 = Var[String]("")
+      val p2 = Var[String]("")
 
-    def validNotNullString(st: String, field: String): Option[String] =
-      if st.isEmpty then Some(s"${field} is mandatory") else None
+      val in = UIUtils.buildInput("Password").amend(`type` := "password", onInput.mapToValue --> p1)
+      val in2 = UIUtils.buildInput("Confirm password").amend(`type` := "password", onInput.mapToValue --> p2)
 
-    def signinForm(error: Option[String]) =
+      val errorMessage =
+        (p1.signal combineWith p2.signal).map: (p1, p2) =>
+          if (p1.isEmpty || p2.isEmpty) || p1 == p2
+          then None
+          else Some("Passwords are different")
+
+      (
+        FormField(in, errorMessage.map(_.isDefined), div(Css.centerRowFlex, div(cls := "inputError", child <-- errorMessage.map(_.getOrElse(""))), in)),
+        FormField(in2, Signal.fromValue(false), div(Css.centerRowFlex, div(cls := "inputError", in2)))
+      )
+
+    def signInForm(error: Option[String]) =
       val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
       div(marginTop := "120", Css.centerColumnFlex, alignItems.flexEnd,
@@ -76,8 +83,6 @@ object Connection:
       )
 
     lazy val signupForm: ReactiveHtmlElement[HTMLFormElement] =
-      case class FormField(input: Input, error: Signal[Boolean], html: HtmlElement)
-
       def checkFieldBlock(field: String, checker: String => Option[String], inputAttributes: Seq[Modifier[HtmlElement]] = Seq()) =
         val error: Var[Option[String]] = Var(None)
 
@@ -96,22 +101,17 @@ object Connection:
 
         FormField(in, error.signal.map(_.isDefined), html)
 
-      def checkPasswordBlock(checker: (String, String) => Option[String]) =
-        val errorMsg: Var[Option[String]] = Var(None)
-        val in: Input = UIUtils.buildInput("Password").amend(`type` := "password")
-        lazy val in2: Input = UIUtils.buildInput("Confirm password").amend(`type` := "password",
-          onInput --> { _ =>
-            errorMsg.set(checker(in.ref.value, in2.ref.value))
-          }
-        )
 
-        (
-          FormField(in, errorMsg.signal.map(_.isDefined), div(Css.centerRowFlex, div(cls := "inputError", child <-- errorMsg.signal.map(_.getOrElse(""))), in)),
-          FormField(in2, Signal.fromValue(false),  div(Css.centerRowFlex, div(cls := "inputError", in2)))
-        )
+      def validEmail(email: String): Option[String] =
+        if """^[-a-z0-9!#$%&'*+/=?^_`{|}~]+(\.[-a-z0-9!#$%&'*+/=?^_`{|}~]+)*@([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)*(aero|arpa|asia|biz|cat|com|coop|edu|gov|info|int|jobs|mil|mobi|museum|name|net|org|pro|tel|travel|[a-z][a-z])$""".r.findFirstIn(email) == None
+        then Some("Invalid email")
+        else None
+
+      def validNotNullString(st: String, field: String): Option[String] =
+        if st.isEmpty then Some(s"${field} is mandatory") else None
 
 
-      val (p1, p2) = checkPasswordBlock(validPassword)
+      val (p1, p2) = passwordBlock
       val firstName = checkFieldBlock("First name", s => validNotNullString(s, "First name"))
       val name = checkFieldBlock("Name", s => validNotNullString(s, "Name"))
       val email = checkFieldBlock("Email", s => validEmail(s))
@@ -122,7 +122,6 @@ object Connection:
 
       form(
         method := "POST",
-        onKeyDown --> { event => if event.keyCode == 13 then event.preventDefault() },
         div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
           firstName.html,
           name.html,
@@ -152,49 +151,52 @@ object Connection:
       )
 
     lazy val askResetPassword: ReactiveHtmlElement[HTMLFormElement] =
+      val email = UIUtils.buildInput("Email")
+      val urlField = UIUtils.buildInput("URL").amend(value := document.location.toString, styleAttr := "display:none")
+
       form(
         method := "POST",
-        action := askPasswordResetRoute,
         div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "120px",
           div(Css.centerRowFlex,
             div(),
-            UIUtils.buildInput("Email")
+            email
           ),
           buttonGroup.amend(
             button("Cancel", btn_secondary, onClick --> { _ => displayedForm.set(Form.SignIn()) }),
-            button("Ok", btn_primary)
+            button("Ok", btn_primary,
+              onClick.preventDefault -->
+                APIClient.askResetPassword(
+                  email.ref.value,
+                  urlField.ref.value
+                ).future.foreach: m =>
+                  displayedForm.set(Form.SignIn(m))
+            )
           ),
-          UIUtils.buildInput("URL").amend(value := document.location.toString, styleAttr := "display:none"),
+          urlField
         )
       )
 
     def resetPassword(uuid: String, secret: String): ReactiveHtmlElement[HTMLFormElement] =
-      val p1 = Var[String]("")
-      val p2 = Var[String]("")
-
-      def error =
-        (p1.signal combineWith p2.signal).map: (p1, p2) =>
-          p1.nonEmpty && p2.nonEmpty && p1 != p2
-
-      val in: Input = UIUtils.buildInput("Password").amend(`type` := "password", onInput.mapToValue --> p1)
-      val in2: Input = UIUtils.buildInput("Confirm password").amend(`type` := "password", onInput.mapToValue --> p2)
+      val (p1, p2) = passwordBlock
 
       form(
         method := "POST",
         action := resetPasswordRoute,
-        onKeyDown --> { event => if event.keyCode == 13 then event.preventDefault() },
         div(Css.centerColumnFlex, alignItems.flexEnd, Css.rowGap10, marginTop := "40px",
-          in,
-          in2,
+          p1.html,
+          p2.html,
           buttonGroup.amend(
             button("Cancel", btn_secondary, onClick --> { _ => displayedForm.set(Form.SignIn()) }),
-            button("Ok", btn_primary, cls.toggle("disabled") <-- error)
+            button("Ok", btn_primary, cls.toggle("disabled") <-- p1.error,
+              onClick.preventDefault -->
+                APIClient.resetPassword(
+                  p1.input.ref.value,
+                  uuid,
+                  secret
+                ).future.foreach: m =>
+                  displayedForm.set(Form.SignIn(m))
+            )
           ),
-          child <--
-            error.map:
-              case true => div("Passwords do not match", cls := "inputError")
-              case false => div("", cls := "inputError")
-          ,
           UIUtils.buildInput("UUID").amend(value := uuid, styleAttr := "display:none"),
           UIUtils.buildInput("Secret").amend(value := secret, styleAttr := "display:none")
         )
@@ -210,7 +212,7 @@ object Connection:
                 displayedForm.signal.map:
                   case Form.SignUp => signupForm
                   case Form.AskPasswordReset => askResetPassword
-                  case Form.SignIn(m) => signinForm(m)
+                  case Form.SignIn(m) => signInForm(m)
                   case Form.ResetPassword(uuid, secret) => resetPassword(uuid, secret)
             )
           )

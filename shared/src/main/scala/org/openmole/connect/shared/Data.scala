@@ -2,17 +2,15 @@ package org.openmole.connect.shared
 
 object Data:
   val connectionRoute = "connection"
-  val registerRoute = "register"
   val validateRoute = "validate"
-  val askPasswordResetRoute = "ask-password-reset"
   val resetPasswordRoute = "password-reset"
+  val disconnectRoute = "disconnect"
+  val impersonateRoute = "impersonate"
 
   val openAPIRoute = "api"
   val userAPIRoute = "user"
   val adminAPIRoute = "admin"
   val openMOLERoute = "openmole"
-  val disconnectRoute = "disconnect"
-  val impersonateRoute = "impersonate"
 
   enum UserStatus:
     case Active
