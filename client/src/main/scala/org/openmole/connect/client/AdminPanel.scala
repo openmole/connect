@@ -335,7 +335,9 @@ object AdminPanel:
       if reverse then sorted.reverse else sorted
 
     def sortClicked(s: SortColumn) =
-      if s == sortColumn.now() then sortReverse.update(!_)
+      if s == sortColumn.now()
+      then sortReverse.update(!_)
+      else sortReverse.set(false)
       sortColumn.set(s)
 
     lazy val adminTable =
