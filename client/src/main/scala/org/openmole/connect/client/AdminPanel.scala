@@ -24,7 +24,7 @@ object AdminPanel:
 
   def admin() =
     enum SortColumn:
-      case Name, Activity, Email, Institution
+      case Name, Activity, Email, Institution, FirstName
 
     val sortColumn = Var(SortColumn.Name)
     val sortReverse = Var(false)
@@ -36,7 +36,7 @@ object AdminPanel:
     val versions: Var[Seq[String]] = Var(Seq())
     val selectedUUID: Var[Option[String]] = Var(None)
 
-    case class UserInfo(show: BasicRow, expandedRow: ExpandedRow, name: String, activity: Long, email: String, institution: String)
+    case class UserInfo(show: BasicRow, expandedRow: ExpandedRow, name: String, firstName: String, activity: Long, email: String, institution: String)
 
     def updateUserInfo() =
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
@@ -280,7 +280,7 @@ object AdminPanel:
               div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
               selectedUUID.signal.map(s => s.contains(r.uuid))
             ),
-            r.name, r.created, r.email, r.institution
+            r.name, r.firstName, r.created, r.email, r.institution
           )
 
     def registeredInfos =
@@ -320,7 +320,7 @@ object AdminPanel:
                 ),
                 selectedUUID.signal.map(s => s.contains(user.uuid))
               ),
-              user.name, user.lastAccess, user.email, user.institution
+              user.name, user.firstName, user.lastAccess, user.email, user.institution
             )
 
 
@@ -331,6 +331,7 @@ object AdminPanel:
           case SortColumn.Email => users.sortBy(_.email)
           case SortColumn.Activity => users.sortBy(_.activity)
           case SortColumn.Institution => users.sortBy(_.institution)
+          case SortColumn.FirstName => users.sortBy(_.firstName)
 
       if reverse then sorted.reverse else sorted
 
@@ -342,7 +343,7 @@ object AdminPanel:
 
     lazy val adminTable =
       new UserTable(
-        Seq(span("Name", onClick --> sortClicked(SortColumn.Name), cls := "linkLike"), span("First name"), span("Email", onClick --> sortClicked(SortColumn.Email), cls := "linkLike"), span("Institution", onClick --> sortClicked(SortColumn.Institution), cls := "linkLike"), span("Activity", onClick --> sortClicked(SortColumn.Activity), cls := "linkLike"), span("Status"), span("")),
+        Seq(span("Name", onClick --> sortClicked(SortColumn.Name), cls := "linkLike"), span("First name", onClick --> sortClicked(SortColumn.FirstName), cls := "linkLike"), span("Email", onClick --> sortClicked(SortColumn.Email), cls := "linkLike"), span("Institution", onClick --> sortClicked(SortColumn.Institution), cls := "linkLike"), span("Activity", onClick --> sortClicked(SortColumn.Activity), cls := "linkLike"), span("Status"), span("")),
         (registeringInfo combineWith registeredInfos combineWith sortColumn combineWith sortReverse).map: (ru, u, s, reverse) =>
           (sort(ru, s, reverse) ++ sort(u, s, reverse)).flatMap: ui =>
             Seq(
