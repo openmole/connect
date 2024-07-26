@@ -343,7 +343,7 @@ object AdminPanel:
 
     lazy val adminTable =
       new UserTable(
-        Seq(span("Name", onClick --> sortClicked(SortColumn.Name), cls := "linkLike"), span("First name", onClick --> sortClicked(SortColumn.FirstName), cls := "linkLike"), span("Email", onClick --> sortClicked(SortColumn.Email), cls := "linkLike"), span("Institution", onClick --> sortClicked(SortColumn.Institution), cls := "linkLike"), span("Activity", onClick --> sortClicked(SortColumn.Activity), cls := "linkLike"), span("Status"), span("")),
+        Seq(span("Name", onClick --> sortClicked(SortColumn.Name), cls := "noColorLinkLike"), span("First name", onClick --> sortClicked(SortColumn.FirstName), cls := "noColorLinkLike"), span("Email", onClick --> sortClicked(SortColumn.Email), cls := "noColorLinkLike"), span("Institution", onClick --> sortClicked(SortColumn.Institution), cls := "noColorLinkLike"), span("Activity", onClick --> sortClicked(SortColumn.Activity), cls := "noColorLinkLike"), span("Status"), span("")),
         (registeringInfo combineWith registeredInfos combineWith sortColumn combineWith sortReverse).map: (ru, u, s, reverse) =>
           (sort(ru, s, reverse) ++ sort(u, s, reverse)).flatMap: ui =>
             Seq(

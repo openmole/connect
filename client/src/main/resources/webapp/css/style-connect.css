@@ -129,6 +129,14 @@
     cursor: pointer;
 }
 
+.noColorLinkLike {
+    border: none;
+    text-decoration-line: underline;
+    cursor: pointer;
+}
+
+
+
 .btnConnect {
     border: none;
     background: white;
