@@ -2,13 +2,11 @@ package org.openmole.connect.client
 
 import scaladget.bootstrapnative.Table._
 import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.features.*
 
-class UserTable(headers: Seq[String],
-                userRows: Signal[Seq[Row]]):
-
+class UserTable(headers: Seq[HtmlElement], userRows: Signal[Seq[Row]]):
   val selected: Var[Option[RowID]] = Var(None)
   val expanded: Var[Seq[RowID]] = Var(Seq())
-
 
   def updateExpanded(rowID: RowID) =
     expanded.update: e =>
@@ -34,7 +32,7 @@ class UserTable(headers: Seq[String],
 
   val render =
     table( cls := "table",
-      headerRender(Some(Header(headers))),
+      tr(headers.map(v => th(centerCell, v))),
       tbody(
         children <-- userRows.split(_.rowID)(rowRender)
       )

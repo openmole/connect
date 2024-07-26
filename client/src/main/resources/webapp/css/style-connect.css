@@ -126,6 +126,7 @@
     background: white;
     text-decoration-line: underline;
     color: #007bff;
+    cursor: pointer;
 }
 
 .btnConnect {

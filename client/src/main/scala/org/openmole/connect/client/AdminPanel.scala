@@ -12,7 +12,7 @@ import scaladget.bootstrapnative.Selector
 import scaladget.bootstrapnative.bsn.{toggle, *}
 import scaladget.tools.*
 import ConnectUtils.*
-import org.openmole.connect.client.UIUtils.DetailedInfo
+import org.openmole.connect.client.UIUtils.{DetailedInfo, statusLine}
 import org.openmole.connect.shared.Data.PodInfo.Status.Terminated
 import org.openmoleconnect.client.Css
 
@@ -21,7 +21,13 @@ import scala.concurrent.Future
 
 object AdminPanel:
 
+
   def admin() =
+    enum SortColumn:
+      case Name, Activity, Email, Institution
+
+    val sortColumn = Var(SortColumn.Name)
+    val sortReverse = Var(false)
 
     case class Pod(podInfo: Var[Option[PodInfo]], storage: Var[Option[Storage]])
     val pods = Var(Map[String, Pod]())
@@ -30,7 +36,7 @@ object AdminPanel:
     val versions: Var[Seq[String]] = Var(Seq())
     val selectedUUID: Var[Option[String]] = Var(None)
 
-    case class UserInfo(show: BasicRow, expandedRow: ExpandedRow)
+    case class UserInfo(show: BasicRow, expandedRow: ExpandedRow, name: String, activity: Long, email: String, institution: String)
 
     def updateUserInfo() =
       AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
@@ -273,7 +279,8 @@ object AdminPanel:
             ExpandedRow(
               div(height := "150", display.flex, justifyContent.center, registeringUserBlock(r)),
               selectedUUID.signal.map(s => s.contains(r.uuid))
-            )
+            ),
+            r.name, r.created, r.email, r.institution
           )
 
     def registeredInfos =
@@ -312,15 +319,30 @@ object AdminPanel:
                         then AdminAPIClient.usedSpace(user.uuid).future.foreach(pod.storage.set)
                 ),
                 selectedUUID.signal.map(s => s.contains(user.uuid))
-              )
+              ),
+              user.name, user.lastAccess, user.email, user.institution
             )
 
 
+    def sort(users: Seq[UserInfo], s: SortColumn, reverse: Boolean) =
+      val sorted =
+        s match
+          case SortColumn.Name => users.sortBy(_.name)
+          case SortColumn.Email => users.sortBy(_.email)
+          case SortColumn.Activity => users.sortBy(_.activity)
+          case SortColumn.Institution => users.sortBy(_.institution)
+
+      if reverse then sorted.reverse else sorted
+
+    def sortClicked(s: SortColumn) =
+      if s == sortColumn.now() then sortReverse.update(!_)
+      sortColumn.set(s)
+
     lazy val adminTable =
       new UserTable(
-        Seq("Name", "First name", "Email", "Institution", "Activity","Status", ""),
-        (registeringInfo combineWith registeredInfos).map: (ru, u) =>
-          (ru ++ u).flatMap: ui =>
+        Seq(span("Name", onClick --> sortClicked(SortColumn.Name), cls := "linkLike"), span("First name"), span("Email", onClick --> sortClicked(SortColumn.Email), cls := "linkLike"), span("Institution", onClick --> sortClicked(SortColumn.Name), cls := "linkLike"), span("Activity", onClick --> sortClicked(SortColumn.Activity), cls := "linkLike"), span("Status"), span("")),
+        (registeringInfo combineWith registeredInfos combineWith sortColumn combineWith sortReverse).map: (ru, u, s, reverse) =>
+          (sort(ru, s, reverse) ++ sort(u, s, reverse)).flatMap: ui =>
             Seq(
               ui.show,
               ui.expandedRow
