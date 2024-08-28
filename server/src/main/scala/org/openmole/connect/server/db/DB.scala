@@ -53,7 +53,7 @@ object DB:
         OpenMOLE.availableVersions(withSnapshot = true).headOption
       .getOrElse("latest")
 
-    User(name, firstName, email, emailStatus, password, institution, defaultVersion, 2048, 2, 1024, now, now, role, status, uuid)
+    User(name, firstName, email, emailStatus, password, institution, defaultVersion, 2048, 4, 1024, now, now, role, status, uuid)
 
   def registerUserToData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
   def registerUserFromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
