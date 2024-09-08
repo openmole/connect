@@ -63,9 +63,8 @@ object JWT:
     def inOneMonth = tool.now + 2592000000L
 
     def hasExpired(token: String)(using secret: Secret): Option[JwtClaim] =
-      Jwt.decode(token, secret, Seq(JWT.algorithm)).toOption.filter { claim =>
+      Jwt.decode(token, secret, Seq(JWT.algorithm)).toOption.filter: claim =>
         hasExpired(claim.expiration.get)
-      }
 
     def hasExpired(time: Long): Boolean =
       time > tool.now

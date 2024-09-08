@@ -6,14 +6,13 @@ import cats.effect.*
 import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import org.apache.commons.lang3.exception.ExceptionUtils
-import org.apache.hc.client5.http.classic.methods.{HttpDelete, HttpGet, HttpPost}
+import org.apache.hc.client5.http.classic.methods.{ClassicHttpRequests, HttpDelete, HttpGet, HttpPost}
 import org.http4s.*
 import org.http4s.blaze.server.*
 import org.http4s.dsl.io.*
 import org.http4s.headers.*
 import org.http4s.implicits.*
 import org.http4s.server.*
-import org.openmole.connect.server.ServerContent.connectionError
 import org.openmole.connect.shared.Data
 import org.typelevel.ci.CIString
 import pdi.jwt.*
@@ -27,6 +26,7 @@ import io.circe.generic.auto.*
 import org.apache.hc.client5.http.impl.classic.*
 import org.apache.hc.core5.http.{ConnectionReuseStrategy, ContentType}
 import org.apache.hc.core5.http.io.entity.InputStreamEntity
+import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
 import org.openmole.connect.server.db.DB
 
 import java.net.URLDecoder
@@ -112,6 +112,10 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             case None => BadRequest("Expected uuid and secret")
 
         case req@POST -> Root / Data.connectionRoute =>
+          def connectionError(error: String) =
+            Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(Some(error))).render)
+              .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+
           req.decode[UrlForm]: r =>
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>
@@ -119,9 +123,9 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                   case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
                   case None =>
                     DB.registerUser(email) match
-                      case Some(u) if u.emailStatus == Data.EmailStatus.Unchecked => ServerContent.connectionError("User email has not been validated and the account has not been validated by an admin")
-                      case Some(u) => ServerContent.connectionError("User account has not been validated by an admin")
-                      case None => ServerContent.connectionError("Invalid email or password")
+                      case Some(u) if u.emailStatus == Data.EmailStatus.Unchecked => connectionError("User email has not been validated and the account has not been validated by an admin")
+                      case Some(u) => connectionError("User account has not been validated by an admin")
+                      case None => connectionError("Invalid email or password")
               case None => BadRequest("Missing email or password")
 
         case req@GET -> Root / Data.`resetPasswordRoute` =>
@@ -175,7 +179,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               Forbidden(s"User ${user.name} is not admin")
 
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
-          ServerContent.authenticated(req): user =>
+          ServerContent.authenticated(req, challenge = true): user =>
             K8sService.podIP(user.uuid) match
               case Some(ip) =>
                 val openmoleURL = s"http://$ip:80"
@@ -184,17 +188,16 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                 def authority =
                   Uri.Authority(host = Uri.Host.unsafeFromString(openmoleURI.getHost), port = Some(openmoleURI.getPort))
 
-                val uri =
+                val forwardURI =
                   def path = Path(req.uri.path.segments.drop(1))
-
                   def scheme = Uri.Scheme.unsafeFromString(openmoleURI.getScheme)
-
                   req.uri.copy(authority = Some(authority), scheme = Some(scheme)).withPath(path).toString
 
-                def forwadedHeaders(req: Request[IO]) =
+                def forwardedHeaders(req: Request[IO]) =
                   val filteredHeaders = Set(CIString("Content-Length"))
-
-                  req.headers.headers.filter(h => !filteredHeaders.contains(h.name))
+                  req.headers.headers.filter(h => !filteredHeaders.contains(h.name)) ++ Seq(
+                    Header.Raw(CIString("X-Forwarded-URI"), req.uri.renderString)
+                  )
 
                 def response(forwardResponse: CloseableHttpResponse) =
                   def forwardStatus = Status.fromInt(forwardResponse.getCode).toTry.get
@@ -203,23 +206,28 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                     val hs: Seq[Header.ToRaw] = forwardResponse.getHeaders.map(h => h.getName -> h.getValue: Header.ToRaw).toSeq
                     r.putHeaders(hs: _*).withStatus(forwardStatus)
 
-                req.method match
-                  case p@POST =>
+                val fr =
+                  req.method match
+                    case GET => Some(ClassicRequestBuilder.get(forwardURI).build())
+                    case POST => Some(ClassicRequestBuilder.post(forwardURI).build())
+                    case DELETE => Some(ClassicRequestBuilder.delete(forwardURI).build())
+                    case OPTIONS => Some(ClassicRequestBuilder.options(forwardURI).build())
+                    case PUT => Some(ClassicRequestBuilder.put(forwardURI).build())
+                    case HEAD => Some(ClassicRequestBuilder.head(forwardURI).build())
+                    case Method.MOVE => Some(ClassicRequestBuilder.create("MOVE").setUri(forwardURI).build())
+                    case Method.MKCOL => Some(ClassicRequestBuilder.create("MKCOL").setUri(forwardURI).build())
+                    case Method.PROPFIND => Some(ClassicRequestBuilder.create("PROPFIND").setUri(forwardURI).build())
+                    case _ => None
+
+                fr match
+                  case Some(fr) =>
                     val res = fs2.io.toInputStreamResource(req.body).use: is =>
-                      val post = new HttpPost(uri)
-                      post.setEntity(new InputStreamEntity(is, null))
-                      forwadedHeaders(req).foreach(h => post.setHeader(h.name.toString, h.value))
-                      response(httpClient.execute(post))
+                      fr.setEntity(new InputStreamEntity(is, null))
+                      forwardedHeaders(req).foreach(h => fr.setHeader(h.name.toString, h.value))
+                      response(httpClient.execute(fr))
                     res
-                  case p@GET =>
-                    val get = new HttpGet(uri)
-                    forwadedHeaders(req).foreach(h => get.setHeader(h.name.toString, h.value))
-                    response(httpClient.execute(get))
-                  case p@DELETE =>
-                    val delete = new HttpDelete(uri)
-                    forwadedHeaders(req).foreach(h => delete.setHeader(h.name.toString, h.value))
-                    response(httpClient.execute(delete))
-                  case r => NotImplemented(s"Method ${r.method.name} is not supported by openmole-connect yet")
+                  case None =>
+                    NotImplemented(s"Method ${req.method.name} is not supported by openmole-connect yet")
               case None => NotFound("OpenMOLE instance is not running")
 
         case req@GET -> Root / "openmole" => SeeOther(Location(Uri.unsafeFromString("openmole/")))
@@ -263,16 +271,16 @@ object ServerContent:
       val f = new File(webapp, s"fonts/$path")
       StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
 
-  def connectionError(error: String) =
-    Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(Some(error))).render)
-      .map(_.withContentType(`Content-Type`(MediaType.text.html)))
-
-  def authenticated[T](req: Request[IO])(using JWT.Secret, Authentication.UserCache)(f: DB.User => T) =
+  def authenticated[T](req: Request[IO], challenge: Boolean = false)(using JWT.Secret, Authentication.UserCache, DB.Salt)(f: DB.User => T) =
     Authentication.authenticatedUser(req) match
       case Some(user) => f(user)
       case None =>
-        Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(None)).render)
-          .map(_.withContentType(`Content-Type`(MediaType.text.html)))
+        if challenge
+        then Unauthorized.apply(`WWW-Authenticate`(Challenge("Basic", "OpenMOLE")))
+        else
+          Forbidden.apply(ServerContent.someHtml(ServerContent.connectionFunction(None)).render).map(
+            _.withContentType(`Content-Type`(MediaType.text.html))
+          )
 
 
   def ok(jsCall: String) =
