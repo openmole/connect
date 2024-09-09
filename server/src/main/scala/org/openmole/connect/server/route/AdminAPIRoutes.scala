@@ -27,6 +27,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sServi
   def setCPU(uuid: String, cpu: Double) = DB.updateCPU(uuid, cpu)
   def setStorage(uuid: String, space: Int) = K8sService.updateOpenMOLEPersistentVolumeStorage(uuid, space)
   def setInstitution(uuid: String, institution: String) = DB.updateInstitution(uuid, institution)
+  def setEmail(uuid: String, email: String) = DB.updateEmail(uuid, email)
   def setFirstName(uuid: String, firstName: String) = DB.updateFirstName(uuid, firstName)
   def setName(uuid: String, name: String) = DB.updateName(uuid, name)
   def setEmailStatus(uuid: String, s: EmailStatus) = DB.updateEmailStatus(uuid, s)
@@ -63,6 +64,7 @@ class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with Admin
       setName.implementedBy(impl.setName),
       setFirstName.implementedBy(impl.setFirstName),
       setInstitution.implementedBy(impl.setInstitution),
+      setEmail.implementedBy(impl.setEmail),
       setEmailStatus.implementedBy(impl.setEmailStatus),
       pvcSize.implementedBy(impl.pvcSize)
     )

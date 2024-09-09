@@ -101,6 +101,12 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
+  val setEmail: Endpoint[(String, String), Unit] =
+    endpoint(
+      post(path / "set-email", jsonRequest[(String, String)]),
+      ok(jsonResponse[Unit])
+    )
+
   val setName: Endpoint[(String, String), Unit] =
     endpoint(
       post(path / "set-name", jsonRequest[(String, String)]),

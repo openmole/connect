@@ -93,7 +93,8 @@ object AdminPanel:
           lazy val firstNameInput: Input = UIUtils.buildInput(user.firstName).amend(width := "400px")
           lazy val nameInput: Input = UIUtils.buildInput(user.name).amend(width := "400px")
           lazy val institutionInput: Input = UIUtils.buildInput(user.institution).amend(width := "400px", listId := "institutions")
-
+          lazy val emailInput: Input = UIUtils.buildInput(user.email).amend(width := "400px")
+          
           lazy val passwordInput: Input = UIUtils.buildInput("New password").amend(
             `type` := "password",
             cls := "inPwd",
@@ -151,6 +152,10 @@ object AdminPanel:
             val institution = institutionInput.ref.value
             if institution.nonEmpty
             then futures += AdminAPIClient.setInstitution((uuid, institution)).future
+            
+            val email = emailInput.ref.value
+            if email.nonEmpty
+            then futures += AdminAPIClient.setEmail((uuid, email)).future
 
             selectedRole.now().foreach: role =>
               futures += AdminAPIClient.setRole((uuid, role)).future
@@ -191,6 +196,8 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", "First Name"),
                 div(Css.centerRowFlex, cls := "settingElement", "Last Name"),
                 div(Css.centerRowFlex, cls := "settingElement", "Institution"),
+                div(Css.centerRowFlex, cls := "settingElement", "Email"),
+
 
                 div(Css.centerRowFlex, cls := "settingElement", "Role"),
                 div(Css.centerRowFlex, cls := "settingElement", "Email Status"),
@@ -206,6 +213,7 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", nameInput),
                 div(Css.centerRowFlex, cls := "settingElement", institutionInput),
                 UIUtils.institutionsList,
+                div(Css.centerRowFlex, cls := "settingElement", emailInput),
 
                 div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
                 div(Css.centerRowFlex, cls := "settingElement", emailStatusChanger.selector),

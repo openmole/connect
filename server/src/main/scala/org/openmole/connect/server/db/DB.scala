@@ -270,6 +270,10 @@ object DB:
     summon[Authentication.UserCache].userUUID.invalidate(uuid)
     runTransaction(userTable.filter(_.uuid === uuid).map(_.institution).update(institution))
 
+  def updateEmail(uuid: UUID, email: String)(using Authentication.UserCache) =
+    summon[Authentication.UserCache].userUUID.invalidate(uuid)
+    runTransaction(userTable.filter(_.uuid === uuid).map(_.email).update(email))
+
   def updateRole(uuid: UUID, role: Role)(using Authentication.UserCache) =
     summon[Authentication.UserCache].userUUID.invalidate(uuid)
     runTransaction:
