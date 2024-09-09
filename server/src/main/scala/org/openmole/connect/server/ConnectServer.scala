@@ -40,17 +40,20 @@ object ConnectServer:
     val resetPasswordExpire = 24
 
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
+
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
+
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
+
     case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
 
   case class Config(
-    salt: String,
-    secret: String,
-    kube: Config.Kube,
-    openmole: Config.OpenMOLE,
-    smtp: Option[Config.SMTP] = None,
-    shutdown: Option[Config.Shutdown] = None)
+                     salt: String,
+                     secret: String,
+                     kube: Config.Kube,
+                     openmole: Config.OpenMOLE,
+                     smtp: Option[Config.SMTP] = None,
+                     shutdown: Option[Config.Shutdown] = None)
 
   def read(file: File): Config =
     import better.files.*
@@ -66,11 +69,17 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
+
   given salt: DB.Salt = DB.Salt(config.salt)
+
   given authenticationCache: Authentication.UserCache = Authentication.UserCache()
+
   given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
+
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
+
   given K8sService = k8s
+
   given Email.Sender = Email.Sender(config.smtp)
 
   val httpClient =
@@ -99,7 +108,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             if r.nonEmpty
             then
               def emails = DB.admins.map(_.email)
-              Email.sendNotification(emails, s"${r.size} user waiting for validation",s"A user mail has been checked. ${r.size} waiting for validation.")
+
+              Email.sendNotification(emails, s"${r.size} user waiting for validation", s"A user mail has been checked. ${r.size} waiting for validation.")
 
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
@@ -133,13 +143,13 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             case Some((uuid, secret)) => ServerContent.ok(s"""resetPassword("$uuid", "$secret")""")
             case None => BadRequest("Expected uuid and secret")
 
-        case req @ GET -> Root / Data.disconnectRoute =>
+        case req@GET -> Root / Data.disconnectRoute =>
           val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
           ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
 
-        case req @ GET -> Root / Data.impersonateRoute =>
+        case req@GET -> Root / Data.impersonateRoute =>
           ServerContent.authenticated(req): admin =>
-          //onMountBind(ctx => ctx.thisNode.ref.elements.namedItem("URL"). := "test")
+            //onMountBind(ctx => ctx.thisNode.ref.elements.namedItem("URL"). := "test")
             req.params.get("uuid") match
               case Some(uuid) =>
                 if DB.userIsAdmin(admin)
@@ -177,7 +187,14 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               adminAPI.routes.apply(apiReq).getOrElseF(NotFound())
             else
               Forbidden(s"User ${user.name} is not admin")
-
+        case req@GET -> Root / Data.downloadUserRoute =>
+          ServerContent.authenticated(req): user =>
+            if DB.userIsAdmin(user)
+            then
+              Ok(DB.dbAsCSV).map: r =>
+                r.withHeaders(org.http4s.headers.`Content-Disposition`("attachment", Map(CIString("filename") -> "users.csv")))
+            else
+              Forbidden(s"User ${user.name} is not admin")
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req, challenge = true): user =>
             K8sService.podIP(user.uuid) match
@@ -190,7 +207,9 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
 
                 val forwardURI =
                   def path = Path(req.uri.path.segments.drop(1))
+
                   def scheme = Uri.Scheme.unsafeFromString(openmoleURI.getScheme)
+
                   req.uri.copy(authority = Some(authority), scheme = Some(scheme)).withPath(path).toString
 
                 def forwardedHeaders(req: Request[IO]) =

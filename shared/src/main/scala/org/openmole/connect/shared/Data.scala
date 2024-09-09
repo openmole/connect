@@ -6,6 +6,7 @@ object Data:
   val resetPasswordRoute = "password-reset"
   val disconnectRoute = "disconnect"
   val impersonateRoute = "impersonate"
+  val downloadUserRoute = "download-users"
 
   val openAPIRoute = "api"
   val userAPIRoute = "user"
