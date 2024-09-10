@@ -30,6 +30,7 @@ object UserPanel:
     sealed trait Panel
     object FrontPage extends Panel
     object AdminPage extends Panel
+    object InfoPage extends Panel
 
     val reload: Var[Unit] = Var(())
     val podInfo: Var[Option[PodInfo]] = Var(None)
@@ -52,7 +53,7 @@ object UserPanel:
                 versions.toSeq.flatten.indexOf(user.omVersion) match
                   case -1 => 0
                   case x => x
-  
+
               Selector.options[String](
                 versions.toSeq.flatten,
                 index,
@@ -60,7 +61,7 @@ object UserPanel:
                 naming = identity,
                 decorations = Map()
               )
-  
+
             div(margin := "30",
               Css.rowFlex,
               div(styleAttr := "width: 30%;", Css.columnFlex, alignItems.flexEnd,
@@ -76,8 +77,8 @@ object UserPanel:
               ),
               versionChanger.content.signal.changes.toObservable --> selectedVersion.toObserver
             )
-            
-        div(child <-- html)    
+
+        div(child <-- html)
 
 
       def save(): Unit =
@@ -127,6 +128,17 @@ object UserPanel:
       )
 
 
+    def infoPanel() =
+
+      def webdavLocation =
+        val location = dom.document.location
+        s"${location.protocol}//${location.host}/openmole/webdav"
+
+      div(margin := "30",
+        "You can ask for more disk quota or memory on the ", a("OpenMOLE chat", href := "https://chat.openmole.org/channel/my-openmole"), ".",
+        br(), br(),
+        s"When your OpenMOLE instance is running you can access your files externally via the webdav protocol using this URL:", a(webdavLocation, href := webdavLocation),
+      )
 
     def buttons(user: User) =
       def settingButton(user: User) =
@@ -155,36 +167,29 @@ object UserPanel:
           onClick --> settings.set(AdminPage)
         )
 
-      val userButton =
+      val closeButton =
         button(
-          "User",
+          "Close",
           `type` := "button",
           cls := "btn btnUser settings",
           onClick --> settings.set(FrontPage)
         )
 
-      val cancelButton =
+      val infoButton =
         button(
-          "Cancel",
+          "Info",
           `type` := "button",
           cls := "btn btnUser settings",
-          onClick --> settings.set(FrontPage)
+          onClick --> settings.set(InfoPage)
         )
-
-//      val infoButton =
-//        button(
-//          "Info",
-//          `type` := "button",
-//          cls := "btn btnUser settings",
-//          onClick --> settings.set(InfoPage)
-//        )
 
       div(display.flex, flexDirection.row, justifyContent.start, alignItems.center,
         children <-- settings.signal.map:
-          case FrontPage if user.role == Role.Admin => Seq(settingButton(user), adminButton)
-          case AdminPage if user.role == Role.Admin => Seq(userButton)
-          case FrontPage => Seq(settingButton(user))
-          case settings: Settings =>  Seq(cancelButton, saveButton(settings))
+          case FrontPage if user.role == Role.Admin => Seq(settingButton(user), infoButton, adminButton)
+          case AdminPage if user.role == Role.Admin => Seq(closeButton)
+          case FrontPage => Seq(settingButton(user), infoButton)
+          case InfoPage => Seq(closeButton)
+          case settings: Settings =>  Seq(closeButton, saveButton(settings))
       )
 
     val mainPanel =
@@ -196,8 +201,9 @@ object UserPanel:
               div(
                 child <-- settings.signal.map:
                   case FrontPage => userPanel(u)
-                  case s: Settings => s.content 
+                  case s: Settings => s.content
                   case AdminPage => AdminPanel.admin()
+                  case InfoPage => infoPanel()
               ),
               div(s"${u.firstName} ${u.name}", marginRight := "20", fontFamily := "gi"),
               buttons(u)
