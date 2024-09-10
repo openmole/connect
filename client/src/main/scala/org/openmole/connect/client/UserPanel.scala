@@ -27,13 +27,16 @@ object UserPanel:
 
   @JSExportTopLevel("user")
   def user(): Unit =
+    sealed trait Panel
+    object FrontPage extends Panel
+    object AdminPage extends Panel
+
     val reload: Var[Unit] = Var(())
     val podInfo: Var[Option[PodInfo]] = Var(None)
     val space: Var[Option[Storage]] = Var(None)
-    val settings: Var[Option[Settings]] = Var(None)
-    val admin: Var[Boolean] = Var(false)
+    val settings: Var[Panel] = Var(FrontPage)
 
-    case class Settings(user: User):
+    case class Settings(user: User) extends Panel:
       val selectedVersion = Var[Option[String]](None)
 
       lazy val openMOLEMemoryInput: Input =
@@ -42,36 +45,39 @@ object UserPanel:
       lazy val institutionInput: Input = UIUtils.buildInput(user.institution).amend(width := "400px", listId := "institutions")
 
       def content =
-        Signal.fromFuture(UserAPIClient.availableVersions(()).future).map: versions =>
-          lazy val versionChanger =
-            val index =
-              versions.toSeq.flatten.indexOf(user.omVersion) match
-                case -1 => 0
-                case x => x
-
-            Selector.options[String](
-              versions.toSeq.flatten,
-              index,
-              Seq(cls := "btn btnUser"),
-              naming = identity,
-              decorations = Map()
+        val html =
+          Signal.fromFuture(UserAPIClient.availableVersions(()).future).map: versions =>
+            lazy val versionChanger =
+              val index =
+                versions.toSeq.flatten.indexOf(user.omVersion) match
+                  case -1 => 0
+                  case x => x
+  
+              Selector.options[String](
+                versions.toSeq.flatten,
+                index,
+                Seq(cls := "btn btnUser"),
+                naming = identity,
+                decorations = Map()
+              )
+  
+            div(margin := "30",
+              Css.rowFlex,
+              div(styleAttr := "width: 30%;", Css.columnFlex, alignItems.flexEnd,
+                div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Version"),
+                div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Memory (MB)"),
+                div(Css.centerRowFlex, cls := "settingElement", "Institution"),
+              ),
+              div(styleAttr := "width: 70%;", Css.columnFlex, alignItems.flexStart,
+                div(Css.centerRowFlex, cls := "settingElement", versionChanger.selector.amend(width := "160")),
+                div(Css.centerRowFlex, cls := "settingElement", openMOLEMemoryInput),
+                div(Css.centerRowFlex, cls := "settingElement", institutionInput),
+                institutionsList
+              ),
+              versionChanger.content.signal.changes.toObservable --> selectedVersion.toObserver
             )
-
-          div(margin := "30",
-            Css.rowFlex,
-            div(styleAttr := "width: 30%;", Css.columnFlex, alignItems.flexEnd,
-              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Version"),
-              div(Css.centerRowFlex, cls := "settingElement", "OpenMOLE Memory (MB)"),
-              div(Css.centerRowFlex, cls := "settingElement", "Institution"),
-            ),
-            div(styleAttr := "width: 70%;", Css.columnFlex, alignItems.flexStart,
-              div(Css.centerRowFlex, cls := "settingElement", versionChanger.selector.amend(width := "160")),
-              div(Css.centerRowFlex, cls := "settingElement", openMOLEMemoryInput),
-              div(Css.centerRowFlex, cls := "settingElement", institutionInput),
-              institutionsList
-            ),
-            versionChanger.content.signal.changes.toObservable --> selectedVersion.toObserver
-          )
+            
+        div(child <-- html)    
 
 
       def save(): Unit =
@@ -92,86 +98,93 @@ object UserPanel:
         Future.sequence(futures).andThen(_ => reload.set(()))
 
 
-
-    def settingButton(user: User) =
-      button(
-        `type` := "button",
-        cls := "btn btnUser settings",
-        child <--
-          settings.signal.map:
-            case Some(_) => "Cancel"
-            case None => "Settings"
-        ,
-        onClick -->
-          settings.update:
-            case Some(_) => None
-            case None => Some(Settings(user))
-      )
-
-    def saveButton =
-      button(
-       `type` := "button",
-        cls := "btn btnUser settings", "Apply",
-        onClick --> {
-          settings.now().foreach(_.save())
-          settings.set(None)
-        }
-      )
-
     def userPanel(user: User) =
       var refreshing = false
 
-      def content =
-        settings.signal.flatMap:
-          case Some(settings) => settings.content
-          case None => Signal.fromValue:
-            div(
-              EventStream.periodic(5000).toObservable -->
-                Observer: _ =>
-                  if !refreshing
-                  then
-                    refreshing = true
-                    try
-                      UserAPIClient.instance(()).future.foreach(podInfo.set)
-                      val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
-                      if space.now().isEmpty && !stopped
-                      then UserAPIClient.usedSpace(()).future.foreach(space.set)
-                    finally refreshing = false
-              ,
-              div(maxWidth := "1000",
-                ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
-                UIUtils.userInfoBlock(user, space),
-                div(
-                  child <--
-                    podInfo.signal.map(_.flatMap(_.status)).map:
-                      case Some(st) => UIUtils.openmoleBoard(None, st)
-                      case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive)
-                )
-              )
-            )
+      div(
+        EventStream.periodic(5000).toObservable -->
+          Observer: _ =>
+            if !refreshing
+            then
+              refreshing = true
+              try
+                UserAPIClient.instance(()).future.foreach(podInfo.set)
+                val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
+                if space.now().isEmpty && !stopped
+                then UserAPIClient.usedSpace(()).future.foreach(space.set)
+              finally refreshing = false
+        ,
+        div(maxWidth := "1000",
+          ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
+          UIUtils.userInfoBlock(user, space),
+          div(
+            child <--
+              podInfo.signal.map(_.flatMap(_.status)).map:
+                case Some(st) => UIUtils.openmoleBoard(None, st)
+                case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive)
+          )
+        )
+      )
 
 
-      div(child <-- content)
 
     def buttons(user: User) =
-      val adminButton =
+      def settingButton(user: User) =
         button(
-          child <-- admin.signal.map:
-            case false =>"Admin"
-            case true => "User"
-          ,
+          "Settings",
           `type` := "button",
           cls := "btn btnUser settings",
-          onClick --> admin.update(!_)
+          onClick --> settings.set(Settings(user))
         )
 
+      def saveButton(s: Settings) =
+        button(
+          `type` := "button",
+          cls := "btn btnUser settings", "Apply",
+          onClick --> {
+            s.save()
+            settings.set(FrontPage)
+          }
+        )
+
+      val adminButton =
+        button(
+          "Admin",
+          `type` := "button",
+          cls := "btn btnUser settings",
+          onClick --> settings.set(AdminPage)
+        )
+
+      val userButton =
+        button(
+          "User",
+          `type` := "button",
+          cls := "btn btnUser settings",
+          onClick --> settings.set(FrontPage)
+        )
+
+      val cancelButton =
+        button(
+          "Cancel",
+          `type` := "button",
+          cls := "btn btnUser settings",
+          onClick --> settings.set(FrontPage)
+        )
+
+//      val infoButton =
+//        button(
+//          "Info",
+//          `type` := "button",
+//          cls := "btn btnUser settings",
+//          onClick --> settings.set(InfoPage)
+//        )
 
       div(display.flex, flexDirection.row, justifyContent.start, alignItems.center,
-        children <-- (settings.signal combineWith admin.signal).map:
-          case (None, false) if user.role == Role.Admin => Seq(settingButton(user), adminButton)
-          case (None, true) if user.role == Role.Admin => Seq(adminButton)
-          case (None, _) => Seq(settingButton(user))
-          case (Some(_), _) =>  Seq(settingButton(user), saveButton)
+        children <-- settings.signal.map:
+          case FrontPage if user.role == Role.Admin => Seq(settingButton(user), adminButton)
+          case AdminPage if user.role == Role.Admin => Seq(userButton)
+          case FrontPage => Seq(settingButton(user))
+          case settings: Settings =>  Seq(cancelButton, saveButton(settings))
       )
 
     val mainPanel =
@@ -181,9 +194,10 @@ object UserPanel:
           case Some(u) =>
             UIUtils.mainPanel(
               div(
-                child <-- admin.signal.map:
-                  case false => userPanel(u)
-                  case true => AdminPanel.admin()
+                child <-- settings.signal.map:
+                  case FrontPage => userPanel(u)
+                  case s: Settings => s.content 
+                  case AdminPage => AdminPanel.admin()
               ),
               div(s"${u.firstName} ${u.name}", marginRight := "20", fontFamily := "gi"),
               buttons(u)
