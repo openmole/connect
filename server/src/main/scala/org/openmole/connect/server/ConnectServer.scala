@@ -40,11 +40,8 @@ object ConnectServer:
     val resetPasswordExpire = 24
 
     case class Kube(storageClassName: Option[String] = None, storageSize: Int)
-
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
-
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
-
     case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
 
   case class Config(
@@ -69,17 +66,11 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
-
   given salt: DB.Salt = DB.Salt(config.salt)
-
   given authenticationCache: Authentication.UserCache = Authentication.UserCache()
-
   given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
-
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
-
   given K8sService = k8s
-
   given Email.Sender = Email.Sender(config.smtp)
 
   val httpClient =
