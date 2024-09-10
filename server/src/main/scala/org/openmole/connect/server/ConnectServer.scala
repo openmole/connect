@@ -148,17 +148,12 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
           ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
 
         case req@GET -> Root / Data.impersonateRoute =>
-          ServerContent.authenticated(req): admin =>
-            //onMountBind(ctx => ctx.thisNode.ref.elements.namedItem("URL"). := "test")
+          ServerContent.authenticated(req, admin = true): admin =>
             req.params.get("uuid") match
               case Some(uuid) =>
-                if DB.userIsAdmin(admin)
-                then
-                  DB.userFromUUID(uuid) match
-                    case Some(user) => ServerContent.redirect(s"/").map(ServerContent.addJWTToken(user.uuid, user.password))
-                    case None => NotFound(s"User not found ${uuid}")
-                else
-                  Forbidden(s"User ${admin.name} is not admin")
+                DB.userFromUUID(uuid) match
+                  case Some(user) => ServerContent.redirect(s"/").map(ServerContent.addJWTToken(user.uuid, user.password))
+                  case None => NotFound(s"User not found ${uuid}")
               case None => BadRequest("No uuid parameter found")
 
         case req if req.uri.path.startsWith(Root / Data.openAPIRoute) =>
@@ -177,24 +172,22 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
             userAPI.routes.apply(apiReq).getOrElseF(NotFound())
 
         case req if req.uri.path.startsWith(Root / Data.adminAPIRoute) =>
-          ServerContent.authenticated(req): user =>
-            if DB.userIsAdmin(user)
-            then
-              val impl = AdminAPIImpl()
-              val adminAPI = new AdminAPIRoutes(impl)
-              val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
-              val apiReq = req.withUri(req.uri.withPath(apiPath))
-              adminAPI.routes.apply(apiReq).getOrElseF(NotFound())
-            else
-              Forbidden(s"User ${user.name} is not admin")
+          ServerContent.authenticated(req, admin = true): user =>
+            val impl = AdminAPIImpl()
+            val adminAPI = new AdminAPIRoutes(impl)
+            val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
+            val apiReq = req.withUri(req.uri.withPath(apiPath))
+            adminAPI.routes.apply(apiReq).getOrElseF(NotFound())
+
         case req@GET -> Root / Data.downloadUserRoute =>
-          ServerContent.authenticated(req): user =>
-            if DB.userIsAdmin(user)
-            then
-              Ok(DB.dbAsCSV).map: r =>
-                r.withHeaders(org.http4s.headers.`Content-Disposition`("attachment", Map(CIString("filename") -> "users.csv")))
-            else
-              Forbidden(s"User ${user.name} is not admin")
+          ServerContent.authenticated(req, admin = true): user =>
+            def dbAsCSV =
+              DB.users.map:u=>
+                s"${u.name},${u.email},${u.institution}"
+              .mkString("\n")
+
+            Ok(dbAsCSV).map: r =>
+              r.withHeaders(org.http4s.headers.`Content-Disposition`("attachment", Map(CIString("filename") -> "users.csv")))
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req, challenge = true): user =>
             K8sService.podIP(user.uuid) match
@@ -290,10 +283,15 @@ object ServerContent:
       val f = new File(webapp, s"fonts/$path")
       StaticFile.fromFile(f, Some(request)).getOrElseF(NotFound())
 
-  def authenticated[T](req: Request[IO], challenge: Boolean = false)(using JWT.Secret, Authentication.UserCache, DB.Salt)(f: DB.User => T) =
+  def authenticated[T](req: Request[IO], challenge: Boolean = false, admin: Boolean = false)(using JWT.Secret, Authentication.UserCache, DB.Salt)(f: DB.User => T) =
     Authentication.authenticatedUser(req) match
-      case Some(user) => f(user)
-      case None =>
+      case Some(user) =>
+        if !admin then f(user)
+        else
+          if DB.userIsAdmin(user)
+          then f(user)
+          else Forbidden(s"User ${user.name} is not admin")
+      case _ =>
         if challenge
         then Unauthorized.apply(`WWW-Authenticate`(Challenge("Basic", "OpenMOLE")))
         else

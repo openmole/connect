@@ -324,11 +324,6 @@ object DB:
 
 
   def salted(password: Password)(using salt: Salt) = tool.hash(password, Salt.value(salt))
-
-  def dbAsCSV =
-    users.map:u=>
-      s"${u.name},${u.email},${u.institution}"
-    .mkString("\n")
     
   /* Initialize database */
 
