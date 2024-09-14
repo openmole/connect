@@ -1,34 +1,305 @@
-# openmole-connect
+# OpenMOLE connect
 
-Connection portal for the OpenMOLE multi-user application
-It can be built and run locally or as a docker image.
-  
-## Locally
-### Build the javascript:
-```sh
-$ cd openmole-connect
-$ sbt
-> go // Build the client JS files and move them to the right place
+OpenMOLE connect is a server meant to be deployed in a kubernetees cluster in order to provide a multi-user [OpenMOLE](https://openmole.org) service.
+
+Here is the recepie to deploy a K3S cluster and deploy OpenMOLE connect on this cluster. 
+
+
+## Prerequisite
+
+To complete the installation of the multi-user OpenMOLE server you'll need:
+- a debian (or ubuntu) machine accesible via ssh and that is able to accept inbound connections on ports 80 and 443
+- a root account on the machine
+- a dns entry pointing to the IP of this machine
+- optionnaly an account on an SMTP mail server accesible via start tls (more could be easily supported, please can ask for it) to send the notification to the users   
+- optionally a minio server to backup the user data stored in longhorn
+
+The info needed are:
+- MASTER_HOST: the dns name of the host mochine
+- MASTER_USER: the name of the sudoer account on the machine
+- EMAIL_SERVER: the dns name of the smtp server
+- EMAIL_PORT: the port of the smtp start tls port (generally port 587)
+- EMAIL_USER: the user to login to the email server
+- EMAIL_PASSWORD: the password to login to the email server
+- EMAIL_SENDER_ADDRESS: an email sender address
+- MINIO_URL: the URL of the minio service
+
+## Deploying k3s head node
+
+Instantiate a machine and make sure to open all the ports in your security group if you are on openstack.
+
+Deploy the server node:
 ```
-### Run the server
-Simply start the server from the sbt prompt:
-```sh
-> jetty:start // Start the server
+ssh ${MASTER_USER}@${MASTER_HOST}
+sudo apt install open-iscsi # requiered for longhorn
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server" sh -s -
 ```
 
-## Build & Run from Docker
-### Build the image
-```sh
-$ cd openmole-connect
-$ sbt application/docker:publishLocal
+Test that the server works. Copy the file /etc/rancher/k3s/k3s.yaml on your machine. Change the master IP address.
+
+```
+export KUBECONFIG=$PWD/k3s.yml
+kubectl get node
 ```
 
-### Run the container
-```sh 
-run --name openmoleApplication -p $PORT:8080 openmole-connect:$VERSION --secret $SECRET --public-adress $PUBLIC_ADRESS
+## Install the dashboard
+
+Install helm
+
+```
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
 ```
 
-- *PORT* is the port for the openmole-connect application
-- *VERSION* is the docker image version
-- *SECRET* is the secret string used to signed the JWT tokens
-- *PUBLIC_ADRESSS* is the public url used as proxy to connect the openmole instances
+token.yml
+```
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+```
+
+```
+kubectl create -f token.yml
+kubectl -n kubernetes-dashboard create token admin-user
+kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
+```
+
+## Install longhorn
+
+```
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.2/deploy/longhorn.yaml
+```
+
+Accesing the longhorn UI
+
+```
+kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+```
+
+## Deploy OpenMOLE Connect
+
+Generate a sercret and a salt at random and store back them up somewhere. You may want to use `pwgen 20` to get two random strings.
+
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openmole
+  labels:
+    name: openmole
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openmole-admin-sa
+  namespace: openmole
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openmole-admin-role
+  namespace: openmole
+rules:
+- apiGroups:
+  - "*"
+  resources: 
+  - "*" #["pods", "deployments" ]
+  verbs: 
+  - "*" #["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openmole-role-binding
+  namespace: openmole
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openmole-admin-role
+subjects:
+- kind: ServiceAccount
+  name: openmole-admin-sa
+  namespace: openmole
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: openmole-storage
+  namespace: openmole
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+parameters:
+  numberOfReplicas: "1"
+  dataLocality: "best-effort"
+  staleReplicaTimeout: "2880" # 48 hours in minutes
+  fromBackup: ""
+---
+apiVersion: v1
+data:
+  config.yml: |
+    salt: "some-salt" # replace with the random salt
+    secret: "some-secret" # replace with the ranodm secret
+    kube:
+     storageClassName: openmole-storage
+     storageSize: 20480
+    openmole:
+      versionHistory: 5
+      minimumVersion: 17
+    smtp:
+      server: "smtp.mydomain.net" # replace with EMAIL_SERVER
+      port: 587 # replace with EMAIL_PORT
+      user: user # replace with EMAIL_USER
+      password: password # replace with EMAIL_PASSWORD
+      from: no-reply@mydomain.net # replace with EMAIL_SENDER_ADDRESS
+    shutdown:
+      days: 30
+      checkAt: 8
+      remind: [1, 3, 7]
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: connect-config
+  namespace: openmole
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: connect-pv-claim
+  namespace: openmole
+spec:
+  storageClassName: openmole-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openmole-connect
+  namespace: openmole
+  labels:
+    app.kubernetes.io/name: openmole-connect
+spec:
+  containers:
+  - name: openmole-connect
+    image: openmole/openmole-connect:1.0-SNAPSHOT
+    imagePullPolicy: "Always"
+    args:
+      - --config-file
+      - "/etc/connect-config/config.yml"
+    ports:
+      - containerPort: 8080
+    volumeMounts:
+      - name: connect-config
+        mountPath: "/etc/connect-config"
+        readOnly: true
+      - mountPath: "/home/demiourgos728"
+        name: connect-pv-storage
+  securityContext:
+    fsGroup: 1001
+  volumes:
+    - name: connect-config
+      configMap:
+        name: connect-config
+    - name: connect-pv-storage
+      persistentVolumeClaim:
+        claimName: connect-pv-claim
+  serviceAccountName: openmole-admin-sa
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openmole-connect-service
+  namespace: openmole
+spec:
+  selector:
+    app.kubernetes.io/name: openmole-connect
+  ports:
+    - protocol: TCP
+      port: 8080
+      nodePort: 30080
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openmole-connect-ingress
+  namespace: openmole
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+  - host: host.mydomain.ext # replace with MASTER_HOST
+    http:
+      paths:
+      - backend:
+          service:
+            name: openmole-connect-service
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - host.mydomain.ext # replace with MASTER_HOST
+    secretName: letsencrypt-prod
+```
+
+## Configure the backup
+
+You can configure a minio server to be able to backup your service.
+
+Configure the backup sercet:
+```
+echo -n <URL> | base64
+echo -n <Access Key> | base64
+echo -n <Secret Key> | base64
+--------------------------------------------------------
+echo -n http://192.168.1.66:9000/ | base64 # replace MINIO_URL
+echo -n t6dstDsYQuf7pbSj | base64
+echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: longhorn-minio-credentials
+  namespace: longhorn-system
+type: Opaque
+data:
+  AWS_ACCESS_KEY_ID: dDZkc3REc1lRdWY3cGJTag==
+  AWS_SECRET_ACCESS_KEY: UTlSUFdLeFo0YlVJcUJTenVPWTZUTGtGa1hjSHN6UlU=
+  AWS_ENDPOINTS: aHR0cDovLzE5Mi4xNjguMS42Njo5MDAwLw==
+```
+
+## Add a node to the cluster
+
+When your node is full you can add a node to the cluster.
+
+Deploy an k3s node. Find the k3s token on the head node /var/lib/rancher/k3s/server/node-token. Store it in K3S_TOKEN environment variable on the node.
+```
+sudo apt install open-iscsi # requiered for longhorn
+curl -sfL https://get.k3s.io | K3S_URL=https://${MASTER_HOST}:6443 K3S_TOKEN="${K3S_TOKEN}" sh -s - 
+```
+
+Check that you have 2 nodes now.
+
+
+
+
