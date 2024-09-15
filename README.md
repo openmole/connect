@@ -272,7 +272,7 @@ echo -n <URL> | base64
 echo -n <Access Key> | base64
 echo -n <Secret Key> | base64
 --------------------------------------------------------
-echo -n http://192.168.1.66:9000/ | base64 # replace MINIO_URL
+echo -n http://192.168.1.66:9000/ | base64 # replace with MINIO_URL
 echo -n t6dstDsYQuf7pbSj | base64
 echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64
 
