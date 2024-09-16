@@ -135,7 +135,7 @@ object UserPanel:
         s"${location.protocol}//${location.host}/openmole/webdav"
 
       div(margin := "30",
-        "You can ask for more disk quota or memory on the ", a("OpenMOLE chat", href := "https://chat.openmole.org/channel/my-openmole"), ".",
+        "You can get help on the ", a("OpenMOLE chat", href := "https://chat.openmole.org/channel/help"), ".",
         br(), br(),
         s"When your OpenMOLE instance is running you can access your files externally via the webdav protocol using this URL:", a(webdavLocation, href := webdavLocation),
       )
