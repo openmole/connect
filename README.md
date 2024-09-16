@@ -35,23 +35,22 @@ sudo apt install open-iscsi # requiered for longhorn
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server" sh -s -
 ```
 
-Test that the server works. Copy the file /etc/rancher/k3s/k3s.yaml on your machine. Change the master IP address.
+Test that the server works. Copy the file `/etc/rancher/k3s/k3s.yaml` on your machine. In the file, replace the master IP address with `MASTER_HOST` address.
 
 ```
 export KUBECONFIG=$PWD/k3s.yml
 kubectl get node
 ```
 
-## Install the dashboard
+## Optionnaly, install the dashboard
 
-Install helm
-
+Install helm:
 ```
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
 ```
 
-token.yml
+Create a file named `token.yml` on your local computer, and fill it with the following content:
 ```
 apiVersion: v1
 kind: ServiceAccount
@@ -73,20 +72,25 @@ subjects:
   namespace: kubernetes-dashboard
 ```
 
+Then you can create an token an a proxy for the dashboard:
 ```
 kubectl create -f token.yml
 kubectl -n kubernetes-dashboard create token admin-user
 kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
 ```
 
+The dashboard is accesible from within your local browser at `https://localhost:8443`.
+
 ## Install longhorn
 
+Longhorn is the storage system used by connect.
+
+Install longhorn with the following command:
 ```
 kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.2/deploy/longhorn.yaml
 ```
 
-Accesing the longhorn UI
-
+Accesing the longhorn UI:
 ```
 kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 ```
@@ -272,7 +276,7 @@ echo -n <URL> | base64
 echo -n <Access Key> | base64
 echo -n <Secret Key> | base64
 --------------------------------------------------------
-echo -n http://192.168.1.66:9000/ | base64 # replace MINIO_URL
+echo -n http://192.168.1.66:9000/ | base64 # replace with MINIO_URL
 echo -n t6dstDsYQuf7pbSj | base64
 echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64
 
