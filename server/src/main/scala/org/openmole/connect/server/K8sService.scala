@@ -116,6 +116,9 @@ object K8sService:
         Some(memoryLimit).filter(_ > 0).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
         Some(cpuLimit).filter(_ > 0).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
 
+
+    val requests: Resource.ResourceList = Map(Resource.memory -> "0Mi", Resource.cpu -> "0")
+
     Container(
       name = "openmole",
       image = s"openmole/openmole:${version}",
@@ -123,7 +126,7 @@ object K8sService:
       volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/")),
       securityContext = Some(SecurityContext(privileged = Some(true))),
       imagePullPolicy = Some(Container.PullPolicy.Always),
-      resources = Some(Resource.Requirements(limits = limits))
+      resources = Some(Resource.Requirements(limits = limits, requests = requests))
     ).exposePort(80)
 
   def persistentVolumeClaim(pvcName: String, uuid: DB.UUID, storage: Int, storageClassName: Option[String]) =
