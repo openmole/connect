@@ -119,11 +119,13 @@ object K8sService:
 
     val requests: Resource.ResourceList = Map(Resource.memory -> "0Mi", Resource.cpu -> "0")
 
+
+
     Container(
       name = "openmole",
       image = s"openmole/openmole:${version}",
       command = List("bin/bash", "-c", s"openmole-docker --port 80 --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole"),
-      volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/")),
+      volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/"), Volume.Mount(name = "tmp", mountPath = "/var/openmole/.openmole/tmp/")),
       securityContext = Some(SecurityContext(privileged = Some(true))),
       imagePullPolicy = Some(Container.PullPolicy.Always),
       resources = Some(Resource.Requirements(limits = limits, requests = requests))
@@ -150,7 +152,7 @@ object K8sService:
         )
     )
 
-  def deployOpenMOLE(uuid: DB.UUID, email: DB.Email, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
+  def deployOpenMOLE(uuid: DB.UUID, email: DB.Email, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, tmpSize: Int = 51200)(using KubeCache, K8sService) =
     val k8sService = summon[K8sService]
     summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
@@ -181,6 +183,7 @@ object K8sService:
         .withPodSpec(Pod.Spec(terminationGracePeriodSeconds = Some(60)))
         .addContainer(openMOLEContainer)
         .addVolume(Volume(name = "data", source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
+        .addVolume(Volume(name = "tmp", source = Volume.EmptyDir(sizeLimit = Some(s"${tmpSize}Mi"))))
         .addLabel(openMOLELabel)
         .addLabel("podName" -> podName)
         .addLabel(userLabel -> uuid)
