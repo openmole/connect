@@ -97,6 +97,32 @@ Accesing the longhorn UI:
 kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 ```
 
+## Install the cert manager
+
+To generate trusted https certificates
+
+```
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.0/cert-manager.yaml
+```
+
+Then apply the following yaml:
+```
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: yourmail@domain.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: traefik
+```
+
 ## Deploy OpenMOLE Connect
 
 Generate a sercret and a salt at random and store back them up somewhere. You may want to use `pwgen 20` to get two random strings.
