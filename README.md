@@ -23,6 +23,8 @@ The info needed are:
 - EMAIL_PASSWORD: the password to login to the email server
 - EMAIL_SENDER_ADDRESS: an email sender address
 - MINIO_URL: the URL of the minio service
+- MINIO_ACCESS_KEY: a minio API key
+- MINIO_SECRET_KEY:: a minio API key secret 
 
 ## Deploying k3s head node
 
@@ -294,20 +296,23 @@ spec:
     secretName: letsencrypt-prod
 ```
 
-## Configure the backup
+## Optionaly, configure the backup
 
 You can configure a minio server to be able to backup your service.
 
-Configure the backup sercet:
+To the get the base64 info:
 ```
 echo -n <URL> | base64
 echo -n <Access Key> | base64
 echo -n <Secret Key> | base64
 --------------------------------------------------------
 echo -n http://192.168.1.66:9000/ | base64 # replace with MINIO_URL
-echo -n t6dstDsYQuf7pbSj | base64
-echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64
+echo -n t6dstDsYQuf7pbSj | base64 # replacet with MINIO_ACCESS_KEY
+echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64 # replace with MINIO_SERCRET_KEY
+```
 
+Replace the base64 info in the followin yaml and apply it:
+```
 apiVersion: v1
 kind: Secret
 metadata:
@@ -315,10 +320,12 @@ metadata:
   namespace: longhorn-system
 type: Opaque
 data:
+  AWS_ENDPOINTS: aHR0cDovLzE5Mi4xNjguMS42Njo5MDAwLw==
   AWS_ACCESS_KEY_ID: dDZkc3REc1lRdWY3cGJTag==
   AWS_SECRET_ACCESS_KEY: UTlSUFdLeFo0YlVJcUJTenVPWTZUTGtGa1hjSHN6UlU=
-  AWS_ENDPOINTS: aHR0cDovLzE5Mi4xNjguMS42Njo5MDAwLw==
 ```
+
+Then you can use longhorn-minio-credentials as a credential in your backup field of longhorn UI
 
 ## Add a node to the cluster
 
