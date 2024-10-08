@@ -4,7 +4,6 @@ OpenMOLE connect is a server meant to be deployed in a kubernetees cluster in or
 
 Here is the recepie to deploy a K3S cluster and deploy OpenMOLE connect on this cluster. 
 
-
 ## Prerequisite
 
 To complete the installation of the multi-user OpenMOLE server you'll need:
@@ -23,6 +22,8 @@ The info needed are:
 - EMAIL_PASSWORD: the password to login to the email server
 - EMAIL_SENDER_ADDRESS: an email sender address
 - MINIO_URL: the URL of the minio service
+
+Install [Helm](https://helm.sh/) on your machine
 
 ## Deploying k3s head node
 
@@ -44,7 +45,6 @@ kubectl get node
 
 ## Optionnaly, install the dashboard
 
-Install helm:
 ```
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
@@ -95,6 +95,13 @@ The installation documentation for longhorn can be [found here](https://longhorn
 Accesing the longhorn UI:
 ```
 kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+```
+
+## Install cert manager 
+
+```
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.16.0 --set crds.enabled=true
 ```
 
 ## Deploy OpenMOLE Connect
