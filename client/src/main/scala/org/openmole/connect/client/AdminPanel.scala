@@ -213,7 +213,7 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", cpuInput),
                 div(Css.centerRowFlex, cls := "settingElement", storageInput),
                 div(Css.centerRowFlex, cls := "settingElement", versionInput),
-                dataList(idAttr := "versions", children <-- versions.map(v => option(value := v))),
+                dataList(idAttr := "versions", children <-- versions.signal.map(_.map(v => option(value := v)))),
 
                 div(Css.centerRowFlex, cls := "settingElement", firstNameInput),
                 div(Css.centerRowFlex, cls := "settingElement", nameInput),
