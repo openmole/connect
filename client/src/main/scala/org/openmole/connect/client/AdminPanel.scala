@@ -180,6 +180,10 @@ object AdminPanel:
               util.Try(s.toInt).foreach: s =>
                 futures += AdminAPIClient.setStorage((uuid, s)).future
 
+            val version = versionInput.ref.value
+            if version.nonEmpty
+            then futures += AdminAPIClient.setVersion((uuid, version)).future
+            
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
             then
