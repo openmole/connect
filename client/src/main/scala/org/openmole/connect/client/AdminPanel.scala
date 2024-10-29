@@ -134,6 +134,9 @@ object AdminPanel:
               case _ => ""
             UIUtils.buildInput("").amend(width := "160", `type` := "number", onChange --> storageChanged.set(true), placeholder <-- pvcSizeSignal)
 
+
+          lazy val versionInput: Input = UIUtils.buildInput(user.omVersion).amend(width := "400px", listId := "versions")
+
           def save(): Unit =
             val futures = ListBuffer[Future[_]]()
 
@@ -192,6 +195,7 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", "Memory (MB)"),
                 div(Css.centerRowFlex, cls := "settingElement", "CPU"),
                 div(Css.centerRowFlex, cls := "settingElement", "Storage (GB)"),
+                div(Css.centerRowFlex, cls := "settingElement", "Version"),
 
                 div(Css.centerRowFlex, cls := "settingElement", "First Name"),
                 div(Css.centerRowFlex, cls := "settingElement", "Last Name"),
@@ -208,6 +212,8 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", memoryInput),
                 div(Css.centerRowFlex, cls := "settingElement", cpuInput),
                 div(Css.centerRowFlex, cls := "settingElement", storageInput),
+                div(Css.centerRowFlex, cls := "settingElement", versionInput),
+                dataList(idAttr := "versions", children <-- versions.map(v => option(value := v))),
 
                 div(Css.centerRowFlex, cls := "settingElement", firstNameInput),
                 div(Css.centerRowFlex, cls := "settingElement", nameInput),

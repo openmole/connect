@@ -125,6 +125,12 @@ trait AdminAPI
       ok(jsonResponse[Unit])
     )
 
+  val setVersion: Endpoint[(String, String), Unit] =
+    endpoint(
+      post(path / "set-version", jsonRequest[(String, String)]),
+      ok(jsonResponse[Unit])
+    )
+
   val launch: Endpoint[String, Unit] =
     endpoint(
       post(path / "launch", jsonRequest[String]),

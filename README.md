@@ -22,6 +22,8 @@ The info needed are:
 - EMAIL_PASSWORD: the password to login to the email server
 - EMAIL_SENDER_ADDRESS: an email sender address
 - MINIO_URL: the URL of the minio service
+- MINIO_ACCESS_KEY: a minio API key
+- MINIO_SECRET_KEY:: a minio API key secret 
 
 Install [Helm](https://helm.sh/) on your machine
 
@@ -33,7 +35,7 @@ Deploy the server node:
 ```
 ssh ${MASTER_USER}@${MASTER_HOST}
 sudo apt install open-iscsi # requiered for longhorn
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server" sh -s -
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.30.2+k3s2" INSTALL_K3S_EXEC="server" sh -s -
 ```
 
 Test that the server works. Copy the file `/etc/rancher/k3s/k3s.yaml` on your machine. In the file, replace the master IP address with `MASTER_HOST` address.
@@ -102,6 +104,23 @@ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 ```
 helm repo add jetstack https://charts.jetstack.io --force-update
 helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.16.0 --set crds.enabled=true
+
+Then apply the following yaml:
+```
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: yourmail@domain.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: traefik
 ```
 
 ## Deploy OpenMOLE Connect
@@ -275,20 +294,23 @@ spec:
     secretName: letsencrypt-prod
 ```
 
-## Configure the backup
+## Optionaly, configure the backup
 
 You can configure a minio server to be able to backup your service.
 
-Configure the backup sercet:
+To the get the base64 info:
 ```
 echo -n <URL> | base64
 echo -n <Access Key> | base64
 echo -n <Secret Key> | base64
 --------------------------------------------------------
 echo -n http://192.168.1.66:9000/ | base64 # replace with MINIO_URL
-echo -n t6dstDsYQuf7pbSj | base64
-echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64
+echo -n t6dstDsYQuf7pbSj | base64 # replacet with MINIO_ACCESS_KEY
+echo -n Q9RPWKxZ4bUIqBSzuOY6TLkFkXcHszRU | base64 # replace with MINIO_SERCRET_KEY
+```
 
+Replace the base64 info in the followin yaml and apply it:
+```
 apiVersion: v1
 kind: Secret
 metadata:
@@ -296,10 +318,12 @@ metadata:
   namespace: longhorn-system
 type: Opaque
 data:
+  AWS_ENDPOINTS: aHR0cDovLzE5Mi4xNjguMS42Njo5MDAwLw==
   AWS_ACCESS_KEY_ID: dDZkc3REc1lRdWY3cGJTag==
   AWS_SECRET_ACCESS_KEY: UTlSUFdLeFo0YlVJcUJTenVPWTZUTGtGa1hjSHN6UlU=
-  AWS_ENDPOINTS: aHR0cDovLzE5Mi4xNjguMS42Njo5MDAwLw==
 ```
+
+Then you can use longhorn-minio-credentials as a credential in your backup field of longhorn UI
 
 ## Add a node to the cluster
 
