@@ -367,6 +367,6 @@ object AdminPanel:
       )
 
     div(
-      adminTable.render.amend(cls := "border", width := "800"),
+      adminTable.render.amend(cls := "border"),
       a("Dump", href := Data.downloadUserRoute)
     )
