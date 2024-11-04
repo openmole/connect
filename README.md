@@ -104,6 +104,7 @@ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 ```
 helm repo add jetstack https://charts.jetstack.io --force-update
 helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.16.0 --set crds.enabled=true
+```
 
 Then apply the following yaml:
 ```
