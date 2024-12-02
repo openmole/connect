@@ -35,7 +35,7 @@ Deploy the server node:
 ```
 ssh ${MASTER_USER}@${MASTER_HOST}
 sudo apt install open-iscsi # requiered for longhorn
-curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.30.2+k3s2" INSTALL_K3S_EXEC="server" sh -s -
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.30.6+k3s1" INSTALL_K3S_EXEC="server" sh -s -
 ```
 
 Test that the server works. Copy the file `/etc/rancher/k3s/k3s.yaml` on your machine. In the file, replace the master IP address with `MASTER_HOST` address.
