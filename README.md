@@ -38,12 +38,33 @@ sudo apt install open-iscsi # requiered for longhorn
 curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.30.6+k3s1" INSTALL_K3S_EXEC="server" sh -s -
 ```
 
+No, to avoid timeouts you should create the file `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml` on the server node. The content of the file should be:
+```
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--entryPoints.web.transport.respondingTimeouts.readTimeout=0"
+      - "--entryPoints.web.transport.respondingTimeouts.writeTimeout=0"
+      - "--entryPoints.web.transport.respondingTimeouts.idleTimeout=0"
+      - "--entryPoints.websecure.transport.respondingTimeouts.readTimeout=0"
+      - "--entryPoints.websecure.transport.respondingTimeouts.writeTimeout=0"
+      - "--entryPoints.websecure.transport.respondingTimeouts.idleTimeout=0"
+```
+
+And restart k3s: `sudo systemctl restart k3s`.
+
 Test that the server works. Copy the file `/etc/rancher/k3s/k3s.yaml` on your machine. In the file, replace the master IP address with `MASTER_HOST` address.
 
 ```
 export KUBECONFIG=$PWD/k3s.yml
 kubectl get node
 ```
+
 
 ## Optionnaly, install the dashboard
 
