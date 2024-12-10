@@ -38,7 +38,7 @@ sudo apt install open-iscsi # requiered for longhorn
 curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.30.6+k3s1" INSTALL_K3S_EXEC="server" sh -s -
 ```
 
-No, to avoid timeouts you should create the file `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml` on the server node. 
+To prevent timeouts when uploading/downloading files you should create the following file `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml` on the k3s server. 
 The content of the file should be:
 ```
 apiVersion: helm.cattle.io/v1
