@@ -40,7 +40,7 @@ val skuberProject = RootProject(uri("https://github.com/doriordan/skuber.git#30r
 
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
-  scalaVersion := "3.3.3",
+  scalaVersion := "3.6.2",
   resolvers := Resolvers
 )
 

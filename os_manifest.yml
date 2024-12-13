@@ -59,6 +59,8 @@ data:
     kube:
      storageClassName: openmole-storage
      storageSize: 20480
+     defaultMemory: 4096
+     defaultCPU: 4
     openmole:
       versionHistory: 3
       minimumVersion: 17

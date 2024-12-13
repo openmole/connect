@@ -47,17 +47,19 @@ object DB:
   def userToData(u: User): Data.User = u.to[Data.User]
   def userFromData(u: Data.User): Option[User] = userFromEmail(u.email)
 
-  def userWithDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID)(using DockerHubCache) =
+  def userWithDefault(name: String, firstName: String, email: String, password: Password, institution: Institution, emailStatus: EmailStatus = EmailStatus.Unchecked, role: Role = Role.User, status: UserStatus = UserStatus.Active, uuid: UUID = randomUUID)(using DockerHubCache, Default) =
     val defaultVersion =
       OpenMOLE.availableVersions(withSnapshot = false).headOption.orElse:
         OpenMOLE.availableVersions(withSnapshot = true).headOption
       .getOrElse("latest")
 
-    User(name, firstName, email, emailStatus, password, institution, defaultVersion, 2048, 4, 1024, now, now, role, status, uuid)
+    val defaults = summon[Default]
+    
+    User(name, firstName, email, emailStatus, password, institution, defaultVersion, defaults.memory.getOrElse(2048), defaults.cpu.getOrElse(4), 1024, now, now, role, status, uuid)
 
   def registerUserToData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
   def registerUserFromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
-  def registerUserToUser(r: RegisterUser)(using DockerHubCache): User = userWithDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
+  def registerUserToUser(r: RegisterUser)(using DockerHubCache, Default): User = userWithDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
 
   def randomUUID = java.util.UUID.randomUUID().toString
 
@@ -67,6 +69,8 @@ object DB:
 
     def value(s: Salt): String = s
 
+
+  case class Default(memory: Option[Int], cpu: Option[Int])
   opaque type Salt = String
   type UUID = String
   type Email = String
@@ -190,7 +194,7 @@ object DB:
         _ <- validationSecretTable.filter(_.uuid === uuid).delete
       yield r
 
-  def promoteRegistering(uuid: UUID)(using DockerHubCache): Option[User] =
+  def promoteRegistering(uuid: UUID)(using DockerHubCache, Default): Option[User] =
     runTransaction:
       for
         ru <- registerUserTable.filter(_.uuid === uuid).result
@@ -340,7 +344,7 @@ object DB:
   case class Upgrade(upgrade: DBIO[Unit], version: Int)
   def upgrades: Seq[Upgrade] = Seq(DBSchemaV1.upgrade, DBSchemaV2.upgrade, DBSchemaV3.upgrade)
 
-  def initDB()(using Salt, DockerHubCache) =
+  def initDB()(using Salt, DockerHubCache, Default) =
     runTransaction:
       def createDBInfo: DBIO[Int] =
         for

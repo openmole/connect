@@ -39,18 +39,18 @@ object ConnectServer:
     // Hours
     val resetPasswordExpire = 24
 
-    case class Kube(storageClassName: Option[String] = None, storageSize: Int)
+    case class Kube(storageClassName: Option[String] = None, storageSize: Int, defaultMemory: Option[Int], defaultCPU: Option[Int])
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
     case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
 
   case class Config(
-                     salt: String,
-                     secret: String,
-                     kube: Config.Kube,
-                     openmole: Config.OpenMOLE,
-                     smtp: Option[Config.SMTP] = None,
-                     shutdown: Option[Config.Shutdown] = None)
+    salt: String,
+    secret: String,
+    kube: Config.Kube,
+    openmole: Config.OpenMOLE,
+    smtp: Option[Config.SMTP] = None,
+    shutdown: Option[Config.Shutdown] = None)
 
   def read(file: File): Config =
     import better.files.*
@@ -72,6 +72,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
   given K8sService = k8s
   given Email.Sender = Email.Sender(config.smtp)
+  given DB.Default = DB.Default(memory = config.kube.defaultMemory, cpu = config.kube.defaultCPU)
 
   val httpClient =
     HttpClients.

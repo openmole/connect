@@ -10,7 +10,7 @@ import org.openmole.connect.server.K8sService.{KubeCache, getPVCSize}
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.Data.{EmailStatus, UserAndPodInfo}
 
-class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender):
+class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender, DB.Default):
   def users: Seq[Data.User] = DB.users.map(DB.userToData)
   def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.registerUserToData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid).foreach(Email.sendValidated)
