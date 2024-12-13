@@ -112,7 +112,7 @@ Longhorn is the storage system used by connect.
 
 Install longhorn with the following command:
 ```
-kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.1/deploy/longhorn.yaml
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml
 ```
 
 The installation documentation for longhorn can be [found here](https://longhorn.io/docs/1.7.1/deploy/install/install-with-kubectl/).
