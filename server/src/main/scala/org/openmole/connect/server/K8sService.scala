@@ -108,7 +108,7 @@ object K8sService:
 //      ip <- ig.ip
 //    yield ip
 
-  def createOpenMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
+  def openMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
     // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
     // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
     val limits: Resource.ResourceList =
@@ -116,10 +116,7 @@ object K8sService:
         Some(memoryLimit).filter(_ > 0).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
         Some(cpuLimit).filter(_ > 0).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
 
-
     val requests: Resource.ResourceList = Map(Resource.memory -> "0Mi", Resource.cpu -> "0")
-
-
 
     Container(
       name = "openmole",
@@ -152,7 +149,7 @@ object K8sService:
         )
     )
 
-  def deployOpenMOLE(uuid: DB.UUID, email: DB.Email, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, tmpSize: Int = 51200)(using KubeCache, K8sService) =
+  private def deployOpenMOLE(uuid: DB.UUID, email: DB.Email, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, tmpSize: Int = 51200)(using KubeCache, K8sService) =
     val k8sService = summon[K8sService]
     summon[KubeCache].ipCache.invalidate(uuid)
     withK8s: k8s =>
@@ -163,8 +160,6 @@ object K8sService:
       val pvc = persistentVolumeClaim(pvcName, uuid, k8sService.storageSize, k8sService.storageClassName)
 
       val openMOLESelector: LabelSelector = LabelSelector.IsEqualRequirement("app", "openmole")
-      val openMOLEContainer = createOpenMOLEContainer(omVersion, openMOLEMemory, memoryLimit, cpuLimit)
-
       val openMOLELabel = "app" -> "openmole"
       
       def emailTag: String =
@@ -181,7 +176,7 @@ object K8sService:
       val openMOLETemplate = Pod.Template.Spec
         .named("openmole")
         .withPodSpec(Pod.Spec(terminationGracePeriodSeconds = Some(60)))
-        .addContainer(openMOLEContainer)
+        .addContainer(openMOLEContainer(omVersion, openMOLEMemory, memoryLimit, cpuLimit))
         .addVolume(Volume(name = "data", source = Volume.PersistentVolumeClaimRef(claimName = pvcName)))
         .addVolume(Volume(name = "tmp", source = Volume.EmptyDir(sizeLimit = Some(s"${tmpSize}Mi"))))
         .addLabel(openMOLELabel)
@@ -208,25 +203,20 @@ object K8sService:
       //        .withLabelSelector(openMOLESelector)
 
       // Creating the openmole deployment
-      k8s.create(pvc, namespace = Some(Namespace.openmole))
-      val createdDeploymentFut = k8s.create(openMOLEDeployment, namespace = Some(Namespace.openmole))
-
-      createdDeploymentFut.recoverWith:
-        case ex: K8SException if ex.status.code.contains(409) =>
-          k8s.get[Deployment](openMOLEDeployment.name).flatMap: curr =>
-            val updated = openMOLEDeployment.withResourceVersion(curr.metadata.resourceVersion)
-            k8s update updated
-      .await
-
+      k8s.create(pvc, namespace = Some(Namespace.openmole)).transformWith: _ =>//.recoverWith:
+//        case ex: K8SException if ex.status.code.contains(409) => scala.concurrent.Future.successful(())
+//      .flatMap: _ =>
+        k8s.create(openMOLEDeployment, namespace = Some(Namespace.openmole)).recoverWith:
+          case ex: K8SException if ex.status.code.contains(409) =>
+            for
+              d <- k8s.get[Deployment](openMOLEDeployment.name)
+              updated = openMOLEDeployment.withResourceVersion(d.metadata.resourceVersion)
+              d2 <- k8s update updated
+            yield d2
 
   def launch(user: DB.User)(using KubeCache, K8sService): Unit =
-    if K8sService.podExists(user.uuid)
-    then
-      K8sService.updateOpenMOLEPod(user.uuid, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
-      K8sService.startOpenMOLEPod(user.uuid)
-    else
-      DB.userFromUUID(user.uuid).foreach: user =>
-        K8sService.deployOpenMOLE(user.uuid, user.email, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+    K8sService.createOrUpdateDeployment(user.uuid, user.email, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+    K8sService.startOpenMOLEPod(user.uuid)
 
   def stopOpenMOLEPod(uuid: DB.UUID)(using KubeCache, K8sService) =
     withK8s: k8s =>
@@ -240,14 +230,29 @@ object K8sService:
       k8s.update(d.withReplicas(1), namespace = Some(Namespace.openmole))
     .await
 
+  def createOrUpdateDeployment(uuid: DB.UUID, email: String, omVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
+    withK8s: k8s =>
+      k8s.get[Deployment](uuid.value, namespace = Some(Namespace.openmole))
+        .recoverWith[Deployment]:
+          case ex: K8SException if ex.status.code.contains(404) =>
+            deployOpenMOLE(uuid, email, omVersion, openmoleMemory, memoryLimit, cpuLimit)
+        .flatMap: d =>
+          val container = openMOLEContainer(omVersion, openmoleMemory, memoryLimit, cpuLimit)
+          for
+            d <- k8s.update(d.withReplicas(0).updateContainer(container), namespace = Some(Namespace.openmole))
+            _ <- k8s.deleteAllSelected[PodList](LabelSelector.IsEqualRequirement("podName", uuid.value), namespace = Some(Namespace.openmole))
+          yield d
+      .await
+
+    summon[KubeCache].ipCache.invalidate(uuid)
+
   def updateOpenMOLEPod(uuid: DB.UUID, newVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
     withK8s: k8s =>
       k8s.get[Deployment](uuid.value, namespace = Some(Namespace.openmole)).map: d =>
-        val container = createOpenMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
+        val container = openMOLEContainer(newVersion, openmoleMemory, memoryLimit, cpuLimit)
         k8s.update(d.updateContainer(container), namespace = Some(Namespace.openmole))
       .await
     summon[KubeCache].ipCache.invalidate(uuid)
-
 
   def getPVCName(uuid: DB.UUID)(using K8sService): Option[String] =
     withK8s: k8s =>
