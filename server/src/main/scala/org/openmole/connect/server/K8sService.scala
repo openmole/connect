@@ -152,12 +152,16 @@ object K8sService:
   private def deployOpenMOLE(uuid: DB.UUID, email: DB.Email, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, tmpSize: Int = 51200)(using KubeCache, K8sService) =
     val k8sService = summon[K8sService]
     summon[KubeCache].ipCache.invalidate(uuid)
-    withK8s: k8s =>
-      val podName = uuid.value
-      val pvcName = s"pvc-$podName"
-      //val pvName = s"pv-${podName}"
+    val podName = uuid.value
+    val pvcName = s"pvc-$podName"
+    val pvc = persistentVolumeClaim(pvcName, uuid, k8sService.storageSize, k8sService.storageClassName)
 
-      val pvc = persistentVolumeClaim(pvcName, uuid, k8sService.storageSize, k8sService.storageClassName)
+    //FIXME in case of error the k8s context is automatically closed
+    //      this prevent from chaining with deployement future
+    withK8s: k8s =>
+      k8s.create(pvc, namespace = Some(Namespace.openmole))
+
+    withK8s: k8s =>
 
       val openMOLESelector: LabelSelector = LabelSelector.IsEqualRequirement("app", "openmole")
       val openMOLELabel = "app" -> "openmole"
@@ -203,16 +207,16 @@ object K8sService:
       //        .withLabelSelector(openMOLESelector)
 
       // Creating the openmole deployment
-      k8s.create(pvc, namespace = Some(Namespace.openmole)).transformWith: _ =>//.recoverWith:
+//      k8s.create(pvc, namespace = Some(Namespace.openmole)).transformWith: _ =>//.recoverWith:
 //        case ex: K8SException if ex.status.code.contains(409) => scala.concurrent.Future.successful(())
 //      .flatMap: _ =>
-        k8s.create(openMOLEDeployment, namespace = Some(Namespace.openmole)).recoverWith:
-          case ex: K8SException if ex.status.code.contains(409) =>
-            for
-              d <- k8s.get[Deployment](openMOLEDeployment.name)
-              updated = openMOLEDeployment.withResourceVersion(d.metadata.resourceVersion)
-              d2 <- k8s update updated
-            yield d2
+      k8s.create(openMOLEDeployment, namespace = Some(Namespace.openmole)).recoverWith:
+        case ex: K8SException if ex.status.code.contains(409) =>
+          for
+            d <- k8s.get[Deployment](openMOLEDeployment.name)
+            updated = openMOLEDeployment.withResourceVersion(d.metadata.resourceVersion)
+            d2 <- k8s update updated
+          yield d2
 
   def launch(user: DB.User)(using KubeCache, K8sService): Unit =
     K8sService.createOrUpdateDeployment(user.uuid, user.email, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
