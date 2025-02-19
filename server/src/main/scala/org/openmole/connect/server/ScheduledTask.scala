@@ -42,7 +42,8 @@ object ScheduledTask:
       if (days - onSince) + 1 <= 0
       then
         tool.log(s"Automatic shutdown of user instance due to inactivity for ${u}")
-        K8sService.stopOpenMOLEPod(u.uuid)
+        util.Try:
+          K8sService.stopOpenMOLEPod(u.uuid)
 
       if remind.contains(days - onSince) && K8sService.podExists(u.uuid)
       then
