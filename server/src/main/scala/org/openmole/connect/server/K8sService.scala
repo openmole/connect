@@ -347,5 +347,16 @@ object K8sService:
       podInfo <- podInfo(uuid, pods)
     yield podInfo
 
+  def config =
+    import org.apache.pekko.actor.ActorSystem
+    import com.typesafe.config.ConfigFactory
+    ConfigFactory.parseString(
+    """
+       |akka.loglevel = "WARNING"
+       |akka.stdout-loglevel = "WARNING"
+       |""".stripMargin)
 
-case class K8sService(storageClassName: Option[String], storageSize: Int, system: ActorSystem = ActorSystem())
+  val system = ActorSystem("MySystem", config)
+
+
+case class K8sService(storageClassName: Option[String], storageSize: Int, system: ActorSystem = ActorSystem("skuber", K8sService.config))

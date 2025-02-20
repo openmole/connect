@@ -83,6 +83,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
       build()
 
   def start() =
+    tool.log(s"Starting server")
+
     DB.initDB()
     ScheduledTask.schedule(config.shutdown)
 

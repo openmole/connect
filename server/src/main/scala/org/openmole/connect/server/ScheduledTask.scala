@@ -28,11 +28,14 @@ import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
 object ScheduledTask:
   def schedule(shutdown: Option[ConnectServer.Config.Shutdown])(using K8sService, Sender, KubeCache) =
     shutdown.foreach: s =>
+      val hour = s.checkAt.getOrElse(6)
+      tool.log(s"Schedule automatic shutdown check at ${hour}, shutdown after ${s.days} days")
       val check = () => checkShutdown(s.days, s.remind.getOrElse(Seq(1, 3, 7)).toSet)
-      scheduleTask(s.checkAt.getOrElse(6), check)
-
+      scheduleTask(hour, check)
 
   def checkShutdown(days: Int, remind: Set[Int])(using K8sService, Sender, KubeCache) =
+    tool.log(s"Checking instances for automatic shutdown")
+
     val timeNow = System.currentTimeMillis()
     for
       u <- DB.users
@@ -44,6 +47,7 @@ object ScheduledTask:
         tool.log(s"Automatic shutdown of user instance due to inactivity for ${u}")
         util.Try:
           K8sService.stopOpenMOLEPod(u.uuid)
+      else tool.log(s"Shutdown user ${u} instance due to inactivity in ${days - onSince + 1}")
 
       if remind.contains(days - onSince) && K8sService.podExists(u.uuid)
       then
