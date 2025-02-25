@@ -107,7 +107,8 @@ object Email:
           HtmlBody(
             s"""Dear ${user.firstName} ${user.name},<br/><br/>
                |your account as been inactive for the past $inactive days on to the OpenMOLE service.<br/>
-               |If you don't use it, your OpenMOLE instance will be automatically shutdown in $remaining days.<br/><br/>
+               |If you don't login, your OpenMOLE instance will be automatically shutdown in $remaining days.<br/>
+               |Note that your account will NOT be deleted and that your data will be preserved.<br/><br/>
                |Best Regards
           """.stripMargin)
         )

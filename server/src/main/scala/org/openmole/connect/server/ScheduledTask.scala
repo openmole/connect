@@ -41,13 +41,14 @@ object ScheduledTask:
       u <- DB.users
     do
       val onSince = TimeUnit.MILLISECONDS.toDays(timeNow - u.lastAccess).toInt
+      val shutdownIn = (days - onSince) + 1
 
-      if (days - onSince) + 1 <= 0
+      if shutdownIn <= 0
       then
         tool.log(s"Automatic shutdown of user instance due to inactivity for ${u}")
         util.Try:
           K8sService.stopOpenMOLEPod(u.uuid)
-      else tool.log(s"Shutdown user ${u} instance due to inactivity in ${days - onSince + 1}")
+      else tool.log(s"Keep instance user ${u} instance, shutdown in in $shutdownIn")
 
       if remind.contains(days - onSince) && K8sService.podExists(u.uuid)
       then
