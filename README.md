@@ -35,7 +35,7 @@ Deploy the server node:
 ```
 ssh ${MASTER_USER}@${MASTER_HOST}
 sudo apt install open-iscsi # requiered for longhorn
-curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.30.6+k3s1" INSTALL_K3S_EXEC="server" sh -s -
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.31.5+k3s1" INSTALL_K3S_EXEC="server" sh -s -
 ```
 
 To prevent timeouts when uploading/downloading files you should create the following file `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml` on the k3s server. 
