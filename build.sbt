@@ -24,10 +24,10 @@ val autowireVersion = "0.3.3"
 val boopickleVersion = "1.4.0"
 def laminarVersion = "0.14.2"
 
-def circeVersion = "0.14.6"
-def endpoints4SVersion = "1.11.1"
-def endpointCirceVersion = "2.5.1"
-def endpointHTT4ServerVersion = "10.3.1"
+def circeVersion = "0.14.12"
+def endpoints4SVersion = "1.12.1"
+def endpointCirceVersion = "2.6.1"
+def endpointHTT4ServerVersion = "11.0.1"
 def http4sVersion = "0.23.16"
 
 val Resolvers = Seq(
@@ -60,7 +60,8 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "org.openmole.scaladget" %%% "tools" % scaladgetVersion,
     "org.openmole.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "com.raquo" %%% "laminar" % laminarVersion,
-    "org.endpoints4s" %%% "xhr-client" % "5.3.0"
+    "org.endpoints4s" %%% "xhr-client" % "5.3.0",
+    //"com.lihaoyi" %%% "upickle" % "4.1.0", // SBT
   )
 ) dependsOn (shared)
 

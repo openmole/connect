@@ -6,7 +6,7 @@ import com.raquo.laminar.api.features.unitArrows
 import org.openmole.connect
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.client.ConnectUtils.OpenMOLEPodStatus
-import org.openmole.connect.client.UIUtils.{DetailedInfo, institutionsList}
+import org.openmole.connect.client.UIUtils.{DetailedInfo, institutionsList, versionInfo}
 import org.openmole.connect.shared.{Data, Storage}
 import org.scalajs.dom
 import scaladget.bootstrapnative.*
@@ -138,6 +138,10 @@ object UserPanel:
         "You can get help on the ", a("OpenMOLE chat", href := "https://chat.openmole.org/channel/help"), ".",
         br(), br(),
         s"When your OpenMOLE instance is running you can access your files externally via the webdav protocol using this URL:", a(webdavLocation, href := webdavLocation),
+        br(), br(),
+        child <-- versionInfo.map:
+          case Some((v, n, bu)) => div(s"You are presently running OpenMOLE $v - $n, built on $bu")
+          case None => emptyNode
       )
 
     def buttons(user: User) =

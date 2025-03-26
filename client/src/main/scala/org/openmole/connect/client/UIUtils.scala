@@ -206,7 +206,8 @@ object UIUtils:
         uuid match
           case None =>
             status match
-              case _: PodInfo.Status.Running => a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20", target := "_blank")
+              case _: PodInfo.Status.Running =>
+                a("Go to OpenMOLE", href := s"/${Data.openMOLERoute}/", cls := "statusLine", marginTop := "20", target := "_blank")
               case _ => div()
           case Some(uuid) => impersonationLink(uuid)
       )
@@ -244,3 +245,19 @@ object UIUtils:
   def longTimeToString(lg: Long): String =
     val date = new scalajs.js.Date(lg)
     s"${date.toLocaleDateString} ${date.toLocaleTimeString.dropRight(3)}"
+
+  def versionInfo =
+    fetch(s"/${Data.openMOLERoute}/gui/application/settings").map:
+      _.map: str =>
+        val parsed = ujson.read(str)
+        val version = parsed("version").str
+        val name = parsed("versionName").str
+        val build = longTimeToString(parsed("buildTime").value.toString.toLong)
+        (version, name, build)
+
+  def fetch(url: String): Signal[Option[String]] =
+    import scala.concurrent.Future
+    import org.scalajs.dom
+    Signal.fromFuture:
+      dom.fetch(url).toFuture.flatMap(_.text().toFuture)
+
