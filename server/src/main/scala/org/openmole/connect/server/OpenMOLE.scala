@@ -70,6 +70,12 @@ object OpenMOLE:
         m -> snapshotFormed.filter(_.startsWith(s"$m."))
       .toMap
 
+    def snapshots =
+      majors.flatMap: maj =>
+        if withSnapshot && minorVersionMap(maj).isEmpty && rcVersionMap(maj).isEmpty
+        then snapshotVersionMap(maj)
+        else Seq()
+
     majors.flatMap: maj =>
       if minorVersionMap(maj).nonEmpty
       then
@@ -78,9 +84,12 @@ object OpenMOLE:
         else minorVersionMap(maj)
       else
         if rcVersionMap(maj).nonEmpty
-        then if lastMajors then rcVersionMap(maj).headOption.toSeq else rcVersionMap(maj)
-        else if withSnapshot then snapshotVersionMap(maj) else Seq()
-    ++ (if latest then Seq(OpenMOLE.latest) else Seq())
+        then
+          if lastMajors
+          then rcVersionMap(maj).headOption.toSeq
+          else rcVersionMap(maj)
+        else Seq()
+    ++ snapshots ++ (if latest then Seq(OpenMOLE.latest) else Seq())
 
 
   object DockerHubCache:
