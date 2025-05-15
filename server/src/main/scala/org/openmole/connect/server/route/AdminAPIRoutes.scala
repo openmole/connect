@@ -45,6 +45,8 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sServi
 
 class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
 
+  type Eff = super.Effect
+
   val routes: HttpRoutes[IO] = HttpRoutes.of:
     routesFromEndpoints(
       users.implementedBy { _ =>  impl.users },

@@ -42,6 +42,8 @@ class APIRoutes(impl: APIImpl) extends server.Endpoints[IO]
   with API
   with server.JsonEntitiesFromCodecs:
 
+  type EFfect = super.Effect
+
   val routes: HttpRoutes[IO] = HttpRoutes.of:
     routesFromEndpoints(
       institutions.implementedBy(_ => impl.institutions),
