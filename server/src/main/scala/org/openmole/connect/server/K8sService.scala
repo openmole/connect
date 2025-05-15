@@ -104,8 +104,8 @@ object K8sService:
     )
 
     val volumeMounts = List(
-      new V1VolumeMount().name("data").mountPath("/openmole/data"),
-      new V1VolumeMount().name("tmp").mountPath("/tmp")
+      new V1VolumeMount().name("data").mountPath("/var/openmole/"),
+      new V1VolumeMount().name("tmp").mountPath("/var/openmole/.openmole/tmp/")
     )
 
     val resources = new V1ResourceRequirements()
@@ -119,7 +119,16 @@ object K8sService:
       .name("openmole")
       .image(s"openmole/openmole:$omVersion")
       .resources(resources)
+      .command(List("bin/bash", "-c").asJava)
+      .args(List(s"openmole-docker --port 80 --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole").asJava)
       .volumeMounts(volumeMounts.asJava)
+      .imagePullPolicy("Always")
+      .ports(List(
+        new V1ContainerPort().containerPort(80)
+      ).asJava)
+      .securityContext(
+        new V1SecurityContext().privileged(true)
+      )
 
     val volumes = List(
       new V1Volume()
