@@ -11,10 +11,6 @@ import java.util
 import scala.collection.immutable.List
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import monocle.*
-import monocle.macros.*
-import monocle.syntax.all.*
-import org.apache.pekko.actor.ActorSystem
 import org.openmole.connect.server.db.DB
 import org.openmole.connect.server.db.DB.UUID
 import tool.*
@@ -33,7 +29,7 @@ object K8sService:
 
   object KubeCache:
     type Cached = String
-    
+
     def apply(): KubeCache =
       val ipCache = tool.cache[DB.UUID, Cached]()
 

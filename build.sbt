@@ -16,7 +16,6 @@ val scaladgetVersion = "1.10.0"
 val scalajsDomVersion = "1.10.0"
 val scalaJWTVersion = "4.2.0"
 val rosHttpVersion = "3.0.0"
-val skuberVersion = "4.0.3"
 val httpComponentsVersion = "4.5.12"
 val slickVersion = "3.5.1"
 val h2Version = "2.2.224"
@@ -35,8 +34,6 @@ val Resolvers = Seq(
   Resolver.sonatypeRepo("releases"),
   Resolver.bintrayRepo("hmil", "maven")
 )
-
-val skuberProject = RootProject(uri("https://github.com/doriordan/skuber.git#30refactor"))
 
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
@@ -73,7 +70,6 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "io.circe" %% "circe-yaml" % "1.15.0",
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
-    "io.github.hagay3" %% "skuber" % "4.0.3",
     "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
     "com.lihaoyi" %% "upickle" % "3.3.1",
     "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
@@ -93,7 +89,7 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.slf4j" % "slf4j-jdk14" % "2.0.13"
 
   )
-) dependsOn (shared, skuberProject) enablePlugins (ScalatraPlugin)
+) dependsOn (shared) enablePlugins (ScalatraPlugin)
 
 //lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn(server) enablePlugins (JavaServerAppPackaging)
 
