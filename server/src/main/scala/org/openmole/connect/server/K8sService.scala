@@ -33,10 +33,7 @@ object K8sService:
 
   object KubeCache:
     type Cached = String
-
-    import com.google.common.cache.*
-    import java.util.concurrent.TimeUnit
-
+    
     def apply(): KubeCache =
       val ipCache = tool.cache[DB.UUID, Cached]()
 
@@ -51,74 +48,6 @@ object K8sService:
   val userLabel = "user"
   val emailLabel = "email"
   //val connect = "connect"
-
-  //  object Ceph:
-  //    val storageClassName = "rook-ceph-block"
-
-//  type KubeAction[+T] = KubernetesClient => T
-//
-//  def withK8s[T](kubeAction: KubeAction[T])(using K8sService) =
-//    val k8s = k8sInit(summon[K8sService].system)
-//    try kubeAction(k8s)
-//    finally k8s.close
-
-//  def getIngress(using K8sService) = withK8s: k8s =>
-//    val allIngressMapFut = k8s.listInNamespace[IngressList]("ingress-nginx")
-//    val allIngressFuture = allIngressMapFut.map { allIngressMap => allIngressMap.items }
-//
-//    def listIngress(ingresses: List[Ingress]) = ingresses.headOption
-//
-//    allIngressFuture.map { ingresses => listIngress(ingresses) }.await
-//
-//  def ingressIP(using K8sService): Option[String] =
-//    for
-//      i <- getIngress
-//      s <- i.status
-//      b <- s.loadBalancer
-//      ig <- b.ingress.headOption
-//      ip <- ig.ip
-//    yield ip
-
-//  def openMOLEContainer(version: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double) =
-//    // Create the openMOLE container with the volume and SecurityContext privileged (necessary for singularity).
-//    // see also https://kubernetes.io/docs/concepts/security/pod-security-standards/
-//    val limits: Resource.ResourceList =
-//      Map() ++
-//        Some(memoryLimit).filter(_ > 0).map(m => Resource.memory -> Resource.Quantity(s"${memoryLimit}Mi")) ++
-//        Some(cpuLimit).filter(_ > 0).map(m => Resource.cpu -> Resource.Quantity(s"${(cpuLimit * 1000).toInt}m"))
-//
-//    val requests: Resource.ResourceList = Map(Resource.memory -> "0Mi", Resource.cpu -> "0")
-//
-//    Container(
-//      name = "openmole",
-//      image = s"openmole/openmole:${version}",
-//      command = List("bin/bash", "-c", s"openmole-docker --port 80 --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole"),
-//      volumeMounts = List(Volume.Mount(name = "data", mountPath = "/var/openmole/"), Volume.Mount(name = "tmp", mountPath = "/var/openmole/.openmole/tmp/")),
-//      securityContext = Some(SecurityContext(privileged = Some(true))),
-//      imagePullPolicy = Some(Container.PullPolicy.Always),
-//      resources = Some(Resource.Requirements(limits = limits, requests = requests))
-//    ).exposePort(80)
-
-//  def persistentVolumeClaim(pvcName: String, uuid: DB.UUID, storage: Int, storageClassName: Option[String]) =
-//    def metadata(name: String) = ObjectMeta(name, namespace = Namespace.openmole, labels = Map(userLabel -> uuid))
-//
-//    PersistentVolumeClaim(
-//      metadata = metadata(pvcName),
-//      spec =
-//        Some(
-//          PersistentVolumeClaim.Spec(
-//            //volumeName = Some(pvcName),
-//            storageClassName = storageClassName,
-//            accessModes = List(AccessMode.ReadWriteOnce),
-//            resources =
-//              Some(
-//                Resource.Requirements(
-//                  requests = Map(Resource.storage -> s"${storage}Mi")
-//                )
-//              )
-//          )
-//        )
-//    )
 
   def createPVC(pvcName: String, uuid: String, storage: Int, storageClassName: Option[String]) =
     val api = kubeAPI
