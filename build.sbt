@@ -63,6 +63,7 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
 ) dependsOn (shared)
 
 lazy val server = project.in(file("server")) settings (defaultSettings) settings (
+  Compile / doc := new java.io.File(""),
   libraryDependencies ++= Seq(
     "org.endpoints4s" %% "http4s-server" % endpointHTT4ServerVersion excludeAll(ExclusionRule(organization = "com.lihaoyi")),
     "org.http4s" %% "http4s-blaze-server" % http4sVersion,
@@ -89,7 +90,7 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "org.slf4j" % "slf4j-jdk14" % "2.0.13"
 
   )
-) dependsOn (shared) enablePlugins (ScalatraPlugin)
+) dependsOn (shared) 
 
 //lazy val application = project.in(file("application")) settings (defaultSettings) dependsOn(server) enablePlugins (JavaServerAppPackaging)
 

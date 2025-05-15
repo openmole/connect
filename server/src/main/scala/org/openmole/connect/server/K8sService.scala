@@ -183,15 +183,24 @@ object K8sService:
   def getPVC(uuid: String): Option[V1PersistentVolumeClaim] =
     val coreApi = kubeAPI
 
-    val labelSelector = s"user=$uuid"
-    val list = coreApi.listNamespacedPersistentVolumeClaim(
-      Namespace.openmole,
-      null, null, null, null,
-      labelSelector,
-      null, null, null, null, 0, false
-    )
+    def byLabel =
+      val labelSelector = s"user=$uuid"
+      coreApi.listNamespacedPersistentVolumeClaim(
+        Namespace.openmole,
+        null, null, null, null,
+        labelSelector,
+        null, null, null, null, 0, false
+      )
 
-    list.getItems.asScala.headOption
+    def byName =
+      val pvcName = s"pvc-$uuid"
+      coreApi.listNamespacedPersistentVolumeClaim(
+        Namespace.openmole,
+        pvcName, null, null, null,
+        null, null, null, null, null, 0, false
+      )
+
+    byLabel.getItems.asScala.headOption orElse byName.getItems.asScala.headOption
 
 
   def updateOpenMOLEPersistentVolumeStorage(uuid: String, sizeGi: Int): Unit =
