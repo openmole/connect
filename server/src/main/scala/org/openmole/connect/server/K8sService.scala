@@ -109,7 +109,7 @@ object K8sService:
     )
 
     val resources = new V1ResourceRequirements()
-      .requests(Map("memory" -> Quantity(s"${openMOLEMemory}Mi")).asJava)
+      //.requests(Map("memory" -> Quantity(s"${openMOLEMemory}Mi")).asJava)
       .limits(Map(
         "memory" -> Quantity(s"${memoryLimit}Mi"),
         "cpu" -> Quantity(cpuLimit.toString)
