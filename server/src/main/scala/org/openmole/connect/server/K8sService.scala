@@ -108,6 +108,11 @@ object K8sService:
       new V1VolumeMount().name("tmp").mountPath("/var/openmole/.openmole/tmp/")
     )
 
+    val limits =
+      Seq() ++
+        Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) ++
+        Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
+
     val resources = new V1ResourceRequirements()
       .requests(
         Map(
@@ -115,10 +120,7 @@ object K8sService:
           "cpu" -> Quantity("0")
         ).asJava
       )
-      .limits(Map(
-        "memory" -> Quantity(s"${memoryLimit}Mi"),
-        "cpu" -> Quantity(cpuLimit.toString)
-      ).asJava)
+      .limits(Map(limits*).asJava)
 
     val container = new V1Container()
       .name("openmole")

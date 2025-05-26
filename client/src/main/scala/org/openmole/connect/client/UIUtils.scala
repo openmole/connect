@@ -55,14 +55,24 @@ object UIUtils:
     )
 
   def userInfoBlock(user: User, space: Var[Option[Storage]]) =
+    def maxMemory =
+      user.memory match
+        case m if m <= 0 => "∞"
+        case x => s"${toGB(x, true)} GB"
+
+    def maxCPU =
+      user.cpu match
+        case x if x <= 0 => "∞"
+        case x => x.toString
+
     div(
       child <-- space.signal.distinct.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role.toString),
           textBlock("OpenMOLE version", user.omVersion),
           textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory, true)} GB"),
-          textBlock("Max Memory", s"${toGB(user.memory, true)} GB"),
-          textBlock("Max CPU", user.cpu.toString),
+          textBlock("Max Memory", maxMemory),
+          textBlock("Max CPU", maxCPU),
           storage.toSeq.map: storage =>
             memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
         )
