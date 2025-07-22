@@ -17,8 +17,6 @@ val scalajsDomVersion = "1.10.0"
 val scalaJWTVersion = "4.2.0"
 val rosHttpVersion = "3.0.0"
 val httpComponentsVersion = "4.5.12"
-val slickVersion = "3.5.1"
-val h2Version = "2.2.224"
 val autowireVersion = "0.3.3"
 val boopickleVersion = "1.4.0"
 def laminarVersion = "0.14.2"
@@ -67,27 +65,28 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
   libraryDependencies ++= Seq(
     "org.endpoints4s" %% "http4s-server" % endpointHTT4ServerVersion excludeAll(ExclusionRule(organization = "com.lihaoyi")),
     "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+    "org.typelevel" %% "cats-effect" % "3.6.2",
     "io.circe" %% "circe-parser" % circeVersion,
     "io.circe" %% "circe-yaml" % "1.15.0",
     "com.lihaoyi" %% "scalatags" % scalatagsVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
-    "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
-    "com.lihaoyi" %% "upickle" % "3.3.1",
-    "org.apache.httpcomponents.client5" % "httpclient5" % "5.3.1",
-    "com.typesafe.slick" %% "slick" % slickVersion,
-    "com.h2database" % "h2" % h2Version,
-    "dev.profunktor" %% "http4s-jwt-auth" % "1.2.2",
+    "org.apache.httpcomponents.client5" % "httpclient5" % "5.5",
+    "com.lihaoyi" %% "upickle" % "4.2.1",
+    "org.apache.httpcomponents.client5" % "httpclient5" % "5.5",
+    "com.typesafe.slick" %% "slick" % "3.6.1",
+    "com.h2database" % "h2" % "2.3.232",
+    "dev.profunktor" %% "http4s-jwt-auth" % "2.0.9",
     "com.github.pathikrit" %% "better-files" % "3.9.2",
-    "commons-codec" % "commons-codec" % "1.16.1",
-    "org.apache.commons" % "commons-lang3" % "3.14.0",
-    "io.github.arainko" %% "ducktape" % "0.2.0",
+    "commons-codec" % "commons-codec" % "1.19.0",
+    "org.apache.commons" % "commons-lang3" % "3.18.0",
+    "io.github.arainko" %% "ducktape" % "0.2.9",
     "io.kubernetes" % "client-java" % "19.0.1",
-    "dev.optics" %% "monocle-core"  % "3.2.0",
-    "dev.optics" %% "monocle-macro" % "3.2.0",
-    "com.google.guava" % "guava" % "33.2.1-jre",
-    "com.github.eikek" %% "emil-common" % "0.15.0",  // the core library
-    "com.github.eikek" %% "emil-javamail" % "0.15.0", // implementation module
-    "org.slf4j" % "slf4j-jdk14" % "2.0.13"
+    "dev.optics" %% "monocle-core"  % "3.3.0",
+    "dev.optics" %% "monocle-macro" % "3.3.0",
+    "com.google.guava" % "guava" % "33.4.8-jre",
+    "com.github.eikek" %% "emil-common" % "0.19.0",  // the core library
+    "com.github.eikek" %% "emil-javamail" % "0.19.0", // implementation module
+    "org.slf4j" % "slf4j-jdk14" % "2.0.17"
 
   )
 ) dependsOn (shared) 
@@ -112,7 +111,7 @@ lazy val application = project.in(file("application")) settings (defaultSettings
       ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),
   Docker / packageName := "openmole/openmole-connect",
   Docker / organization := "openmole",
-  dockerBaseImage := "openjdk:21-slim"
+  dockerBaseImage := "openjdk:25-slim"
 )
 
 def doMapping(from: java.io.File, toBase: String): Seq[(File, String)] = {

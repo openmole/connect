@@ -3,7 +3,7 @@ package org.openmole.connect.server.db
 import org.openmole.connect.server.Settings
 
 import java.sql.DriverManager
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.Duration
 import better.files.*
 import org.openmole.connect.server.*
@@ -13,8 +13,6 @@ import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
 import slick.model.ForeignKey
 import org.openmole.connect.shared.Data
-
-import scala.concurrent.ExecutionContext.Implicits.global
 import org.openmole.connect.server.tool.*
 import io.github.arainko.ducktape.*
 import org.http4s.headers.Upgrade
@@ -96,23 +94,23 @@ object DB:
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action.transactionally), Duration.Inf)
 
-  def addUser(user: User): Unit =
+  def addUser(user: User)(using ExecutionContext): Unit =
     runTransaction:
       addUserTransaction(user)
 
-  private def addUserTransaction(user: User) =
+  private def addUserTransaction(user: User)(using ExecutionContext) =
     for
       e <- userTable.filter(u => u.email === user.email).result
       _ <- if e.isEmpty then userTable += user else DBIO.successful(())
     yield ()
 
-  private def checkAtLeastOneAdmin =
+  private def checkAtLeastOneAdmin(using ExecutionContext) =
     for
       e <- userTable.filter(_.role === Role.Admin).result
       _ <- if e.isEmpty then DBIO.failed(new RuntimeException("Should be at least one admin account")) else DBIO.successful(())
     yield ()
 
-  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt): Option[(RegisterUser, Secret)] =
+  def addRegisteringUser(registerUser: RegisterUser)(using salt: Salt, executionContext: ExecutionContext): Option[(RegisterUser, Secret)] =
     val secret = randomUUID
 
     runTransaction:
@@ -141,7 +139,7 @@ object DB:
     .headOption.map: u =>
       (u, secret)
 
-  def validateUserEmail(uuid: UUID, secret: Secret): Boolean =
+  def validateUserEmail(uuid: UUID, secret: Secret)(using ExecutionContext): Boolean =
     val res =
       runTransaction:
         val q1 = registerUserTable.filter(r => r.uuid === uuid).map(_.emailStatus)
@@ -160,11 +158,11 @@ object DB:
 
     res.exists(_ >= 1)
 
-  def removeExpiredPasswords =
+  def removeExpiredPasswords(using ExecutionContext) =
     val deadline = tool.now - ConnectServer.Config.resetPasswordExpire * 1000
     validationSecretTable.filter(s => s.secretType === SecretType.PasswordReset && s.creationTime < deadline).delete
 
-  def addResetPassword(user: User): Secret =
+  def addResetPassword(user: User)(using ExecutionContext): Secret =
     val secret = ValidationSecret(user.uuid, randomUUID, tool.now, SecretType.PasswordReset)
     val deadline = tool.now - ConnectServer.Config.resetPasswordExpire * 1000
 
@@ -174,7 +172,7 @@ object DB:
         _ <- validationSecretTable += secret
       yield secret.secret
 
-  def resetPassword(uuid: DB.UUID, secret: Secret, password: Password)(using Salt, Authentication.UserCache): Boolean =
+  def resetPassword(uuid: DB.UUID, secret: Secret, password: Password)(using Salt, Authentication.UserCache, ExecutionContext): Boolean =
     val success =
       runTransaction:
         val secretQuery = validationSecretTable.filter(s => s.uuid === uuid && s.validationSecret === secret && s.secretType === SecretType.PasswordReset)
@@ -187,14 +185,14 @@ object DB:
     if success then summon[Authentication.UserCache].userUUID.invalidate(uuid)
     success
 
-  def deleteRegistering(uuid: UUID): Int =
+  def deleteRegistering(uuid: UUID)(using ExecutionContext): Int =
     runTransaction:
       for
         r <- registerUserTable.filter(_.uuid === uuid).delete
         _ <- validationSecretTable.filter(_.uuid === uuid).delete
       yield r
 
-  def promoteRegistering(uuid: UUID)(using DockerHubCache, Default): Option[User] =
+  def promoteRegistering(uuid: UUID)(using DockerHubCache, Default, ExecutionContext): Option[User] =
     runTransaction:
       for
         ru <- registerUserTable.filter(_.uuid === uuid).result
@@ -278,7 +276,7 @@ object DB:
     summon[Authentication.UserCache].userUUID.invalidate(uuid)
     runTransaction(userTable.filter(_.uuid === uuid).map(_.email).update(email))
 
-  def updateRole(uuid: UUID, role: Role)(using Authentication.UserCache) =
+  def updateRole(uuid: UUID, role: Role)(using Authentication.UserCache, ExecutionContext) =
     summon[Authentication.UserCache].userUUID.invalidate(uuid)
     runTransaction:
       val q = userTable.filter(_.uuid === uuid).map(_.role)
@@ -300,7 +298,7 @@ object DB:
 
   def registerUsers: Seq[RegisterUser] = runTransaction(registerUserTable.result)
 
-  def updatePasswordQuery(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt) =
+  def updatePasswordQuery(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, ExecutionContext) =
     val q =
       for
         user <- userTable
@@ -311,12 +309,12 @@ object DB:
       yield user.password
     q.update(salted(password)).map(_ > 0)
 
-  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.UserCache): Boolean =
+  def updatePassword(uuid: UUID, password: Password, old: Option[Password] = None)(using Salt, Authentication.UserCache, ExecutionContext): Boolean =
     summon[Authentication.UserCache].userUUID.invalidate(uuid)
     runTransaction:
       updatePasswordQuery(uuid, password, old)
 
-  def deleteUser(uuid: UUID)(using Authentication.UserCache) =
+  def deleteUser(uuid: UUID)(using Authentication.UserCache, ExecutionContext) =
     summon[Authentication.UserCache].userUUID.invalidate(uuid)
     runTransaction:
       for
@@ -344,7 +342,7 @@ object DB:
   case class Upgrade(upgrade: DBIO[Unit], version: Int)
   def upgrades: Seq[Upgrade] = Seq(DBSchemaV1.upgrade, DBSchemaV2.upgrade, DBSchemaV3.upgrade)
 
-  def initDB()(using Salt, DockerHubCache, Default) =
+  def initDB()(using Salt, DockerHubCache, Default, ExecutionContext) =
     runTransaction:
       def createDBInfo: DBIO[Int] =
         for

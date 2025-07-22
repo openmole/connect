@@ -9,8 +9,10 @@ import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.db.*
 import org.openmole.connect.shared.*
 
+import scala.concurrent.ExecutionContext
 
-class APIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender):
+
+class APIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender, ExecutionContext):
   def institutions = DB.institutions
   def signup(firstName: String, name: String, email: String, password: String, institution: String, url: String) =
     tool.log(s"signing up $name")
@@ -42,7 +44,7 @@ class APIRoutes(impl: APIImpl) extends server.Endpoints[IO]
   with API
   with server.JsonEntitiesFromCodecs:
 
-  type Eff = super.Effect
+  private type BygFixEffect = super.Effect
 
   val routes: HttpRoutes[IO] = HttpRoutes.of:
     routesFromEndpoints(

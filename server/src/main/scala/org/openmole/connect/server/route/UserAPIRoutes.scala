@@ -9,8 +9,10 @@ import org.openmole.connect.server.K8sService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.*
 
+import scala.concurrent.ExecutionContext
 
-class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService):
+
+class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, ExecutionContext):
   def user = DB.userFromUUID(uuid).getOrElse(throw RuntimeException(s"Not found user with uuid $uuid"))
   def instanceStatus = K8sService.podInfo(uuid)
 

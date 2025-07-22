@@ -30,7 +30,7 @@ import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
 import org.openmole.connect.server.db.DB
 
 import java.net.URLDecoder
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Executors, TimeUnit}
 
 
 object ConnectServer:
@@ -63,7 +63,14 @@ object ConnectServer:
 
 
 class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
-  implicit val runtime: IORuntime = cats.effect.unsafe.IORuntime.global
+  lazy val virtualThreadPool = Executors.newVirtualThreadPerTaskExecutor()
+  given executionContext: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(virtualThreadPool)
+
+  given ioRuntime: IORuntime =
+    IORuntime.builder().
+      setCompute(executionContext, () => ()).
+      setBlocking(executionContext, () => ()).
+      build()
 
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
   given salt: DB.Salt = DB.Salt(config.salt)
