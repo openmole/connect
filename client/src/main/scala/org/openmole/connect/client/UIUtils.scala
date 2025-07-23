@@ -75,7 +75,7 @@ object UIUtils:
           div(user.omVersion, cls := "infoContent")
         )
       )
-      
+
     div(
       child <-- space.signal.distinct.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
