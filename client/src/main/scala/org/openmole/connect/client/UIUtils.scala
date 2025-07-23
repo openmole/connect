@@ -69,23 +69,13 @@ object UIUtils:
         case x => x.toString
 
     def version =
-      
-      
       div(Css.centerColumnFlex,
         div(cls := "statusBlock",
           div("OpenMOLE version", cls := "info"),
-          child <-- update.signal.map:
-            //case None => div(user.omVersion, cls := "infoContent")
-            case _ => //Some(v) =>
-              a(
-                div(user.omVersion, div(cls := "bi bi-arrow-bar-up", marginLeft := "5px"), cls := "infoContent", color := "#ffde75"),
-                onClick --> println("click"),
-                cursor.pointer
-              )
+          div(user.omVersion, cls := "infoContent")
         )
       )
-
-
+      
     div(
       child <-- space.signal.distinct.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",

@@ -100,7 +100,7 @@ object UserPanel:
         Future.sequence(futures).andThen(_ => reload.set(()))
 
 
-    def userPanel(user: User) =
+    def userPanel(user: User, checkVersion: Boolean = true) =
       var refreshing = false
       val versionUpdate: Var[Option[String]] = Var(None)
 
@@ -157,9 +157,11 @@ object UserPanel:
             ,
             EventStream.periodic(5000).toObservable -->
               Observer: _ =>
-                versionInfo.andThen:
-                  case Success(v) => runningVersion.set(Some(v.number))
-                  case Failure(exception) => runningVersion.set(None)
+                if checkVersion
+                then
+                  versionInfo.andThen:
+                    case Success(v) => runningVersion.set(Some(v.number))
+                    case Failure(exception) => runningVersion.set(None)
             ,
             onMountCallback: _ =>
               UserAPIClient.openMOLEVersionUpdate(user.omVersion).future.foreach:
