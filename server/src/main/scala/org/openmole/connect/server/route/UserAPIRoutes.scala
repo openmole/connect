@@ -6,7 +6,7 @@ import org.http4s.HttpRoutes
 import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.db.*
 import org.openmole.connect.server.K8sService.KubeCache
-import org.openmole.connect.server.OpenMOLE.DockerHubCache
+import org.openmole.connect.server.OpenMOLE.{DockerHubCache, OpenMOLEVersion}
 import org.openmole.connect.shared.*
 
 import scala.concurrent.ExecutionContext
@@ -37,16 +37,18 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
   def setInstitution(i: String) = DB.updateInstitution(uuid, i)
 
   def openMOLEVersionUpdate(v: String) =
-    def numeric(v: String) = util.Try(v.toDouble).map(n => (version = v, number = n)).toOption
-
-    val lastVersion = availableVersions.flatMap(numeric).sortBy(_.number).lastOption
-    (numeric(v), lastVersion) match
+    val lastVersion =
+      availableVersions.flatMap: v =>
+        OpenMOLEVersion.parse(v).map(p => (string = v, version = p))
+      .filter(_.version.isStable).sortBy(_.version).lastOption
+    
+    (OpenMOLEVersion.parse(v), lastVersion) match
       case (None, _) => None
       case (_, None) => None
-      case (Some(v), Some(l)) if v.number < l.number => Some(l.version)
-      case (_, _) => None
-
-
+      case (Some(v), Some(l)) =>
+        if summon[Ordering[OpenMOLEVersion]].compare(v, l.version) < 0
+        then Some(l.string)
+        else None
 
 class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI

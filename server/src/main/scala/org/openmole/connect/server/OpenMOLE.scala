@@ -112,3 +112,78 @@ object OpenMOLE:
       finally response.close()
     finally httpClient.close()
 
+  import scala.math.Ordering
+  import scala.util.matching.Regex
+
+  enum OpenMOLEVersion:
+    case Stable(major: Int, minor: Int)
+    case RC(major: Int, minor: Int, rc: Int)
+    case Snapshot(major: Int, minor: Int)
+    case Latest
+
+  object OpenMOLEVersion:
+
+    private val StableRegex: Regex = raw"(\d+)\.(\d+)".r
+    private val RCRegex: Regex = raw"(\d+)\.(\d+)-RC(\d+)".r
+    private val SnapshotRegex: Regex = raw"(\d+)\.(\d+)-SNAPSHOT".r
+
+    def parse(version: String): Option[OpenMOLEVersion] = version match
+      case "latest" => Some(Latest)
+      case RCRegex(maj, min, rc) => Some(RC(maj.toInt, min.toInt, rc.toInt))
+      case SnapshotRegex(maj, min) => Some(Snapshot(maj.toInt, min.toInt))
+      case StableRegex(maj, min) if !version.contains("-") =>
+        Some(Stable(maj.toInt, min.toInt))
+      case _ => None
+
+    extension (v: OpenMOLEVersion)
+      def isStable: Boolean =
+        v match
+          case Stable(_, _) => true
+          case _ => false
+
+    given Ordering[OpenMOLEVersion] with
+      def compare(a: OpenMOLEVersion, b: OpenMOLEVersion): Int =
+        (a, b) match
+          case (Latest, Latest) => 0
+          case (Latest, _) => 1
+          case (_, Latest) => -1
+
+          case (Stable(maj1, min1), Stable(maj2, min2)) =>
+            comparePair((maj1, min1), (maj2, min2))
+
+          case (RC(maj1, min1, rc1), RC(maj2, min2, rc2)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else rc1.compare(rc2)
+
+          case (Snapshot(maj1, min1), Snapshot(maj2, min2)) =>
+            comparePair((maj1, min1), (maj2, min2))
+
+          case (RC(maj1, min1, _), Stable(maj2, min2)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else -1
+
+          case (Stable(maj1, min1), RC(maj2, min2, _)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else 1
+
+          case (Snapshot(maj1, min1), Stable(maj2, min2)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else -1
+
+          case (Stable(maj1, min1), Snapshot(maj2, min2)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else 1
+
+          case (Snapshot(maj1, min1), RC(maj2, min2, _)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else -1
+
+          case (RC(maj1, min1, _), Snapshot(maj2, min2)) =>
+            val base = comparePair((maj1, min1), (maj2, min2))
+            if base != 0 then base else 1
+
+      private def comparePair(a: (Int, Int), b: (Int, Int)): Int =
+        val (a1, a2) = a
+        val (b1, b2) = b
+        Seq(a1.compare(b1), a2.compare(b2)).find(_ != 0).getOrElse(0)
+
