@@ -10,9 +10,11 @@ import org.openmole.connect.shared.Data
 import com.raquo.laminar.nodes.ReactiveElement.isActive
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.shared.Data.PodInfo.Status.Running
-import scaladget.bootstrapnative.Selector._
+import scaladget.bootstrapnative.Selector.*
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.UUID
+import scala.concurrent.Future
 import scala.runtime.LazyVals.Waiting
 
 object UIUtils:
@@ -276,17 +278,15 @@ object UIUtils:
     s"${date.toLocaleDateString} ${date.toLocaleTimeString.dropRight(3)}"
 
   def versionInfo =
-    fetch(s"/${Data.openMOLERoute}/gui/application/settings").map:
-      _.map: str =>
-        val parsed = ujson.read(str)
-        val version = parsed("version").str
-        val name = parsed("versionName").str
-        val build = longTimeToString(parsed("buildTime").value.toString.toLong)
-        (version, name, build)
+    fetch(s"/${Data.openMOLERoute}/gui/application/settings").map: str =>
+      val parsed = ujson.read(str)
+      val version = parsed("version").str
+      val name = parsed("versionName").str
+      val build = longTimeToString(parsed("buildTime").value.toString.toLong)
+      (number = version, name = name, build = build)
 
-  def fetch(url: String): Signal[Option[String]] =
+  def fetch(url: String): Future[String] =
     import scala.concurrent.Future
     import org.scalajs.dom
-    Signal.fromFuture:
-      dom.fetch(url).toFuture.flatMap(_.text().toFuture)
+    dom.fetch(url).toFuture.flatMap(_.text().toFuture)
 

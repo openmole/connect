@@ -41,7 +41,7 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
       availableVersions.flatMap: v =>
         OpenMOLEVersion.parse(v).map(p => (string = v, version = p))
       .filter(_.version.isStable).sortBy(_.version).lastOption
-    
+
     (OpenMOLEVersion.parse(v), lastVersion) match
       case (None, _) => None
       case (_, None) => None

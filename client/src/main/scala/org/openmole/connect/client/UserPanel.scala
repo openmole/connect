@@ -6,7 +6,7 @@ import com.raquo.laminar.api.features.unitArrows
 import org.openmole.connect
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.client.ConnectUtils.OpenMOLEPodStatus
-import org.openmole.connect.client.UIUtils.{DetailedInfo, institutionsList, versionInfo}
+import org.openmole.connect.client.UIUtils.{DetailedInfo, buildInput, institutionsList, versionInfo}
 import org.openmole.connect.shared.{Data, Storage}
 import org.scalajs.dom
 import scaladget.bootstrapnative.*
@@ -19,6 +19,7 @@ import scala.collection.mutable.ListBuffer
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.*
 
 object UserPanel:
 
@@ -115,26 +116,55 @@ object UserPanel:
             case x => x.toString
 
         def version =
-          div(Css.centerColumnFlex,
-            child <-- versionUpdate.signal.map:
-              case Some(v) =>
-                a(
-                  div(cls := "statusBlock",
-                    div("OpenMOLE version", cls := "info"),
-                    div(user.omVersion, div(cls := "bi bi-arrow-bar-up", marginLeft := "5px"), cls := "infoContent", color := "#ffde75")
-                  ),
-                  onClick --> UserAPIClient.setOpenMOLEVersion(v).future.foreach(_ => reload.set(())),
-                  cursor.pointer
-                )
+          val runningVersion = Var[Option[String]](None)
+
+          def updateVersion(v: String) =
+            a(
+              div(cls := "statusBlock",
+                div("OpenMOLE version", cls := "info"),
+                div(user.omVersion, div(cls := "bi bi-arrow-bar-up", marginLeft := "5px"), cls := "infoContent", color := "#ffde75")
+              ),
+              onClick --> UserAPIClient.setOpenMOLEVersion(v).future.foreach(_ => reload.set(())),
+              cursor.pointer
+            )
+
+          def updateOrInfo =
+            versionUpdate.signal.map:
+              case Some(v) => updateVersion(v)
               case None =>
                 div(cls := "statusBlock",
                   div("OpenMOLE version", cls := "info"),
-                  div(user.omVersion, cls := "infoContent"),
-                  onMountCallback: _ =>
-                    UserAPIClient.openMOLEVersionUpdate(user.omVersion).future.foreach:
-                      case Some(v) => versionUpdate.set(Some(v))
-                      case None =>
+                  div(user.omVersion, cls := "infoContent")
                 )
+
+          def restartOpenMOLE =
+            div(cls := "statusBlock",
+              div("OpenMOLE version", cls := "info"),
+              div(user.omVersion,
+                div(cls := "bi bi-arrow-clockwise", marginLeft := "5px"),
+                cls := "infoContent",
+                color := "#ffde75")
+            )
+
+          div(Css.centerColumnFlex,
+            child <--
+              runningVersion.signal.flatMap:
+                case None => updateOrInfo
+                case Some(version) =>
+                 if version == user.omVersion
+                 then updateOrInfo
+                 else Signal.fromValue(restartOpenMOLE)
+            ,
+            EventStream.periodic(5000).toObservable -->
+              Observer: _ =>
+                versionInfo.andThen:
+                  case Success(v) => runningVersion.set(Some(v.number))
+                  case Failure(exception) => runningVersion.set(None)
+            ,
+            onMountCallback: _ =>
+              UserAPIClient.openMOLEVersionUpdate(user.omVersion).future.foreach:
+                case Some(v) => versionUpdate.set(Some(v))
+                case None =>
           )
 
 
@@ -190,8 +220,8 @@ object UserPanel:
         br(), br(),
         s"When your OpenMOLE instance is running you can access your files externally via the webdav protocol using this URL:", a(webdavLocation, href := webdavLocation),
         br(), br(),
-        child <-- versionInfo.map:
-          case Some((v, n, bu)) => div(s"You are presently running OpenMOLE $v - $n, built on $bu")
+        child <-- Signal.fromFuture(versionInfo).map:
+          case Some(v) => div(s"You are presently running OpenMOLE ${v.number} - ${v.name} built on ${v.build}")
           case None => emptyNode
       )
 
