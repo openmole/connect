@@ -54,7 +54,8 @@ object UIUtils:
       span(Css.centerColumnFlex, fontFamily := "gi", fontSize := "14", s"${toGB(value, float = true)}/${toGB(max)} GB")
     )
 
-  def userInfoBlock(user: User, space: Var[Option[Storage]]) =
+  
+  def userInfoBlock(user: User, space: Var[Option[Storage]], update: Var[Option[String]] = Var(None)) =
     def maxMemory =
       user.memory match
         case m if m <= 0 => "∞"
@@ -65,11 +66,29 @@ object UIUtils:
         case x if x <= 0 => "∞"
         case x => x.toString
 
+    def version =
+      
+      
+      div(Css.centerColumnFlex,
+        div(cls := "statusBlock",
+          div("OpenMOLE version", cls := "info"),
+          child <-- update.signal.map:
+            //case None => div(user.omVersion, cls := "infoContent")
+            case _ => //Some(v) =>
+              a(
+                div(user.omVersion, div(cls := "bi bi-arrow-bar-up", marginLeft := "5px"), cls := "infoContent", color := "#ffde75"),
+                onClick --> println("click"),
+                cursor.pointer
+              )
+        )
+      )
+
+
     div(
       child <-- space.signal.distinct.map: storage =>
         div(Css.centerRowFlex, justifyContent.center, padding := "30px",
           badgeBlock("Role", user.role.toString),
-          textBlock("OpenMOLE version", user.omVersion),
+          version,
           textBlock("OpenMOLE memory", s"${toGB(user.openMOLEMemory, true)} GB"),
           textBlock("Max Memory", maxMemory),
           textBlock("Max CPU", maxCPU),

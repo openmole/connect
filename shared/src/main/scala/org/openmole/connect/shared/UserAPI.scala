@@ -52,7 +52,13 @@ trait UserAPI
       post(path / "password", jsonRequest[(String, String)]),
       ok(jsonResponse[Boolean])
     )
-    
+
+  val openMOLEVersionUpdate: Endpoint[String, Option[String]] =
+    endpoint(
+      post(path / "openmole-version-update", jsonRequest[String]),
+      ok(jsonResponse[Option[String]])
+    )
+  
   val setOpenMOLEVersion: Endpoint[String, Unit] =
     endpoint(
       post(path / "set-openmole-version", jsonRequest[String]),

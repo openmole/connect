@@ -101,6 +101,57 @@ object UserPanel:
 
     def userPanel(user: User) =
       var refreshing = false
+      val versionUpdate: Var[Option[String]] = Var(None)
+
+      def userInfoBlock =
+        def maxMemory =
+          user.memory match
+            case m if m <= 0 => "∞"
+            case x => s"${UIUtils.toGB(x, true)} GB"
+
+        def maxCPU =
+          user.cpu match
+            case x if x <= 0 => "∞"
+            case x => x.toString
+
+        def version =
+          div(Css.centerColumnFlex,
+            child <-- versionUpdate.signal.map:
+              case Some(v) =>
+                a(
+                  div(cls := "statusBlock",
+                    div("OpenMOLE version", cls := "info"),
+                    div(user.omVersion, div(cls := "bi bi-arrow-bar-up", marginLeft := "5px"), cls := "infoContent", color := "#ffde75")
+                  ),
+                  onClick --> UserAPIClient.setOpenMOLEVersion(v).future.foreach(_ => reload.set(())),
+                  cursor.pointer
+                )
+              case None =>
+                div(cls := "statusBlock",
+                  div("OpenMOLE version", cls := "info"),
+                  div(user.omVersion, cls := "infoContent"),
+                  onMountCallback: _ =>
+                    UserAPIClient.openMOLEVersionUpdate(user.omVersion).future.foreach:
+                      case Some(v) => versionUpdate.set(Some(v))
+                      case None =>
+                )
+          )
+
+
+        div(
+          child <-- space.signal.distinct.map: storage =>
+            div(Css.centerRowFlex, justifyContent.center, padding := "30px",
+              UIUtils.badgeBlock("Role", user.role.toString),
+              version,
+              UIUtils.textBlock("OpenMOLE memory", s"${UIUtils.toGB(user.openMOLEMemory, true)} GB"),
+              UIUtils.textBlock("Max Memory", maxMemory),
+              UIUtils.textBlock("Max CPU", maxCPU),
+              storage.toSeq.map: storage =>
+                UIUtils.memoryBar("Storage", storage.used.toInt, (storage.used + storage.available).toInt)
+            )
+        )
+      end userInfoBlock
+
 
       div(
         EventStream.periodic(5000).toObservable -->
@@ -117,7 +168,7 @@ object UserPanel:
         ,
         div(maxWidth := "1000",
           ConnectUtils.logoutItem.amend(Css.rowFlex, justifyContent.flexEnd),
-          UIUtils.userInfoBlock(user, space),
+          userInfoBlock,
           div(
             child <--
               podInfo.signal.map(_.flatMap(_.status)).map:

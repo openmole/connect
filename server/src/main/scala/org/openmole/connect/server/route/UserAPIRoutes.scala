@@ -36,9 +36,23 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
 
   def setInstitution(i: String) = DB.updateInstitution(uuid, i)
 
+  def openMOLEVersionUpdate(v: String) =
+    def numeric(v: String) = util.Try(v.toDouble).map(n => (version = v, number = n)).toOption
+
+    val lastVersion = availableVersions.flatMap(numeric).sortBy(_.number).lastOption
+    (numeric(v), lastVersion) match
+      case (None, _) => None
+      case (_, None) => None
+      case (Some(v), Some(l)) if v.number < l.number => Some(l.version)
+      case (_, _) => None
+
+
+
 class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
   with UserAPI
   with server.JsonEntitiesFromCodecs:
+
+  private type FixEffecet = super.Effect
 
   val routes: HttpRoutes[IO] = HttpRoutes.of:
     routesFromEndpoints(
@@ -51,5 +65,6 @@ class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
       setOpenMOLEVersion.implementedBy(impl.setVersion),
       usedSpace.implementedBy(_ => impl.usedSpace),
       setOpenMOLEMemory.implementedBy(impl.setOMemory),
-      setInstitution.implementedBy(impl.setInstitution)
+      setInstitution.implementedBy(impl.setInstitution),
+      openMOLEVersionUpdate.implementedBy(impl.openMOLEVersionUpdate)
     )

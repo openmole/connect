@@ -76,7 +76,8 @@ object Data:
     memory: Int,
     cpu: Double,
     openMOLEMemory: Int,
-    lastAccess: Long, created: Long)
+    lastAccess: Long, 
+    created: Long)
   
   case class UserAndPodInfo(
      user: User, 
