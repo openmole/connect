@@ -134,8 +134,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
                   case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
                   case None =>
                     DB.registerUser(email) match
-                      case Some(u) if u.emailStatus == Data.EmailStatus.Unchecked => connectionError("User email has not been validated and the account has not been validated by an admin")
-                      case Some(u) => connectionError("User account has not been validated by an admin")
+                      case Some(u) if u.emailStatus == Data.EmailStatus.Unchecked => connectionError("Your email has not been validated")
+                      case Some(u) => connectionError("Your account has not been approved yet")
                       case None => connectionError("Invalid email or password")
               case None => BadRequest("Missing email or password")
 

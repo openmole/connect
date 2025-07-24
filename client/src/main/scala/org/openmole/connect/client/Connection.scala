@@ -145,7 +145,7 @@ object Connection:
                   urlField.ref.value
                 ).future.foreach:
                   case Some(m) => displayedForm.set(Form.SignIn(Some(m)))
-                  case None => displayedForm.set(Form.SignIn(Some("You should now validate your email and then wait for the validation of your account"), false))
+                  case None => displayedForm.set(Form.SignIn(Some("You should now validate your email and then wait for the approval of your account"), false))
             )
           ),
           urlField
