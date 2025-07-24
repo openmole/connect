@@ -33,7 +33,7 @@ object Connection:
 
   enum Form:
     case SignUp, AskPasswordReset
-    case SignIn(error: Option[String] = None) extends Form
+    case SignIn(message: Option[String] = None, error: Boolean = true) extends Form
     case ResetPassword(uuid: String, secret: String) extends Form
 
   @JSExportTopLevel("connection")
@@ -65,7 +65,7 @@ object Connection:
         FormField(in2, Signal.fromValue(false), div(Css.centerRowFlex, div(cls := "inputError", in2)))
       )
 
-    def signInForm(error: Option[String]) =
+    def signInForm(message: Option[String], error: Boolean) =
       val connectButton = button("Connect", btn_primary, `type` := "submit", float.right, right := "0")
 
       div(marginTop := "120", Css.centerColumnFlex, alignItems.flexEnd,
@@ -79,7 +79,7 @@ object Connection:
         ),
         button("Sign Up", cls := "linkLike", onClick --> { _ => displayedForm.set(Form.SignUp) }),
         button("Lost Password", cls := "linkLike", onClick --> { _ => displayedForm.set(Form.AskPasswordReset) }),
-        div(error.getOrElse(""), cls := "inputError", minWidth := "0", marginTop := "10")
+        div(message.getOrElse(""), cls := (if error then "inputError" else "inputMessage"), minWidth := "0", marginTop := "10")
       )
 
     lazy val signupForm: ReactiveHtmlElement[HTMLFormElement] =
@@ -103,7 +103,8 @@ object Connection:
 
 
       def validEmail(email: String): Option[String] =
-        if """^[-a-z0-9!#$%&'*+/=?^_`{|}~]+(\.[-a-z0-9!#$%&'*+/=?^_`{|}~]+)*@([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)*(aero|arpa|asia|biz|cat|com|coop|edu|gov|info|int|jobs|mil|mobi|museum|name|net|org|pro|tel|travel|[a-z][a-z])$""".r.findFirstIn(email) == None
+        val emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$".r
+        if emailRegex.findFirstIn(email).isEmpty
         then Some("Invalid email")
         else None
 
@@ -142,8 +143,9 @@ object Connection:
                   p1.input.ref.value,
                   institution.input.ref.value,
                   urlField.ref.value
-                ).future.foreach: m =>
-                  displayedForm.set(Form.SignIn(m))
+                ).future.foreach:
+                  case Some(m) => displayedForm.set(Form.SignIn(Some(m)))
+                  case None => displayedForm.set(Form.SignIn(Some("You should now validate your email and then wait for the validation of your account"), false))
             )
           ),
           urlField
@@ -212,7 +214,7 @@ object Connection:
                 displayedForm.signal.map:
                   case Form.SignUp => signupForm
                   case Form.AskPasswordReset => askResetPassword
-                  case Form.SignIn(m) => signInForm(m)
+                  case Form.SignIn(m, error) => signInForm(m, error)
                   case Form.ResetPassword(uuid, secret) => resetPassword(uuid, secret)
             )
           )
