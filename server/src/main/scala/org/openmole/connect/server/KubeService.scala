@@ -25,7 +25,7 @@ import scala.jdk.CollectionConverters.*
 
 import io.kubernetes.client.openapi.apis.*
 
-object K8sService:
+object KubeService:
 
   object KubeCache:
     type Cached = String
@@ -54,7 +54,7 @@ object K8sService:
       .namespace(Namespace.openmole)
       .labels(Map("user" -> uuid).asJava)
 
-    val resources = new V1ResourceRequirements()
+    val resources = new V1VolumeResourceRequirements()
       .requests(Map("storage" -> Quantity(s"${storage}Mi")).asJava)
 
     val spec = new V1PersistentVolumeClaimSpec()
@@ -69,7 +69,7 @@ object K8sService:
         .spec(spec)
 
     try
-      api.createNamespacedPersistentVolumeClaim(Namespace.openmole, claim, null, null, null, null)
+      api.createNamespacedPersistentVolumeClaim(Namespace.openmole, claim).execute()
       true
     catch
       case e: ApiException if e.getCode == 409 => false
@@ -166,23 +166,23 @@ object K8sService:
       .spec(deploymentSpec)
 
     try
-      appsApi.createNamespacedDeployment(Namespace.openmole, deployment, null, null, null, null)
+      appsApi.createNamespacedDeployment(Namespace.openmole, deployment).execute()
     catch
       case e: ApiException if e.getCode == 409 =>
-        val existing = appsApi.readNamespacedDeployment(podName, Namespace.openmole, null)
+        val existing = appsApi.readNamespacedDeployment(podName, Namespace.openmole).execute()
         deployment.getMetadata.setResourceVersion(existing.getMetadata.getResourceVersion)
-        appsApi.replaceNamespacedDeployment(podName, Namespace.openmole, deployment, null, null, null, null)
+        appsApi.replaceNamespacedDeployment(podName, Namespace.openmole, deployment).execute()
       case e: ApiException =>
         throw e
 
-  def launch(user: DB.User)(using KubeCache, K8sService): Unit =
-    K8sService.startOpenMOLEPod(user.uuid, user.email, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
+  def launch(user: DB.User)(using KubeCache, KubeService): Unit =
+    KubeService.startOpenMOLEPod(user.uuid, user.email, user.omVersion, user.openMOLEMemory, user.memory, user.cpu)
 
   def stopOpenMOLEPod(uuid: DB.UUID)(using KubeCache) =
     val client = Config.defaultClient()
     val appsApi = AppsV1Api(client)
 
-    try appsApi.deleteNamespacedDeployment(uuid, Namespace.openmole, null, null, null, null, null, null)
+    try appsApi.deleteNamespacedDeployment(uuid, Namespace.openmole).execute()
     catch
       case e: ApiException if e.getCode == 404 =>
       case e: ApiException =>
@@ -190,8 +190,8 @@ object K8sService:
 
     summon[KubeCache].ipCache.invalidate(uuid)
 
-  def startOpenMOLEPod(uuid: DB.UUID, email: String, omVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, K8sService) =
-    val k8sService = summon[K8sService]
+  def startOpenMOLEPod(uuid: DB.UUID, email: String, omVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, KubeService) =
+    val k8sService = summon[KubeService]
     stopOpenMOLEPod(uuid)
     deployOpenMOLE(uuid, email, omVersion, openmoleMemory, memoryLimit, cpuLimit, k8sService.storageClassName, k8sService.storageSize)
     summon[KubeCache].ipCache.invalidate(uuid)
@@ -201,22 +201,13 @@ object K8sService:
 
     def byLabel =
       val labelSelector = s"user=$uuid"
-      coreApi.listNamespacedPersistentVolumeClaim(
-        Namespace.openmole,
-        null, null, null, null,
-        labelSelector,
-        null, null, null, null, 0, false
-      )
+      coreApi.listNamespacedPersistentVolumeClaim(Namespace.openmole).labelSelector(labelSelector).execute()
 
     def byName =
       val pvcName = s"pvc-$uuid"
-      coreApi.listNamespacedPersistentVolumeClaim(
-        Namespace.openmole,
-        pvcName, null, null, null,
-        null, null, null, null, null, 0, false
-      )
+      scala.util.Try(coreApi.readNamespacedPersistentVolumeClaim(pvcName, Namespace.openmole).execute()).toOption
 
-    byLabel.getItems.asScala.headOption orElse byName.getItems.asScala.headOption
+    byLabel.getItems.asScala.headOption orElse byName
 
 
   def updateOpenMOLEPersistentVolumeStorage(uuid: String, sizeGi: Int): Unit =
@@ -228,18 +219,18 @@ object K8sService:
       val name = pvc.getMetadata.getName
       val namespace = pvc.getMetadata.getNamespace
 
-      val updatedResources = new V1ResourceRequirements()
+      val updatedResources = new V1VolumeResourceRequirements()
         .requests(Map("storage" -> new Quantity(s"${sizeGi}Gi")).asJava)
 
       pvc.getSpec.setResources(updatedResources)
 
       val coreApi = kubeAPI
-      try coreApi.replaceNamespacedPersistentVolumeClaim(name, namespace, pvc, null, null, null, null)
+      try coreApi.replaceNamespacedPersistentVolumeClaim(name, namespace, pvc).execute()
       catch
         case e: ApiException if e.getCode == 403 =>
           throw new UnsupportedOperationException(s"Storage class does not support resizing", e)
 
-  def getPVCSize(uuid: String)(using k8sService: K8sService): Option[Int] =
+  def getPVCSize(uuid: String)(using k8sService: KubeService): Option[Int] =
     getPVC(uuid).flatMap: pvc =>
       Option(pvc.getSpec)
         .flatMap(spec => Option(spec.getResources))
@@ -253,7 +244,7 @@ object K8sService:
 
     stopOpenMOLEPod(uuid)
     getPVC(uuid).foreach: pvc =>
-      api.deleteNamespacedPersistentVolumeClaim(pvc.getMetadata.getName, pvc.getMetadata.getNamespace, null, null, null, null, null, null)
+      api.deleteNamespacedPersistentVolumeClaim(pvc.getMetadata.getName, pvc.getMetadata.getNamespace).execute()
 
 
   def kubeClient =
@@ -331,11 +322,7 @@ object K8sService:
   def listPods: List[PodInfo] =
     val client = kubeAPI
 
-    val podList = client.listNamespacedPod(
-      Namespace.openmole,
-      null, null, null, null,
-      null, null, null, null, null, 0, false
-    )
+    val podList = client.listNamespacedPod(Namespace.openmole).execute()
 
     podList.getItems.asScala.toList.map(toPodInfo)
 
@@ -344,11 +331,7 @@ object K8sService:
 
     val labelSelector = s"podName=${uuid}"
 
-    val podList = client.listNamespacedPod(
-      Namespace.openmole,
-      null, null, null, null,
-      labelSelector, null, null, null, null, 0, false
-    )
+    val podList = client.listNamespacedPod(Namespace.openmole).labelSelector(labelSelector).execute()
 
     podList.getItems.asScala.toList.map(toPodInfo).headOption
 
@@ -394,4 +377,4 @@ object K8sService:
     yield podInfo
 
 
-case class K8sService(storageClassName: Option[String], storageSize: Int)
+case class KubeService(storageClassName: Option[String], storageSize: Int)

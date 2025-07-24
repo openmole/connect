@@ -58,11 +58,11 @@ object ConnectServer:
 
 
   def apply(config: Config) =
-    val k8s = K8sService(config.kube.storageClassName, config.kube.storageSize)
+    val k8s = KubeService(config.kube.storageClassName, config.kube.storageSize)
     new ConnectServer(config, k8s)
 
 
-class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
+class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
   lazy val virtualThreadPool = Executors.newVirtualThreadPerTaskExecutor()
   given executionContext: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(virtualThreadPool)
 
@@ -75,9 +75,9 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
   given jwtSecret: JWT.Secret = JWT.Secret(config.secret)
   given salt: DB.Salt = DB.Salt(config.salt)
   given authenticationCache: Authentication.UserCache = Authentication.UserCache()
-  given kubeCache: K8sService.KubeCache = K8sService.KubeCache()
+  given kubeCache: KubeService.KubeCache = KubeService.KubeCache()
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
-  given K8sService = k8s
+  given KubeService = k8s
   given Email.Sender = Email.Sender(config.smtp)
   given DB.Default = DB.Default(memory = config.kube.defaultMemory, cpu = config.kube.defaultCPU)
 
@@ -191,7 +191,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: K8sService):
               r.withHeaders(org.http4s.headers.`Content-Disposition`("attachment", Map(CIString("filename") -> "users.csv")))
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req, challenge = true): user =>
-            K8sService.podIP(user.uuid) match
+            KubeService.podIP(user.uuid) match
               case Some(ip) =>
                 val openmoleURL = s"http://$ip:80"
                 val openmoleURI = java.net.URI(openmoleURL)

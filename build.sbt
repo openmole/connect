@@ -80,7 +80,7 @@ lazy val server = project.in(file("server")) settings (defaultSettings) settings
     "commons-codec" % "commons-codec" % "1.19.0",
     "org.apache.commons" % "commons-lang3" % "3.18.0",
     "io.github.arainko" %% "ducktape" % "0.2.9",
-    "io.kubernetes" % "client-java" % "19.0.1",
+    "io.kubernetes" % "client-java" % "24.0.0",
     "dev.optics" %% "monocle-core"  % "3.3.0",
     "dev.optics" %% "monocle-macro" % "3.3.0",
     "com.google.guava" % "guava" % "33.4.8-jre",

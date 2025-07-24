@@ -1,7 +1,7 @@
 package org.openmole.connect.server
 
 import org.openmole.connect.server.Email.Sender
-import org.openmole.connect.server.K8sService.KubeCache
+import org.openmole.connect.server.KubeService.KubeCache
 import org.openmole.connect.server.db.DB
 
 import java.time.*
@@ -26,14 +26,14 @@ import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
 
 
 object ScheduledTask:
-  def schedule(shutdown: Option[ConnectServer.Config.Shutdown])(using K8sService, Sender, KubeCache) =
+  def schedule(shutdown: Option[ConnectServer.Config.Shutdown])(using KubeService, Sender, KubeCache) =
     shutdown.foreach: s =>
       val hour = s.checkAt.getOrElse(6)
       tool.log(s"Schedule automatic shutdown check at ${hour}, shutdown after ${s.days} days")
       val check = () => checkShutdown(s.days, s.remind.getOrElse(Seq(1, 3, 7)).toSet)
       scheduleTask(hour, check)
 
-  def checkShutdown(days: Int, remind: Set[Int])(using K8sService, Sender, KubeCache) =
+  def checkShutdown(days: Int, remind: Set[Int])(using KubeService, Sender, KubeCache) =
     tool.log(s"Checking instances for automatic shutdown")
 
     val timeNow = System.currentTimeMillis()
@@ -47,10 +47,10 @@ object ScheduledTask:
       then
         tool.log(s"Automatic shutdown of user instance due to inactivity for ${u}")
         util.Try:
-          K8sService.stopOpenMOLEPod(u.uuid)
+          KubeService.stopOpenMOLEPod(u.uuid)
       else tool.log(s"Keep instance user ${u} instance, shutdown in in $shutdownIn")
 
-      if remind.contains(days - onSince) && K8sService.podExists(u.uuid)
+      if remind.contains(days - onSince) && KubeService.podExists(u.uuid)
       then
         tool.log(s"Send inactivity mail to ${u}")
         Email.sendInactive(u, onSince, days - onSince)

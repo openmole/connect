@@ -4,7 +4,7 @@ import cats.effect.*
 import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
 import org.openmole.connect.server.Authentication.UserCache
-import org.openmole.connect.server.K8sService.KubeCache
+import org.openmole.connect.server.KubeService.KubeCache
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.server.db.*
 import org.openmole.connect.shared.*
@@ -12,7 +12,7 @@ import org.openmole.connect.shared.*
 import scala.concurrent.ExecutionContext
 
 
-class APIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, K8sService, Email.Sender, ExecutionContext):
+class APIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeService, Email.Sender, ExecutionContext):
   def institutions = DB.institutions
   def signup(firstName: String, name: String, email: String, password: String, institution: String, url: String) =
     tool.log(s"signing up $name")
