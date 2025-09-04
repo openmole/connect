@@ -53,11 +53,12 @@ object DB:
 
     val defaults = summon[Default]
     
-    User(name, firstName, email, emailStatus, password, institution, defaultVersion, defaults.memory.getOrElse(2048), defaults.cpu.getOrElse(4), 1024, now, now, role, status, uuid)
+    User(name, firstName, email, emailStatus, password, institution, defaultVersion, defaults.memory.getOrElse(4096), defaults.cpu.getOrElse(4), 2048, now, now, role, status, uuid)
 
   def registerUserToData(r: RegisterUser): Data.RegisterUser = r.to[Data.RegisterUser]
   def registerUserFromData(r: Data.RegisterUser): Option[RegisterUser] = registerUser(r.email)
-  def registerUserToUser(r: RegisterUser)(using DockerHubCache, Default): User = userWithDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
+  def registerUserToUser(r: RegisterUser)(using DockerHubCache, Default): User =
+    userWithDefault(r.name, r.firstName, r.email, r.password, r.institution, uuid = r.uuid, emailStatus = r.emailStatus)
 
   def randomUUID = java.util.UUID.randomUUID().toString
 
