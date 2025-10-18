@@ -224,7 +224,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
                     case GET => Some(ClassicRequestBuilder.get(forwardURI).build())
                     case POST => Some(ClassicRequestBuilder.post(forwardURI).build())
                     case DELETE => Some(ClassicRequestBuilder.delete(forwardURI).build())
-                    case OPTIONS => Some(ClassicRequestBuilder.options(forwardURI).addHeader("Content-Type", "text/html").build())
+                    case OPTIONS => Some(ClassicRequestBuilder.options(forwardURI).build())
                     case PUT => Some(ClassicRequestBuilder.put(forwardURI).build())
                     case HEAD => Some(ClassicRequestBuilder.head(forwardURI).build())
                     case Method.MOVE => Some(ClassicRequestBuilder.create("MOVE").setUri(forwardURI).build())
@@ -237,6 +237,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
                     val res = fs2.io.toInputStreamResource(req.body).use: is =>
                       fr.setEntity(new InputStreamEntity(is, null))
                       forwardedHeaders(req).foreach(h => fr.setHeader(h.name.toString, h.value))
+                      req.contentType.foreach: c =>
+                        fr.addHeader("Content-Type", c._1)
                       val resp = httpClient.execute(fr)
                       response(resp)
                     res
