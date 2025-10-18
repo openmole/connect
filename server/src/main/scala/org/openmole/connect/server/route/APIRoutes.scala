@@ -44,7 +44,7 @@ class APIRoutes(impl: APIImpl) extends server.Endpoints[IO]
   with API
   with server.JsonEntitiesFromCodecs:
 
-  private type BygFixEffect = super.Effect
+  private type BFEffect = super.Effect
 
   val routes: HttpRoutes[IO] = HttpRoutes.of:
     routesFromEndpoints(
