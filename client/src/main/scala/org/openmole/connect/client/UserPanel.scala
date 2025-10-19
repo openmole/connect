@@ -4,6 +4,7 @@ import com.raquo.airstream.core
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.api.features.unitArrows
 import org.openmole.connect
+import org.openmole.connect.shared.TapirUserAPI
 import org.openmole.connect.client.ConnectUtils.*
 import org.openmole.connect.client.ConnectUtils.OpenMOLEPodStatus
 import org.openmole.connect.client.UIUtils.{DetailedInfo, buildInput, institutionsList, versionInfo}
@@ -38,6 +39,8 @@ object UserPanel:
     val space: Var[Option[Storage]] = Var(None)
     val settings: Var[Panel] = Var(FrontPage)
 
+    val interpreter = STTPInterpreter()
+
     case class Settings(user: User) extends Panel:
       val selectedVersion = Var[Option[String]](None)
 
@@ -48,7 +51,7 @@ object UserPanel:
 
       def content =
         val html =
-          Signal.fromFuture(UserAPIClient.availableVersions(()).future).map: versions =>
+          Signal.fromFuture(interpreter.userAPIRequest(_.availableVersions)(())).map: versions =>
             lazy val versionChanger =
               val index =
                 versions.toSeq.flatten.indexOf(user.omVersion) match
@@ -74,7 +77,7 @@ object UserPanel:
                 div(Css.centerRowFlex, cls := "settingElement", versionChanger.selector.amend(width := "160")),
                 div(Css.centerRowFlex, cls := "settingElement", openMOLEMemoryInput),
                 div(Css.centerRowFlex, cls := "settingElement", institutionInput),
-                institutionsList
+                institutionsList(interpreter)
               ),
               versionChanger.content.signal.changes.toObservable --> selectedVersion.toObserver
             )
@@ -87,15 +90,15 @@ object UserPanel:
 
         selectedVersion.now().foreach: v =>
           if v != user.omVersion
-          then futures += UserAPIClient.setOpenMOLEVersion(v).future
+          then futures += interpreter.userAPIRequest(_.setOpenMOLEVersion)(v)
 
         util.Try(openMOLEMemoryInput.ref.value.toInt).foreach: m =>
           if m != user.openMOLEMemory
-          then futures += UserAPIClient.setOpenMOLEMemory(m).future
+          then futures += interpreter.userAPIRequest(_.setOpenMOLEMemory)(m)
 
         val institution = institutionInput.ref.value
         if institution.nonEmpty
-        then futures += UserAPIClient.setInstitution(institution).future
+        then futures += interpreter.userAPIRequest(_.setInstitution)(institution)
 
         Future.sequence(futures).andThen(_ => reload.set(()))
 
@@ -124,7 +127,7 @@ object UserPanel:
                 div("OpenMOLE version", cls := "info"),
                 div(user.omVersion, div(cls := "bi bi-arrow-bar-up", marginLeft := "5px"), cls := "infoContent", color := "#ffde75")
               ),
-              onClick --> UserAPIClient.setOpenMOLEVersion(v).future.foreach(_ => reload.set(())),
+              onClick --> interpreter.userAPIRequest(_.setOpenMOLEVersion)(v).foreach(_ => reload.set(())),
               cursor.pointer
             )
 
@@ -162,7 +165,7 @@ object UserPanel:
                   case Failure(exception) => runningVersion.set(None)
             ,
             onMountCallback: _ =>
-              UserAPIClient.openMOLEVersionUpdate(user.omVersion).future.foreach:
+              interpreter.userAPIRequest(_.openMOLEVersionUpdate)(user.omVersion).foreach:
                 case Some(v) => versionUpdate.set(Some(v))
                 case None =>
           )
@@ -190,10 +193,10 @@ object UserPanel:
             then
               refreshing = true
               try
-                UserAPIClient.instance(()).future.foreach(podInfo.set)
+                interpreter.userAPIRequest(_.instance)(()).foreach(podInfo.set)
                 val stopped = podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
                 if space.now().isEmpty && !stopped
-                then UserAPIClient.usedSpace(()).future.foreach(space.set)
+                then interpreter.userAPIRequest(_.usedSpace)(()).foreach(space.set)
               finally refreshing = false
         ,
         div(maxWidth := "1000",
@@ -202,8 +205,8 @@ object UserPanel:
           div(
             child <--
               podInfo.signal.map(_.flatMap(_.status)).map:
-                case Some(st) => UIUtils.openmoleBoard(None, st)
-                case None => UIUtils.openmoleBoard(None, PodInfo.Status.Inactive)
+                case Some(st) => UIUtils.openmoleBoard(interpreter, None, st)
+                case None => UIUtils.openmoleBoard(interpreter, None, PodInfo.Status.Inactive)
           )
         )
       )
@@ -279,7 +282,7 @@ object UserPanel:
 
     val mainPanel =
       reload.signal.flatMap: _ =>
-        Signal.fromFuture(UserAPIClient.user(()).future).map:
+        Signal.fromFuture(interpreter.userAPIRequest(_.user)(())).map:
           case None => UIUtils.waiter.amend(Css.rowFlex, justifyContent.flexEnd)
           case Some(u) =>
             UIUtils.mainPanel(
@@ -287,7 +290,7 @@ object UserPanel:
                 child <-- settings.signal.map:
                   case FrontPage => userPanel(u)
                   case s: Settings => s.content
-                  case AdminPage => AdminPanel.admin()
+                  case AdminPage => AdminPanel.admin(interpreter)
                   case InfoPage => infoPanel()
               ),
               div(s"${u.firstName} ${u.name}", marginRight := "20", fontFamily := "gi"),

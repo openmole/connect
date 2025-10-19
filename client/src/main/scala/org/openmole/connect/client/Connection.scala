@@ -43,6 +43,7 @@ object Connection:
   def resetPassword(uuid: String, secret: String) = page(Form.ResetPassword(uuid, secret))
 
   def page(initialForm: Form) =
+    val interpreter = STTPInterpreter()
     val displayedForm: Var[Form] = Var(initialForm)
 
     case class FormField(input: Input, error: Signal[Boolean], html: HtmlElement)
@@ -128,7 +129,7 @@ object Connection:
           name.html,
           email.html,
           institution.html,
-          UIUtils.institutionsList,
+          UIUtils.institutionsList(interpreter),
           p1.html,
           p2.html,
           buttonGroup.amend(
@@ -136,14 +137,14 @@ object Connection:
             button("Sign up", btn_primary,
               cls.toggle("disabled") <-- Signal.combineSeq(all.map(_.error)).map(errors => errors.contains(true) || all.exists(_.input.ref.value.isEmpty)),
               onClick.preventDefault -->
-                APIClient.signup(
+                interpreter.openAPIRequest(_.signup)(
                   firstName.input.ref.value,
                   name.input.ref.value,
                   email.input.ref.value,
                   p1.input.ref.value,
                   institution.input.ref.value,
                   urlField.ref.value
-                ).future.foreach:
+                ).foreach:
                   case Some(m) => displayedForm.set(Form.SignIn(Some(m)))
                   case None => displayedForm.set(Form.SignIn(Some("You should now validate your email and then wait for the approval of your account"), false))
             )
@@ -167,10 +168,10 @@ object Connection:
             button("Cancel", btn_secondary, onClick --> { _ => displayedForm.set(Form.SignIn()) }),
             button("Ok", btn_primary,
               onClick.preventDefault -->
-                APIClient.askResetPassword(
+                interpreter.openAPIRequest(_.askResetPassword)(
                   email.ref.value,
                   urlField.ref.value
-                ).future.foreach: m =>
+                ).foreach: m =>
                   displayedForm.set(Form.SignIn(m))
             )
           ),
@@ -191,11 +192,11 @@ object Connection:
             button("Cancel", btn_secondary, onClick --> { _ => displayedForm.set(Form.SignIn()) }),
             button("Ok", btn_primary, cls.toggle("disabled") <-- p1.error,
               onClick.preventDefault -->
-                APIClient.resetPassword(
+                interpreter.openAPIRequest(_.resetPassword)(
                   p1.input.ref.value,
                   uuid,
                   secret
-                ).future.foreach: m =>
+                ).foreach: m =>
                   displayedForm.set(Form.SignIn(m))
             )
           ),

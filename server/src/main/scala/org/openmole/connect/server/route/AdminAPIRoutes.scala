@@ -1,6 +1,5 @@
 package org.openmole.connect.server
 
-import endpoints4s.http4s.server
 import org.openmole.connect.shared.*
 import cats.effect.*
 import org.http4s.*
@@ -45,33 +44,38 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeServ
   def stop(uuid: String): Unit = KubeService.stopOpenMOLEPod(uuid)
   def pvcSize(uuid: String) = KubeService.getPVCSize(uuid)
 
-class AdminAPIRoutes(impl: AdminAPIImpl) extends server.Endpoints[IO] with AdminAPI with server.JsonEntitiesFromCodecs:
+import sttp.tapir.server.interpreter.*
+import sttp.tapir.server.http4s.*
 
-  type Eff = super.Effect
+class TapirAdminAPIRoutes(impl: AdminAPIImpl):
+  import TapirAdminAPI.*
+  import sttp.capabilities.fs2.Fs2Streams
+  import sttp.tapir.server.ServerEndpoint
 
-  val routes: HttpRoutes[IO] = HttpRoutes.of:
-    routesFromEndpoints(
-      users.implementedBy { _ =>  impl.users },
-      registeringUsers.implementedBy { _ => impl.registeringUsers },
-      promoteRegisteringUser.implementedBy(impl.promoteRegisterUser),
-      deleteRegisteringUser.implementedBy(impl.deleteRegisterUser),
-      usedSpace.implementedBy(impl.usedSpace),
-      allInstances.implementedBy(_=> impl.usersAndPodInfo),
-      changePassword.implementedBy(impl.changePassword),
-      launch.implementedBy(impl.launch),
-      stop.implementedBy(impl.stop),
-      deleteUser.implementedBy(impl.deleteUser),
-      setRole.implementedBy(impl.setRole),
-      setMemory.implementedBy(impl.setMemory),
-      setCPU.implementedBy(impl.setCPU),
-      instance.implementedBy(impl.instance),
-      setStorage.implementedBy(impl.setStorage),
-      setName.implementedBy(impl.setName),
-      setFirstName.implementedBy(impl.setFirstName),
-      setInstitution.implementedBy(impl.setInstitution),
-      setEmail.implementedBy(impl.setEmail),
-      setEmailStatus.implementedBy(impl.setEmailStatus),
-      setVersion.implementedBy(impl.setVersion),
-      pvcSize.implementedBy(impl.pvcSize)
+  val routes: HttpRoutes[IO] =
+    Http4sServerInterpreter[IO]().toRoutes(
+      List[ServerEndpoint[Fs2Streams[IO], IO]](
+        users.serverLogicSuccessPure { _ =>  impl.users },
+        registeringUsers.serverLogicSuccessPure { _ => impl.registeringUsers },
+        promoteRegisteringUser.serverLogicSuccessPure(impl.promoteRegisterUser),
+        deleteRegisteringUser.serverLogicSuccessPure(impl.deleteRegisterUser),
+        usedSpace.serverLogicSuccessPure(impl.usedSpace),
+        allInstances.serverLogicSuccessPure(_=> impl.usersAndPodInfo),
+        changePassword.serverLogicSuccessPure(impl.changePassword),
+        launch.serverLogicSuccessPure(impl.launch),
+        stop.serverLogicSuccessPure(impl.stop),
+        deleteUser.serverLogicSuccessPure(impl.deleteUser),
+        setRole.serverLogicSuccessPure(impl.setRole),
+        setMemory.serverLogicSuccessPure(impl.setMemory),
+        setCPU.serverLogicSuccessPure(impl.setCPU),
+        instance.serverLogicSuccessPure(impl.instance),
+        setStorage.serverLogicSuccessPure(impl.setStorage),
+        setName.serverLogicSuccessPure(impl.setName),
+        setFirstName.serverLogicSuccessPure(impl.setFirstName),
+        setInstitution.serverLogicSuccessPure(impl.setInstitution),
+        setEmail.serverLogicSuccessPure(impl.setEmail),
+        setEmailStatus.serverLogicSuccessPure(impl.setEmailStatus),
+        setVersion.serverLogicSuccessPure(impl.setVersion),
+        pvcSize.serverLogicSuccessPure(impl.pvcSize)
+      )
     )
-

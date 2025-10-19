@@ -159,23 +159,24 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
 
         case req if req.uri.path.startsWith(Root / Data.openAPIRoute) =>
           val impl = APIImpl()
-          val userAPI = new APIRoutes(impl)
+          val userAPI = new TapirAPIRoutes(impl)
           val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
           val apiReq = req.withUri(req.uri.withPath(apiPath))
-          userAPI.routes.apply(apiReq).getOrElseF(NotFound())
+          (userAPI.routes).apply(apiReq).getOrElseF(NotFound())
 
         case req if req.uri.path.startsWith(Root / Data.userAPIRoute) =>
           ServerContent.authenticated(req): user =>
+            println(req)
             val impl = UserAPIImpl(user.uuid, config.openmole)
-            val userAPI = new UserAPIRoutes(impl)
+            val tapirUserAPI = new TapirUserAPIRoutes(impl)
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))
-            userAPI.routes.apply(apiReq).getOrElseF(NotFound())
+            tapirUserAPI.routes.apply(apiReq).getOrElseF(NotFound())
 
         case req if req.uri.path.startsWith(Root / Data.adminAPIRoute) =>
           ServerContent.authenticated(req, admin = true): user =>
             val impl = AdminAPIImpl()
-            val adminAPI = new AdminAPIRoutes(impl)
+            val adminAPI = new TapirAdminAPIRoutes(impl)
             val apiPath = Root.addSegments(req.uri.path.segments.drop(1))
             val apiReq = req.withUri(req.uri.withPath(apiPath))
             adminAPI.routes.apply(apiReq).getOrElseF(NotFound())

@@ -1,109 +1,46 @@
 package org.openmole.connect.shared
 
-import endpoints4s.{algebra, circe}
 import io.circe.*
 import io.circe.generic.auto.*
-import org.openmole.connect.shared.Data.User
+
+object TapirUserAPI:
+
+  import sttp.tapir.*
+  import sttp.model.*
+  import sttp.tapir.generic.auto.*
+  import sttp.tapir.json.circe.*
+
+  lazy val user =
+    endpoint.post.in("user").out(jsonBody[Data.User])
+
+  lazy val instance =
+    endpoint.post.in("instance").out(jsonBody[Option[Data.PodInfo]])
+
+  lazy val launch =
+    endpoint.post.in("launch")
+
+  lazy val stop =
+    endpoint.post.in("stop")
+
+  lazy val usedSpace =
+    endpoint.post.in("used-space").out(jsonBody[Option[Storage]])
+
+  lazy val availableVersions =
+    endpoint.post.in("openmole-versions").out(jsonBody[Seq[String]])
+
+  lazy val changePassword =
+    endpoint.post.in("password").in(jsonBody[(String, String)]).out(jsonBody[Boolean])
+
+  lazy val openMOLEVersionUpdate =
+    endpoint.post.in("openmole-version-update").in(jsonBody[String]).out(jsonBody[Option[String]])
+
+  val setOpenMOLEVersion =
+    endpoint.post.in("set-openmole-version").in(jsonBody[String])
+
+  val setOpenMOLEMemory =
+    endpoint.post.in("set-openmole-memory").in(jsonBody[Int])
+
+  val setInstitution =
+    endpoint.post.in("set-institution").in(jsonBody[String])
 
 
-trait UserAPI
-  extends algebra.Endpoints
-    with algebra.circe.JsonEntitiesFromCodecs
-    with circe.JsonSchemas:
-
-  val user: Endpoint[Unit, Data.User] =
-    endpoint(
-      post(path / "user", jsonRequest[Unit]),
-      ok(jsonResponse[Data.User])
-    )
-
-  val instance: Endpoint[Unit, Option[Data.PodInfo]] =
-    endpoint(
-      post(path / "instance", jsonRequest[Unit]),
-      ok(jsonResponse[Option[Data.PodInfo]])
-    )
-
-  val launch: Endpoint[Unit, Unit] =
-    endpoint(
-      post(path / "launch", jsonRequest[Unit]),
-      ok(jsonResponse[Unit])
-    )
-
-  val stop: Endpoint[Unit, Unit] =
-    endpoint(
-      post(path / "stop", jsonRequest[Unit]),
-      ok(jsonResponse[Unit])
-    )
-    
-  val usedSpace: Endpoint[Unit, Option[Storage]] =
-    endpoint(
-      post(path / "used-space", jsonRequest[Unit]),
-      ok(jsonResponse[Option[Storage]])
-    )  
-
-  val availableVersions: Endpoint[Unit, Seq[String]] =
-    endpoint(
-      post(path / "openmole-versions", jsonRequest[Unit]),
-      ok(jsonResponse[Seq[String]])
-    )
-
-  val changePassword: Endpoint[(String, String), Boolean] =
-    endpoint(
-      post(path / "password", jsonRequest[(String, String)]),
-      ok(jsonResponse[Boolean])
-    )
-
-  val openMOLEVersionUpdate: Endpoint[String, Option[String]] =
-    endpoint(
-      post(path / "openmole-version-update", jsonRequest[String]),
-      ok(jsonResponse[Option[String]])
-    )
-  
-  val setOpenMOLEVersion: Endpoint[String, Unit] =
-    endpoint(
-      post(path / "set-openmole-version", jsonRequest[String]),
-      ok(jsonResponse[Unit])
-    )
-
-  val setOpenMOLEMemory: Endpoint[Int, Unit] =
-    endpoint(
-      post(path / "set-openmole-memory", jsonRequest[Int]),
-      ok(jsonResponse[Unit])
-    )
-
-  val setInstitution: Endpoint[String, Unit] =
-    endpoint(
-      post(path / "set-institution", jsonRequest[String]),
-      ok(jsonResponse[Unit])
-    )
-
-//  val userWithData: Endpoint[Option[UserData], Option[UserData]] =
-//    endpoint(
-//      post(path / "user-with-data", jsonRequest[Option[UserData]]),
-//      ok(jsonResponse[Option[UserData]])
-//    )
-//
-//  val upserted: Endpoint[UserData, Option[UserData]] =
-//    endpoint(
-//      post(path / "upserted", jsonRequest[UserData]),
-//      ok(jsonResponse[Option[UserData]])
-//    )
-//
-//  val upsertedWithData: Endpoint[(UserData, Option[UserData]), Option[UserData]] =
-//    endpoint(
-//      post(path / "upserted-with-data", jsonRequest[(UserData, Option[UserData])]),
-//      ok(jsonResponse[Option[UserData]])
-//    )
-
-
-
-//trait UserApi {
-//
-//  def user(): Option[UserData]
-//
-//  def userWithData(connectedUserData: Option[UserData]): Option[UserData]
-//
-//  def upserted(userData: UserData): Option[UserData]
-//
-//  def upsertedWithData(userData: UserData, connectedUserData: Option[UserData]): Option[UserData]
-//}

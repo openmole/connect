@@ -1,5 +1,8 @@
 package org.openmole.connect.shared
 
+import io.circe.Codec
+
+
 object Data:
   val connectionRoute = "connection"
   val validateRoute = "validate"
@@ -15,6 +18,19 @@ object Data:
 
   enum UserStatus:
     case Active
+
+  object Role:
+    import io.circe.*
+    import sttp.tapir.*
+
+    given Encoder[Role] = Encoder.encodeString.contramap(_.toString)
+
+    given Decoder[Role] = Decoder.decodeString.emap:
+      case "Admin" => Right(Role.Admin)
+      case "User" => Right(Role.User)
+      case other => Left(s"Unknown Role: $other")
+
+    given Schema[Role] = Schema.string
 
   enum Role:
     case Admin, User
@@ -78,10 +94,8 @@ object Data:
     openMOLEMemory: Int,
     lastAccess: Long, 
     created: Long)
-  
-  case class UserAndPodInfo(
-     user: User, 
-     podInfo: Option[PodInfo])
+
+  case class UserAndPodInfo(user: User, podInfo: Option[PodInfo])
   
   case class RegisterUser(
     uuid: String,

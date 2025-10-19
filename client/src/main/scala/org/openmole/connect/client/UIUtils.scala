@@ -102,11 +102,6 @@ object UIUtils:
       div(marginTop := "10px", display.flex, flexDirection.column, panel)
     )
 
-  def instanceFuture(uuid: Option[String]) =
-    uuid match
-      case Some(uuid) => AdminAPIClient.instance(uuid).future
-      case None => UserAPIClient.instance(()).future
-
   class Switch(labelOn: String, labelOff: String, uuid: Option[String], initialState: Boolean):
     val isSet: Var[Boolean] = Var(initialState)
 
@@ -152,23 +147,23 @@ object UIUtils:
       UIUtils.statusElement(status).amend(marginLeft := "10")
     )
 
-  def launch(uuid: Option[String], status: Option[PodInfo.Status]) =
+  def launch(interpreter: STTPInterpreter, uuid: Option[String], status: Option[PodInfo.Status]) =
     status match
       case Some(PodInfo.Status.Running(_)) | Some(PodInfo.Status.Waiting(_)) =>
       case _ =>
         uuid match
-          case None => UserAPIClient.launch(()).future
-          case Some(uuid) => AdminAPIClient.launch((uuid)).future
+          case None => interpreter.userAPIRequest(_.launch)(())
+          case Some(uuid) => interpreter.adminAPIRequest(_.launch)(uuid)
 
-  def stop(uuid: Option[String], status: Option[PodInfo.Status]) =
+  def stop(interpreter: STTPInterpreter, uuid: Option[String], status: Option[PodInfo.Status]) =
     status match
       case Some(PodInfo.Status.Terminated(_, _) | PodInfo.Status.Terminating) =>
       case _ =>
         uuid match
-          case None => UserAPIClient.stop(()).future
-          case Some(uuid) => AdminAPIClient.stop((uuid)).future
+          case None => interpreter.userAPIRequest(_.stop)(())
+          case Some(uuid) => interpreter.adminAPIRequest(_.stop)(uuid)
 
-  def openmoleBoard(uuid: Option[String] = None, status: PodInfo.Status) =
+  def openmoleBoard(interpreter: STTPInterpreter, uuid: Option[String] = None, status: PodInfo.Status) =
     val waiting: Var[Boolean] = Var(false)
 
     val statusDiv =
@@ -203,13 +198,13 @@ object UIUtils:
           status match
             case _: PodInfo.Status.Terminated | PodInfo.Status.Inactive =>
               waiting.set(true)
-              launch(uuid, None)
+              launch(interpreter, uuid, None)
             case _ =>
         case false =>
           status match
             case _: PodInfo.Status.Waiting | _: PodInfo.Status.Running | PodInfo.Status.Creating =>
               waiting.set(true)
-              stop(uuid, Some(status))
+              stop(interpreter, uuid, Some(status))
             case _ =>
       },
       div(
@@ -234,20 +229,20 @@ object UIUtils:
       )
     )
 
-  def institutionsList =
+  def institutionsList(interpreter: STTPInterpreter) =
     dataList(idAttr := "institutions",
       children <--
-        Signal.fromFuture(APIClient.institutions(()).future).map: inst =>
+        Signal.fromFuture(interpreter.openAPIRequest(_.institutions)(())).map: inst =>
           inst.toSeq.flatten.map(i => option(value := i))
     )
 
-  def versionChanger(currentVersion: String, availableVersions: Seq[String]) =
+  def versionChanger(interpreter: STTPInterpreter, currentVersion: String, availableVersions: Seq[String]) =
     lazy val versionChanger: Options[String] =
       availableVersions.options(
         availableVersions.indexOf(currentVersion),
         Seq(cls := "btn btnUser", width := "160"),
         (m: String) => m,
-        onclose = () => UserAPIClient.setOpenMOLEVersion(versionChanger.content.now().get).future
+        onclose = () => interpreter.userAPIRequest(_.setOpenMOLEVersion)(versionChanger.content.now().get)
       )
 
     versionChanger.selector

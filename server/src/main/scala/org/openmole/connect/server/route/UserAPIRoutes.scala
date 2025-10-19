@@ -1,7 +1,6 @@
 package org.openmole.connect.server
 
 import cats.effect.*
-import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
 import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.db.*
@@ -50,23 +49,27 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
         then Some(l.string)
         else None
 
-class UserAPIRoutes(impl: UserAPIImpl) extends server.Endpoints[IO]
-  with UserAPI
-  with server.JsonEntitiesFromCodecs:
+import sttp.tapir.server.interpreter.*
+import sttp.tapir.server.http4s.*
 
-  private type FixEffecet = super.Effect
+class TapirUserAPIRoutes(impl: UserAPIImpl):
+  import TapirUserAPI.*
+  import sttp.capabilities.fs2.Fs2Streams
+  import sttp.tapir.server.ServerEndpoint
 
-  val routes: HttpRoutes[IO] = HttpRoutes.of:
-    routesFromEndpoints(
-      user.implementedBy { _ => DB.userToData(impl.user) },
-      instance.implementedBy { _ => impl.instanceStatus },
-      launch.implementedBy { _ => impl.launch },
-      stop.implementedBy { _ => impl.stop },
-      availableVersions.implementedBy { _ => impl.availableVersions },
-      changePassword.implementedBy(impl.changePassword),
-      setOpenMOLEVersion.implementedBy(impl.setVersion),
-      usedSpace.implementedBy(_ => impl.usedSpace),
-      setOpenMOLEMemory.implementedBy(impl.setOMemory),
-      setInstitution.implementedBy(impl.setInstitution),
-      openMOLEVersionUpdate.implementedBy(impl.openMOLEVersionUpdate)
+  val routes: HttpRoutes[IO] =
+    Http4sServerInterpreter[IO]().toRoutes(
+      List[ServerEndpoint[Fs2Streams[IO], IO]](
+        user.serverLogicSuccessPure(_ => DB.userToData(impl.user)),
+        instance.serverLogicSuccessPure(_ => impl.instanceStatus),
+        launch.serverLogicSuccessPure(_ => impl.launch),
+        stop.serverLogicSuccessPure { _ => impl.stop },
+        availableVersions.serverLogicSuccessPure { _ => impl.availableVersions },
+        changePassword.serverLogicSuccessPure(impl.changePassword),
+        setOpenMOLEVersion.serverLogicSuccessPure(impl.setVersion),
+        usedSpace.serverLogicSuccessPure(_ => impl.usedSpace),
+        setOpenMOLEMemory.serverLogicSuccessPure(impl.setOMemory),
+        setInstitution.serverLogicSuccessPure(impl.setInstitution),
+        openMOLEVersionUpdate.serverLogicSuccessPure(impl.openMOLEVersionUpdate)
+      )
     )

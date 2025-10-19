@@ -31,7 +31,7 @@ class UserTable(headers: Seq[HtmlElement], userRows: Signal[Seq[Row]]):
 
 
   val render =
-    table( cls := "table",
+    table(cls := "table",
       tr(headers.map(v => th(centerCell, v))),
       tbody(
         children <-- userRows.split(_.rowID)(rowRender)

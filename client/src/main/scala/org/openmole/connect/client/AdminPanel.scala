@@ -21,8 +21,7 @@ import scala.concurrent.Future
 
 object AdminPanel:
 
-
-  def admin() =
+  def admin(interpreter: STTPInterpreter) =
     enum SortColumn:
       case Name, Activity, Email, Institution, FirstName
 
@@ -39,8 +38,9 @@ object AdminPanel:
     case class UserInfo(show: BasicRow, expandedRow: ExpandedRow, name: String, firstName: String, activity: Long, email: String, institution: String)
 
     def updateUserInfo() =
-      AdminAPIClient.registeringUsers(()).future.foreach(rs => registering.set(rs))
-      AdminAPIClient.allInstances(()).future.foreach: us =>
+      interpreter.adminAPIRequest(_.registeringUsers)(()).foreach: rs =>
+        registering.set(rs)
+      interpreter.adminAPIRequest(_.allInstances)(()).foreach: us =>
         users.set(us.map(_.user))
         val map =
           for
@@ -50,7 +50,7 @@ object AdminPanel:
 
     updateUserInfo()
 
-    UserAPIClient.availableVersions((Some(10), false)).future.foreach(vs => versions.set(vs))
+    interpreter.userAPIRequest(_.availableVersions)(()).foreach(vs => versions.set(vs))
 
     def statusElement(registerinUser: RegisterUser) =
       registerinUser.emailStatus match
@@ -71,11 +71,11 @@ object AdminPanel:
     def registeringUserBlock(register: RegisterUser) =
       div(Css.centerRowFlex, padding := "10px",
         button(btn_secondary, "Accept", marginRight := "20px", onClick --> { _ =>
-          AdminAPIClient.promoteRegisteringUser(register.uuid).future.foreach: _ =>
+          interpreter.adminAPIRequest(_.promoteRegisteringUser)(register.uuid).foreach: _ =>
             updateUserInfo()
         }),
         button(btn_danger, "Reject", onClick --> { _ =>
-          AdminAPIClient.deleteRegisteringUser(register.uuid).future.foreach: _ =>
+          interpreter.adminAPIRequest(_.deleteRegisteringUser)(register.uuid).foreach: _ =>
             updateUserInfo()
         })
       )
@@ -129,7 +129,7 @@ object AdminPanel:
             UIUtils.buildInput("").amend(width := "160", `type` := "number", stepAttr := "0.01", value := user.cpu.toString)
 
           lazy val storageInput: Input =
-            val pvcSizeSignal = Signal.fromFuture(AdminAPIClient.pvcSize(uuid).future).map:
+            val pvcSizeSignal = Signal.fromFuture(interpreter.adminAPIRequest(_.pvcSize)(uuid)).map:
               case Some(Some(v)) => v.toString
               case _ => ""
             UIUtils.buildInput("").amend(width := "160", `type` := "number", onChange --> storageChanged.set(true), placeholder <-- pvcSizeSignal)
@@ -142,52 +142,52 @@ object AdminPanel:
 
             val pwd = passwordInput.ref.value
             if pwd.nonEmpty && passwordClicked.now()
-            then AdminAPIClient.changePassword(uuid, passwordInput.ref.value)
+            then interpreter.adminAPIRequest(_.changePassword)(uuid, passwordInput.ref.value)
 
             val firstName = firstNameInput.ref.value
             if firstName.nonEmpty
-            then futures += AdminAPIClient.setFirstName((uuid, firstName)).future
+            then futures += interpreter.adminAPIRequest(_.setFirstName)((uuid, firstName))
 
             val name = nameInput.ref.value
             if name.nonEmpty
-            then futures += AdminAPIClient.setName((uuid, name)).future
+            then futures += interpreter.adminAPIRequest(_.setName)((uuid, name))
 
             val institution = institutionInput.ref.value
             if institution.nonEmpty
-            then futures += AdminAPIClient.setInstitution((uuid, institution)).future
+            then futures += interpreter.adminAPIRequest(_.setInstitution)((uuid, institution))
             
             val email = emailInput.ref.value
             if email.nonEmpty
-            then futures += AdminAPIClient.setEmail((uuid, email)).future
+            then futures += interpreter.adminAPIRequest(_.setEmail)((uuid, email))
 
             selectedRole.now().foreach: role =>
-              futures += AdminAPIClient.setRole((uuid, role)).future
+              futures += interpreter.adminAPIRequest(_.setRole)((uuid, role))
 
             selectedEmailStatus.now().foreach: es =>
-              futures += AdminAPIClient.setEmailStatus((uuid, es)).future
+              futures += interpreter.adminAPIRequest(_.setEmailStatus)((uuid, es))
 
             util.Try(memoryInput.ref.value.toInt).foreach: m =>
               if m != user.memory
-              then futures += AdminAPIClient.setMemory((uuid, m)).future
+              then futures += interpreter.adminAPIRequest(_.setMemory)((uuid, m))
 
             util.Try(cpuInput.ref.value.toDouble).foreach: cpu =>
               if cpu != user.cpu
-              then futures += AdminAPIClient.setCPU((uuid, cpu)).future
+              then futures += interpreter.adminAPIRequest(_.setCPU)((uuid, cpu))
 
             val s = storageInput.ref.value
             if storageChanged.now() && !s.isEmpty
             then
               util.Try(s.toInt).foreach: s =>
-                futures += AdminAPIClient.setStorage((uuid, s)).future
+                futures += interpreter.adminAPIRequest(_.setStorage)((uuid, s))
 
             val version = versionInput.ref.value
             if version.nonEmpty
-            then futures += AdminAPIClient.setVersion((uuid, version)).future
-            
+            then futures += interpreter.adminAPIRequest(_.setVersion)((uuid, version))
+
             val delete = deleteInput.ref.value
             if delete == "DELETE USER"
             then
-              futures += AdminAPIClient.deleteUser(uuid).future
+              futures += interpreter.adminAPIRequest(_.deleteUser)(uuid)
               selectedUUID.set(None)
 
             Future.sequence(futures).andThen(_ => updateUserInfo())
@@ -222,7 +222,7 @@ object AdminPanel:
                 div(Css.centerRowFlex, cls := "settingElement", firstNameInput),
                 div(Css.centerRowFlex, cls := "settingElement", nameInput),
                 div(Css.centerRowFlex, cls := "settingElement", institutionInput),
-                UIUtils.institutionsList,
+                UIUtils.institutionsList(interpreter),
                 div(Css.centerRowFlex, cls := "settingElement", emailInput),
 
                 div(Css.centerRowFlex, cls := "settingElement", roleChanger.selector),
@@ -274,8 +274,8 @@ object AdminPanel:
                   UIUtils.userInfoBlock(user, space),
                   div(
                     podInfo.flatMap(_.status) match
-                      case Some(st) => UIUtils.openmoleBoard(Some(user.uuid), st)
-                      case _ => UIUtils.openmoleBoard(Some(user.uuid), PodInfo.Status.Inactive)
+                      case Some(st) => UIUtils.openmoleBoard(interpreter, Some(user.uuid), st)
+                      case _ => UIUtils.openmoleBoard(interpreter, Some(user.uuid), PodInfo.Status.Inactive)
                   )
                 )
         )
@@ -331,10 +331,10 @@ object AdminPanel:
                     Observer: _ =>
                       if selectedUUID.now().contains(user.uuid) && !settingsOpen.now()
                       then
-                        AdminAPIClient.instance(user.uuid).future.foreach(pod.podInfo.set)
+                        interpreter.adminAPIRequest(_.instance)(user.uuid).foreach(pod.podInfo.set)
                         val stopped = pod.podInfo.now().flatMap(_.status.map(PodInfo.Status.isStopped)).getOrElse(true)
                         if pod.storage.now().isEmpty && !stopped
-                        then AdminAPIClient.usedSpace(user.uuid).future.foreach(pod.storage.set)
+                        then interpreter.adminAPIRequest(_.usedSpace)(user.uuid).foreach(pod.storage.set)
                 ),
                 selectedUUID.signal.map(s => s.contains(user.uuid))
               ),

@@ -21,11 +21,9 @@ val autowireVersion = "0.3.3"
 val boopickleVersion = "1.4.0"
 def laminarVersion = "0.14.2"
 
-def circeVersion = "0.14.12"
-def endpoints4SVersion = "1.12.1"
-def endpointCirceVersion = "2.6.1"
-def endpointHTT4ServerVersion = "11.0.1"
+def circeVersion = "0.14.15"
 def http4sVersion = "0.23.16"
+def tapirVersion = "1.11.50"
 
 val Resolvers = Seq(
   Resolver.sonatypeRepo("snapshots"),
@@ -36,13 +34,14 @@ val Resolvers = Seq(
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
   scalaVersion := "3.7.3",
-  resolvers := Resolvers
+  resolvers := Resolvers,
+  scalacOptions ++= Seq("-Xmax-inlines:100")
 )
 
 lazy val shared = project.in(file("shared")) settings (defaultSettings) enablePlugins (ScalaJSPlugin) settings(
   libraryDependencies ++= Seq(
-    "org.endpoints4s" %%% "algebra" % endpoints4SVersion,
-    "org.endpoints4s" %%% "json-schema-circe" % endpointCirceVersion,
+    "com.softwaremill.sttp.tapir" %% "tapir-server" % tapirVersion,
+    "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion,
     "io.circe" %% "circe-generic" % circeVersion
   )
 )
@@ -55,15 +54,16 @@ lazy val client = project.in(file("client")) enablePlugins (ExecNpmPlugin) setti
     "org.openmole.scaladget" %%% "tools" % scaladgetVersion,
     "org.openmole.scaladget" %%% "bootstrapnative" % scaladgetVersion,
     "com.raquo" %%% "laminar" % laminarVersion,
-    "org.endpoints4s" %%% "xhr-client" % "5.3.0",
-    //"com.lihaoyi" %%% "upickle" % "4.1.0", // SBT
+    "com.softwaremill.sttp.tapir" %%% "tapir-sttp-client4" % tapirVersion,
+    "com.softwaremill.sttp.tapir" %%% "tapir-json-circe" % tapirVersion,
+    "com.lihaoyi" %%% "upickle" % "4.1.0"
   )
 ) dependsOn (shared)
 
 lazy val server = project.in(file("server")) settings (defaultSettings) settings (
-  Compile / doc := new java.io.File(""),
+  //Compile / doc := new java.io.File(""),
   libraryDependencies ++= Seq(
-    "org.endpoints4s" %% "http4s-server" % endpointHTT4ServerVersion excludeAll(ExclusionRule(organization = "com.lihaoyi")),
+    "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % tapirVersion,
     "org.http4s" %% "http4s-blaze-server" % http4sVersion,
     "org.typelevel" %% "cats-effect" % "3.6.2",
     "io.circe" %% "circe-parser" % circeVersion,
@@ -105,7 +105,7 @@ lazy val application = project.in(file("application")) settings (defaultSettings
   Docker / mappings ++=
     Seq(
       (dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
-      (fullOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
+      (fastOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
     ) ++ doMapping((resourceDirectory in client in Compile).value, prefix)
       ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/")
       ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),

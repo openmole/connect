@@ -65,12 +65,11 @@ object DB:
 
   object Salt:
     def apply(s: String): Salt = s
-
     def value(s: Salt): String = s
 
+  opaque type Salt = String
 
   case class Default(memory: Option[Int], cpu: Option[Int])
-  opaque type Salt = String
   type UUID = String
   type Email = String
   type Password = String

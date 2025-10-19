@@ -1,7 +1,6 @@
 package org.openmole.connect.server
 
 import cats.effect.*
-import endpoints4s.http4s.server
 import org.http4s.HttpRoutes
 import org.openmole.connect.server.Authentication.UserCache
 import org.openmole.connect.server.KubeService.KubeCache
@@ -40,16 +39,21 @@ class APIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeService
     then None
     else Some("Invalid secret")
 
-class APIRoutes(impl: APIImpl) extends server.Endpoints[IO]
-  with API
-  with server.JsonEntitiesFromCodecs:
 
-  private type BFEffect = super.Effect
+import sttp.tapir.server.interpreter.*
+import sttp.tapir.server.http4s.*
 
-  val routes: HttpRoutes[IO] = HttpRoutes.of:
-    routesFromEndpoints(
-      institutions.implementedBy(_ => impl.institutions),
-      signup.implementedBy(impl.signup),
-      askResetPassword.implementedBy(impl.askResetPassword),
-      resetPassword.implementedBy(impl.resetPassword)
+class TapirAPIRoutes(impl: APIImpl):
+  import TapirAPI.*
+  import sttp.capabilities.fs2.Fs2Streams
+  import sttp.tapir.server.ServerEndpoint
+
+  val routes: HttpRoutes[IO] =
+    Http4sServerInterpreter[IO]().toRoutes(
+      List[ServerEndpoint[Fs2Streams[IO], IO]](
+        institutions.serverLogicSuccessPure(_ => impl.institutions),
+        signup.serverLogicSuccessPure(impl.signup),
+        askResetPassword.serverLogicSuccessPure(impl.askResetPassword),
+        resetPassword.serverLogicSuccessPure(impl.resetPassword)
+      )
     )
