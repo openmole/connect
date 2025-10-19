@@ -105,7 +105,7 @@ lazy val application = project.in(file("application")) settings (defaultSettings
   Docker / mappings ++=
     Seq(
       (dependencyFile in client in Compile).value -> s"$prefix/webapp/js/connect-deps.js",
-      (fastOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
+      (fullOptJS in client in Compile).value.data -> s"$prefix/webapp/js/connect.js"
     ) ++ doMapping((resourceDirectory in client in Compile).value, prefix)
       ++ doMapping((cssFile in client in target).value, s"$prefix/webapp/css/")
       ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),
