@@ -111,7 +111,7 @@ lazy val application = project.in(file("application")) settings (defaultSettings
       ++ doMapping((resourceDirectory in client in Compile).value / "webapp" / "fonts", s"$prefix/webapp/fonts/"),
   Docker / packageName := "openmole/openmole-connect",
   Docker / organization := "openmole",
-  dockerBaseImage := "openjdk:25-slim"
+  dockerBaseImage := "eclipse-temurin:25-jdk"
 )
 
 def doMapping(from: java.io.File, toBase: String): Seq[(File, String)] = {

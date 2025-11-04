@@ -244,9 +244,11 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
                       fr.setEntity(new InputStreamEntity(is, null))
                       forwardedHeaders(req).foreach(h => fr.setHeader(h.name.toString, h.value))
                       req.contentType.foreach: c =>
-                        fr.setHeader("Content-Type", c._1)
+                        val mediaType = c._1.toString.drop("MediaType(".length).dropRight(1)
+                        fr.setHeader("Content-Type", mediaType)
                       val resp = httpClient.execute(fr)
                       response(resp)
+
                     res
                   case None =>
                     NotImplemented(s"Method ${req.method.name} is not supported by openmole-connect yet")
