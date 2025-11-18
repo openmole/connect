@@ -99,7 +99,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
       HttpRoutes.of:
         case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password))
+            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password, admin = DB.userIsAdmin(user)))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok(ServerContent.connectionFunction(None))
@@ -160,10 +160,10 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
                   c.values.find(_.name == Authentication.authorizationCookieKey)
 
               userCookie match
-                case None => 
+                case None =>
                   val cookie = ResponseCookie(Authentication.adminAuthorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
                   ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
-                case Some(_) => 
+                case Some(_) =>
                   val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
                   ServerContent.redirect(s"/").map(_.addCookie(cookie))
 
