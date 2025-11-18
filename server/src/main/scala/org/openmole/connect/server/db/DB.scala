@@ -89,7 +89,16 @@ object DB:
 
   lazy val db: Database =
     DriverManager.registerDriver(new org.h2.Driver())
-    Database.forURL(url = s"jdbc:h2:${dbFile.pathAsString}")
+    def open(): Database = Database.forURL(url = s"jdbc:h2:${dbFile.pathAsString}")
+
+    // Copy only if opening is successful
+    val test = open()
+    test.close
+
+    val dbContent = File(dbFile.pathAsString + ".mv.db")
+    dbContent.copyTo(File(dbContent.pathAsString + ".bck"), overwrite = true)
+
+    open()
 
   def runTransaction[E <: Effect, T](action: DBIOAction[T, NoStream, E]): T =
     Await.result(db.run(action.transactionally), Duration.Inf)

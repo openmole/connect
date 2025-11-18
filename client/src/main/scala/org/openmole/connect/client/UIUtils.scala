@@ -89,11 +89,11 @@ object UIUtils:
         )
     )
 
-  def mainPanel(panel: HtmlElement, name: HtmlElement, admin: HtmlElement = div()) =
+  def mainPanel(panel: HtmlElement, name: HtmlElement, buttons: HtmlElement = div()) =
     div(margin := "40px auto",
       img(src := "img/logo.png", Css.centerRowFlex, width := "500", margin.auto),
       div(display.flex, alignItems.center, flexDirection.row, justifyContent.spaceBetween, marginTop := "50",
-        admin,
+        buttons,
         div(display.flex, alignItems.center, flexDirection.row,
           name,
           a(cls := "bi-power power", href := s"/${Data.disconnectRoute}"),
@@ -274,4 +274,23 @@ object UIUtils:
     import scala.concurrent.Future
     import org.scalajs.dom
     dom.fetch(url).toFuture.flatMap(_.text().toFuture)
+
+
+  def checkFieldBlock(field: String, checker: String => Option[String], inputAttributes: Seq[Modifier[HtmlElement]] = Seq()) =
+    val error: Var[Option[String]] = Var(None)
+
+    lazy val in: Input =
+      UIUtils.buildInput(field).amend(
+        onInput --> { _ =>
+          error.set(checker(in.ref.value))
+        }
+      ).amend(inputAttributes)
+
+    val html =
+      div(Css.centerRowFlex,
+        div(cls := "inputError", child <-- error.signal.map(_.getOrElse(""))),
+        in
+      )
+
+    (input = in, error = error.signal.map(_.isDefined), html = html)
 

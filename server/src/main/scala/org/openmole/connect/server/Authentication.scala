@@ -34,6 +34,7 @@ object Authentication:
     case class TokenUser(uuid: UUID, password: Password)
     case class BasicUser(email: Email, clearPassword: Password)
 
+  def adminAuthorizationCookieKey = "authorized_openmole_cookie_admin"
   def authorizationCookieKey = "authorized_openmole_cookie"
 
   def authorization(req: Request[IO])(using JWT.Secret): Option[Authorization.TokenUser | Authorization.BasicUser] =
@@ -41,6 +42,9 @@ object Authentication:
       req.headers.get[org.http4s.headers.Cookie].flatMap: c =>
         c.values.find(_.name == authorizationCookieKey).flatMap: c =>
           JWT.TokenData.fromTokenContent(c.content)
+        .orElse:
+          c.values.find(_.name == adminAuthorizationCookieKey).flatMap: c =>
+            JWT.TokenData.fromTokenContent(c.content)
 
     def basicAuthentication =
       req.headers.get[org.http4s.headers.Authorization].flatMap: a =>

@@ -84,24 +84,6 @@ object Connection:
       )
 
     lazy val signupForm: ReactiveHtmlElement[HTMLFormElement] =
-      def checkFieldBlock(field: String, checker: String => Option[String], inputAttributes: Seq[Modifier[HtmlElement]] = Seq()) =
-        val error: Var[Option[String]] = Var(None)
-
-        lazy val in: Input =
-          UIUtils.buildInput(field).amend(
-            onInput --> { _ =>
-              error.set(checker(in.ref.value))
-            }
-          ).amend(inputAttributes)
-
-        val html =
-          div(Css.centerRowFlex,
-            div(cls := "inputError", child <-- error.signal.map(_.getOrElse(""))),
-            in
-          )
-
-        FormField(in, error.signal.map(_.isDefined), html)
-
 
       def validEmail(email: String): Option[String] =
         val emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$".r
@@ -114,10 +96,10 @@ object Connection:
 
 
       val (p1, p2) = passwordBlock
-      val firstName = checkFieldBlock("First name", s => validNotNullString(s, "First name"))
-      val name = checkFieldBlock("Name", s => validNotNullString(s, "Name"))
-      val email = checkFieldBlock("Email", s => validEmail(s))
-      val institution = checkFieldBlock("Institution", s => validNotNullString(s, "Institution"), inputAttributes = Seq(listId := "institutions"))
+      val firstName = FormField.apply.tupled(UIUtils.checkFieldBlock("First name", s => validNotNullString(s, "First name")))
+      val name = FormField.apply.tupled(UIUtils.checkFieldBlock("Name", s => validNotNullString(s, "Name")))
+      val email = FormField.apply.tupled(UIUtils.checkFieldBlock("Email", s => validEmail(s)))
+      val institution = FormField.apply.tupled(UIUtils.checkFieldBlock("Institution", s => validNotNullString(s, "Institution"), inputAttributes = Seq(listId := "institutions")))
       val urlField = UIUtils.buildInput("URL").amend(value := document.location.toString, styleAttr := "display:none")
 
       val all = Seq(p1, p1, firstName, name, email, institution)

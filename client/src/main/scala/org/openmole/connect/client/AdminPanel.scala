@@ -12,9 +12,11 @@ import scaladget.bootstrapnative.Selector
 import scaladget.bootstrapnative.bsn.{toggle, *}
 import scaladget.tools.*
 import ConnectUtils.*
+import com.raquo.laminar.nodes.ReactiveElement
 import org.openmole.connect.client.UIUtils.{DetailedInfo, statusLine}
 import org.openmole.connect.shared.Data.PodInfo.Status.Terminated
 import org.openmoleconnect.client.Css
+import org.scalajs.dom.HTMLDivElement
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -29,6 +31,7 @@ object AdminPanel:
     val sortReverse = Var(false)
 
     case class Pod(podInfo: Var[Option[PodInfo]], storage: Var[Option[Storage]])
+
     val pods = Var(Map[String, Pod]())
     val users: Var[Seq[User]] = Var(Seq())
     val registering: Var[Seq[RegisterUser]] = Var(Seq())
@@ -369,6 +372,7 @@ object AdminPanel:
               ui.expandedRow
             )
       )
+
 
     div(
       adminTable.render.amend(cls := "border"),

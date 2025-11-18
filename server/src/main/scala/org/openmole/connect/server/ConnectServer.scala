@@ -131,7 +131,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
             r.getFirst("Email") zip r.getFirst("Password") match
               case Some((email, password)) =>
                 DB.user(email, password) match
-                  case Some(user) => ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password)))
+                  case Some(user) =>
+                    ServerContent.redirect("/").map(ServerContent.addJWTToken(user.uuid, DB.salted(password), admin = DB.userIsAdmin(user)))
                   case None =>
                     DB.registerUser(email) match
                       case Some(u) if u.emailStatus == Data.EmailStatus.Unchecked => connectionError("Your email has not been validated")
@@ -145,8 +146,27 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
             case None => BadRequest("Expected uuid and secret")
 
         case req@GET -> Root / Data.disconnectRoute =>
-          val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
-          ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
+          val adminCookie =
+            req.headers.get[org.http4s.headers.Cookie].flatMap: c =>
+              c.values.find(_.name == Authentication.adminAuthorizationCookieKey)
+
+          adminCookie match
+            case None =>
+              val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
+              ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
+            case Some(_) =>
+              val userCookie =
+                req.headers.get[org.http4s.headers.Cookie].flatMap: c =>
+                  c.values.find(_.name == Authentication.authorizationCookieKey)
+
+              userCookie match
+                case None => 
+                  val cookie = ResponseCookie(Authentication.adminAuthorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
+                  ServerContent.redirect(s"/${Data.connectionRoute}").map(_.addCookie(cookie))
+                case Some(_) => 
+                  val cookie = ResponseCookie(Authentication.authorizationCookieKey, "expired", expires = Some(HttpDate.MinValue))
+                  ServerContent.redirect(s"/").map(_.addCookie(cookie))
+
 
         case req@GET -> Root / Data.impersonateRoute =>
           ServerContent.authenticated(req, admin = true): admin =>
@@ -334,10 +354,11 @@ object ServerContent:
       )
     )
 
-  def addJWTToken(uuid: DB.UUID, hashedPassword: DB.Password)(response: Response[IO])(using JWT.Secret) =
+  def addJWTToken(uuid: DB.UUID, hashedPassword: DB.Password, admin: Boolean = false)(response: Response[IO])(using JWT.Secret) =
     val token = JWT.TokenData(uuid, hashedPassword)
     val expirationDate = HttpDate.unsafeFromEpochSecond(token.expirationTime / 1000)
-    response.addCookie(ResponseCookie(Authentication.authorizationCookieKey, JWT.TokenData.toContent(token), expires = Some(expirationDate)))
+    val tokenName = if admin then Authentication.adminAuthorizationCookieKey else Authentication.authorizationCookieKey
+    response.addCookie(ResponseCookie(tokenName, JWT.TokenData.toContent(token), expires = Some(expirationDate)))
 
   def redirect(to: String) =
     val uri = Uri.unsafeFromString(to)

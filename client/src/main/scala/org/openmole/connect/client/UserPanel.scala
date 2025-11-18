@@ -287,17 +287,19 @@ object UserPanel:
           case Some(u) =>
             UIUtils.mainPanel(
               div(
-                child <-- settings.signal.map:
-                  case FrontPage => userPanel(u)
-                  case s: Settings => s.content
-                  case AdminPage => AdminPanel.admin(interpreter)
-                  case InfoPage => infoPanel()
+                child <--
+                  settings.signal.map:
+                    case FrontPage => userPanel(u)
+                    case s: Settings => s.content
+                    case AdminPage => AdminPanel.admin(interpreter)
+                    case InfoPage => infoPanel()
               ),
               div(s"${u.firstName} ${u.name}", marginRight := "20", fontFamily := "gi"),
               buttons(u)
             ).amend(width := "800")
 
     lazy val appContainer = dom.document.querySelector("#appContainer")
+    
     render(
       appContainer,
       div(child <-- mainPanel)
