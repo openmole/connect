@@ -75,7 +75,18 @@ object KubeService:
       case e: ApiException if e.getCode == 409 => false
 
 
-  def deployOpenMOLE(uuid: DB.UUID, email: DB.Email, omVersion: String, openMOLEMemory: Int, memoryLimit: Int, cpuLimit: Double, storageClassName: Option[String], storageSize: Int, tmpSize: Int = 51200)(using KubeCache) =
+  def deployOpenMOLE(
+    uuid: DB.UUID,
+    email: DB.Email,
+    omVersion: String,
+    openMOLEMemory: Int,
+    memoryLimit: Int,
+    cpuLimit: Double,
+    storageClassName: Option[String],
+    storageSize: Int,
+    tmpSize: Int = 51200,
+    initialize: Boolean = false)(using KubeCache) =
+
     import io.kubernetes.client.custom.*
 
     summon[KubeCache].ipCache.invalidate(uuid)
@@ -109,9 +120,15 @@ object KubeService:
     )
 
     val limits =
-      Seq() ++
-        Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) ++
-        Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
+      if !initialize
+      then
+        Seq() ++
+          //Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) ++
+          Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
+      else
+        Seq() ++
+          Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) ++
+          Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
 
     val resources = new V1ResourceRequirements()
       .requests(
@@ -121,6 +138,21 @@ object KubeService:
         ).asJava
       )
       .limits(Map(limits*).asJava)
+
+    val initializeContainer = new V1Container()
+      .name("openmole-init")
+      .image(s"openmole/openmole:$omVersion")
+      .command(List("bin/bash", "-c").asJava)
+      .args(List(s"openmole-docker --port 80 --remote --mem 2G --workspace /var/openmole/.openmole --gui-initialize").asJava)
+      .volumeMounts(volumeMounts.asJava)
+      .imagePullPolicy("Always")
+      .ports(List(
+        new V1ContainerPort().containerPort(80)
+      ).asJava)
+      .securityContext(
+        new V1SecurityContext().privileged(true)
+      )
+
 
     val container = new V1Container()
       .name("openmole")
@@ -146,10 +178,19 @@ object KubeService:
         .emptyDir(new V1EmptyDirVolumeSource().sizeLimit(Quantity(s"${tmpSize}Mi")))
     )
 
-    val podSpec = new V1PodSpec()
-      .containers(List(container).asJava)
-      .volumes(volumes.asJava)
-      .terminationGracePeriodSeconds(60L)
+    val podSpec =
+      if !initialize
+      then
+        new V1PodSpec()
+          .containers(List(container).asJava)
+          .volumes(volumes.asJava)
+          .terminationGracePeriodSeconds(60L)
+      else
+        new V1PodSpec()
+          .initContainers(List(initializeContainer).asJava)
+          .containers(List(container).asJava)
+          .volumes(volumes.asJava)
+          .terminationGracePeriodSeconds(60L)
 
     val podTemplate = new V1PodTemplateSpec()
       .metadata(new V1ObjectMeta().labels(labels.asJava))
@@ -193,7 +234,15 @@ object KubeService:
   def startOpenMOLEPod(uuid: DB.UUID, email: String, omVersion: String, openmoleMemory: Int, memoryLimit: Int, cpuLimit: Double)(using KubeCache, KubeService) =
     val k8sService = summon[KubeService]
     stopOpenMOLEPod(uuid)
-    deployOpenMOLE(uuid, email, omVersion, openmoleMemory, memoryLimit, cpuLimit, k8sService.storageClassName, k8sService.storageSize)
+
+    def initialize =
+      import org.openmole.connect.server.OpenMOLE.OpenMOLEVersion
+      for
+        v1 <- OpenMOLEVersion.parse(omVersion)
+        v2 <- OpenMOLEVersion.parse("21.0")
+      yield v1.compare(v2) > 0
+
+    deployOpenMOLE(uuid, email, omVersion, openmoleMemory, memoryLimit, cpuLimit, k8sService.storageClassName, k8sService.storageSize, initialize = initialize.getOrElse(false))
     summon[KubeCache].ipCache.invalidate(uuid)
 
   def getPVC(uuid: String): Option[V1PersistentVolumeClaim] =

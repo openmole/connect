@@ -140,6 +140,9 @@ object OpenMOLE:
         v match
           case Stable(_, _) => true
           case _ => false
+      
+      def compare(v2: OpenMOLEVersion) =
+        summon[Ordering[OpenMOLEVersion]].compare(v, v2)
 
     given Ordering[OpenMOLEVersion] with
       def compare(a: OpenMOLEVersion, b: OpenMOLEVersion): Int =
