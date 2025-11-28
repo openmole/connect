@@ -240,7 +240,7 @@ object KubeService:
       for
         v1 <- OpenMOLEVersion.parse(omVersion)
         v2 <- OpenMOLEVersion.parse("21.0")
-      yield v1.compare(v2) > 0
+      yield v1.compare(v2) >= 0
 
     deployOpenMOLE(uuid, email, omVersion, openmoleMemory, memoryLimit, cpuLimit, k8sService.storageClassName, k8sService.storageSize, initialize = initialize.getOrElse(false))
     summon[KubeCache].ipCache.invalidate(uuid)
