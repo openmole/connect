@@ -25,6 +25,7 @@ object TapirAdminAPI:
   lazy val changePassword = endpoint.post.in("change-password").in(jsonBody[(String, String)]).out(jsonBody[Boolean])
   lazy val setRole = endpoint.post.in("set-role").in(jsonBody[(String, Data.Role)])
   lazy val setMemory = endpoint.post.in("set-memory").in(jsonBody[(String, Int)])
+  lazy val setOpenMOLEMemory = endpoint.post.in("set-openmole-memory").in(jsonBody[(String, Int)])
   lazy val setCPU = endpoint.post.in("set-cpu").in(jsonBody[(String, Double)])
   lazy val setStorage = endpoint.post.in("set-storage").in(jsonBody[(String, Int)])
   lazy val setInstitution = endpoint.post.in("set-institution").in(jsonBody[(String, String)])

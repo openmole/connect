@@ -18,6 +18,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeServ
   def deleteRegisterUser(uuid: String): Unit = DB.deleteRegistering(uuid)
   def usedSpace(uuid: String): Option[Storage] = KubeService.usedSpace(uuid)
   def instance(uuid: String): Option[Data.PodInfo] = KubeService.podInfo(uuid)
+
   def usersAndPodInfo: Seq[Data.UserAndPodInfo] =
     val podList = KubeService.listPods.flatMap(p => p.userUUID.map(_ -> p)).toMap
     users.map(u => Data.UserAndPodInfo(u, podList.get(u.uuid)))
@@ -25,6 +26,7 @@ class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeServ
   def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
   def setRole(uuid: String, role: Data.Role) = DB.updateRole(uuid, role)
   def setMemory(uuid: String, memory: Int) = DB.updateMemory(uuid, memory)
+  def setOMMemory(uuid: String, memory: Int) = DB.updateOMMemory(uuid, memory)
   def setCPU(uuid: String, cpu: Double) = DB.updateCPU(uuid, cpu)
   def setStorage(uuid: String, space: Int) = KubeService.updateOpenMOLEPersistentVolumeStorage(uuid, space)
   def setInstitution(uuid: String, institution: String) = DB.updateInstitution(uuid, institution)
@@ -67,6 +69,7 @@ class TapirAdminAPIRoutes(impl: AdminAPIImpl):
         deleteUser.serverLogicSuccessPure(impl.deleteUser),
         setRole.serverLogicSuccessPure(impl.setRole),
         setMemory.serverLogicSuccessPure(impl.setMemory),
+        setOpenMOLEMemory.serverLogicSuccessPure(impl.setOMMemory),
         setCPU.serverLogicSuccessPure(impl.setCPU),
         instance.serverLogicSuccessPure(impl.instance),
         setStorage.serverLogicSuccessPure(impl.setStorage),

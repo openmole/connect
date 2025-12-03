@@ -128,6 +128,9 @@ object AdminPanel:
           lazy val memoryInput: Input =
             UIUtils.buildInput("").amend(width := "160", `type` := "number", value := user.memory.toString)
 
+          lazy val openMOLEMemoryInput: Input =
+            UIUtils.buildInput("").amend(width := "160", `type` := "number", value := user.openMOLEMemory.toString)
+
           lazy val cpuInput: Input =
             UIUtils.buildInput("").amend(width := "160", `type` := "number", stepAttr := "0.01", value := user.cpu.toString)
 
@@ -173,6 +176,10 @@ object AdminPanel:
               if m != user.memory
               then futures += interpreter.adminAPIRequest(_.setMemory)((uuid, m))
 
+            util.Try(openMOLEMemoryInput.ref.value.toInt).foreach: m =>
+              if m != user.openMOLEMemory
+              then futures += interpreter.adminAPIRequest(_.setOpenMOLEMemory)(uuid, m)
+
             util.Try(cpuInput.ref.value.toDouble).foreach: cpu =>
               if cpu != user.cpu
               then futures += interpreter.adminAPIRequest(_.setCPU)((uuid, cpu))
@@ -200,6 +207,7 @@ object AdminPanel:
               Css.rowFlex,
               div(styleAttr := "width: 20%;", Css.columnFlex, alignItems.flexEnd,
                 div(Css.centerRowFlex, cls := "settingElement", "Memory (MB)"),
+                div(Css.centerRowFlex, cls := "settingElement", "OM Memory (MB)"),
                 div(Css.centerRowFlex, cls := "settingElement", "CPU"),
                 div(Css.centerRowFlex, cls := "settingElement", "Storage (GB)"),
                 div(Css.centerRowFlex, cls := "settingElement", "Version"),
@@ -217,6 +225,7 @@ object AdminPanel:
               ),
               div(styleAttr := "width: 80%;", Css.columnFlex, alignItems.flexStart,
                 div(Css.centerRowFlex, cls := "settingElement", memoryInput),
+                div(Css.centerRowFlex, cls := "settingElement", openMOLEMemoryInput),
                 div(Css.centerRowFlex, cls := "settingElement", cpuInput),
                 div(Css.centerRowFlex, cls := "settingElement", storageInput),
                 div(Css.centerRowFlex, cls := "settingElement", versionInput),
