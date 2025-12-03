@@ -38,6 +38,16 @@ sudo apt install open-iscsi # requiered for longhorn
 curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.31.5+k3s1" INSTALL_K3S_EXEC="server" sh -s -
 ```
 
+If you plan to have more than 10 simultaneous users, increase the number of loop devices:
+```
+echo "options loop max_loop=1024" | sudo tee /etc/modprobe.d/loop.conf
+sudo update-initramfs -u
+sudo reboot
+
+# To check that it worked, it should rerturn 1025
+ls /dev/loop* | wc -l
+```
+
 To prevent timeouts when uploading/downloading files you should create the following file `/var/lib/rancher/k3s/server/manifests/traefik-config.yaml` on the k3s server. 
 The content of the file should be:
 ```
