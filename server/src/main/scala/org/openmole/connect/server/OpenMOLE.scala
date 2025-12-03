@@ -136,6 +136,11 @@ object OpenMOLE:
       case _ => None
 
     extension (v: OpenMOLEVersion)
+      def isVolatile: Boolean =
+        v match 
+          case _: Snapshot | Latest => true
+          case _ => false
+      
       def isStable: Boolean =
         v match
           case Stable(_, _) => true

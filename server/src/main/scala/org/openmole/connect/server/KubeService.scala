@@ -85,7 +85,8 @@ object KubeService:
     storageClassName: Option[String],
     storageSize: Int,
     tmpSize: Int = 51200,
-    initialize: Boolean = false)(using KubeCache) =
+    initialize: Boolean = false,
+    pull: Boolean = false)(using KubeCache) =
 
     import io.kubernetes.client.custom.*
 
@@ -139,13 +140,15 @@ object KubeService:
       )
       .limits(Map(limits*).asJava)
 
+    val pullPolicy = if pull then "Always" else "IfNotPresent"
+
     val initializeContainer = new V1Container()
       .name("openmole-init")
       .image(s"openmole/openmole:$omVersion")
       .command(List("bin/bash", "-c").asJava)
       .args(List(s"openmole-docker --port 80 --remote --mem 2G --workspace /var/openmole/.openmole --gui-initialize").asJava)
       .volumeMounts(volumeMounts.asJava)
-      .imagePullPolicy("Always")
+      .imagePullPolicy(pullPolicy)
       .ports(List(
         new V1ContainerPort().containerPort(80)
       ).asJava)
@@ -161,7 +164,7 @@ object KubeService:
       .command(List("bin/bash", "-c").asJava)
       .args(List(s"openmole-docker --port 80 --remote --mem ${openMOLEMemory}m --workspace /var/openmole/.openmole").asJava)
       .volumeMounts(volumeMounts.asJava)
-      .imagePullPolicy("Always")
+      .imagePullPolicy("IfNotPresent")
       .ports(List(
         new V1ContainerPort().containerPort(80)
       ).asJava)
@@ -242,7 +245,22 @@ object KubeService:
         v2 <- OpenMOLEVersion.parse("21.0")
       yield v1.compare(v2) >= 0
 
-    deployOpenMOLE(uuid, email, omVersion, openmoleMemory, memoryLimit, cpuLimit, k8sService.storageClassName, k8sService.storageSize, initialize = initialize.getOrElse(false))
+    def pull =
+      import org.openmole.connect.server.OpenMOLE.OpenMOLEVersion
+      OpenMOLEVersion.parse(omVersion).map(_.isVolatile).getOrElse(true)
+
+    deployOpenMOLE(
+      uuid,
+      email,
+      omVersion,
+      openmoleMemory,
+      memoryLimit,
+      cpuLimit,
+      k8sService.storageClassName,
+      k8sService.storageSize,
+      initialize = initialize.getOrElse(false),
+      pull = pull)
+    
     summon[KubeCache].ipCache.invalidate(uuid)
 
   def getPVC(uuid: String): Option[V1PersistentVolumeClaim] =
