@@ -124,18 +124,14 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
 
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
-              val res = DB.validateUserEmail(uuid, secret)
-              val sendMail =
-                Async[IO].delay:
-                  sendNotification(DB.registerUsers)
-
-              if res
-              then
-                for
-                  _ <- sendMail
-                  r <- Ok("Thank you, your email has been validated")
-                yield r
-              else NotFound("validation not found")
+              for
+                res <- Async[IO].delay(DB.validateUserEmail(uuid, secret))
+                _ <- Async[IO].delay{ if res then sendNotification(DB.registerUsers) }
+                r <-
+                  if res
+                  then Ok("Thank you, your email has been validated")
+                  else NotFound("validation not found")
+              yield r
             case None => BadRequest("Expected uuid and secret")
 
         case req@POST -> Root / Data.connectionRoute =>
