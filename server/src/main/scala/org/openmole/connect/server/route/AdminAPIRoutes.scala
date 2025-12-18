@@ -8,10 +8,11 @@ import org.openmole.connect.server.db.DB
 import org.openmole.connect.server.KubeService.{KubeCache, getPVCSize}
 import org.openmole.connect.server.OpenMOLE.DockerHubCache
 import org.openmole.connect.shared.Data.{EmailStatus, UserAndPodInfo}
+import org.openmole.connect.server.ConnectServer.Config
 
 import scala.concurrent.ExecutionContext
 
-class AdminAPIImpl(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeService, Email.Sender, DB.Default, ExecutionContext):
+class AdminAPIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeService, Email.Sender, DB.Default, ExecutionContext, Config.Connect):
   def users: Seq[Data.User] = DB.users.map(DB.userToData)
   def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.registerUserToData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid).foreach(Email.sendValidated)

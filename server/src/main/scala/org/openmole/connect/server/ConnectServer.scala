@@ -38,11 +38,11 @@ object ConnectServer:
   object Config:
     // Hours
     val resetPasswordExpire = 24
-
     case class Kube(storageClassName: Option[String] = None, storageSize: Int, defaultMemory: Option[Int], defaultCPU: Option[Int])
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
     case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
+    case class Connect(url: Option[String] = None)
 
   case class Config(
     salt: String,
@@ -50,7 +50,8 @@ object ConnectServer:
     kube: Config.Kube,
     openmole: Config.OpenMOLE,
     smtp: Option[Config.SMTP] = None,
-    shutdown: Option[Config.Shutdown] = None)
+    shutdown: Option[Config.Shutdown] = None,
+    service: Option[Config.Connect] = None)
 
   def read(file: File): Config =
     import better.files.*
@@ -80,13 +81,14 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
   given KubeService = k8s
   given Email.Sender = Email.Sender(config.smtp)
   given DB.Default = DB.Default(memory = config.kube.defaultMemory, cpu = config.kube.defaultCPU)
+  given ConnectServer.Config.Connect = config.service.getOrElse(ConnectServer.Config.Connect())
 
   val httpClient =
     HttpClients.
       custom().
       disableAutomaticRetries().
       disableRedirectHandling().
-      setConnectionManager(tool.connectionManager()).
+      setConnectionManager(tool.connectionManager(2 * 60 * 1000)).
       build()
 
   def start() =
@@ -109,16 +111,30 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
             if r.nonEmpty
             then
               def emails = DB.admins.map(_.email)
+              def message =
+                summon[ConnectServer.Config.Connect].url match
+                  case Some(url) => s"${r.size} users waiting for validation on <a href=$url>$url</a>:"
+                  case None => s"${r.size} users waiting for validation:"
 
-              Email.sendNotification(emails, s"${r.size} user waiting for validation", s"A user mail has been checked. ${r.size} waiting for validation.")
+              Email.sendNotification(
+                emails,
+                s"${r.size} user waiting for validation",
+                s"""$message
+                   |${r.map(_.email).mkString("\n")}""".stripMargin)
 
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
               val res = DB.validateUserEmail(uuid, secret)
-              sendNotification(DB.registerUsers)
+              val sendMail =
+                Async[IO].delay:
+                  sendNotification(DB.registerUsers)
 
               if res
-              then Ok("Thank you, your email has been validated")
+              then
+                for
+                  _ <- sendMail
+                  r <- Ok("Thank you, your email has been validated")
+                yield r
               else NotFound("validation not found")
             case None => BadRequest("Expected uuid and secret")
 

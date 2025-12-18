@@ -260,7 +260,7 @@ object KubeService:
       k8sService.storageSize,
       initialize = initialize.getOrElse(false),
       pull = pull)
-    
+
     summon[KubeCache].ipCache.invalidate(uuid)
 
   def getPVC(uuid: String): Option[V1PersistentVolumeClaim] =

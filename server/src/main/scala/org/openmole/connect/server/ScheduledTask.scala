@@ -3,7 +3,7 @@ package org.openmole.connect.server
 import org.openmole.connect.server.Email.Sender
 import org.openmole.connect.server.KubeService.KubeCache
 import org.openmole.connect.server.db.DB
-
+import org.openmole.connect.server.ConnectServer.Config
 import java.time.*
 import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
 
@@ -26,14 +26,14 @@ import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
 
 
 object ScheduledTask:
-  def schedule(shutdown: Option[ConnectServer.Config.Shutdown])(using KubeService, Sender, KubeCache) =
+  def schedule(shutdown: Option[ConnectServer.Config.Shutdown])(using KubeService, Sender, KubeCache, Config.Connect) =
     shutdown.foreach: s =>
       val hour = s.checkAt.getOrElse(6)
       tool.log(s"Schedule automatic shutdown check at ${hour}, shutdown after ${s.days} days")
       val check = () => checkShutdown(s.days, s.remind.getOrElse(Seq(1, 3, 7)).toSet)
       scheduleTask(hour, check)
 
-  def checkShutdown(days: Int, remind: Set[Int])(using KubeService, Sender, KubeCache) =
+  def checkShutdown(days: Int, remind: Set[Int])(using KubeService, Sender, KubeCache, Config.Connect) =
     tool.log(s"Checking instances for automatic shutdown")
 
     val timeNow = System.currentTimeMillis()

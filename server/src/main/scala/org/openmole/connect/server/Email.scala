@@ -2,7 +2,7 @@ package org.openmole.connect.server
 
 import org.openmole.connect.server.db.DB
 import org.openmole.connect.shared.Data.EmailStatus
-
+import org.openmole.connect.server.ConnectServer.Config
 import java.net.URLEncoder
 
 /*
@@ -72,15 +72,20 @@ object Email:
         CustomHeader(Header("User-Agent", "User")),
         HtmlBody(
           s"""Dear ${user.firstName} ${user.name},<br/><br/>
-             |you can reset your password on the OpenMOLE service by clinking on this link (valid for ${ConnectServer.Config.resetPasswordExpire} hours):<br/>
+             |you can reset your password on the OpenMOLE service by clicking on this link (valid for ${ConnectServer.Config.resetPasswordExpire} hours):<br/>
              |<a href="$link">$link</a><br/><br/>
              |Best Regards
         """.stripMargin)
       )
 
 
-  def sendValidated(user: DB.User)(using Sender) =
+  def sendValidated(user: DB.User)(using Sender, Config.Connect) =
     sendMail: server =>
+      def begin =
+        summon[Config.Connect].url match
+          case Some(u) => s"your account on <a href=\"$u\">$u</a>"
+          case None => "your account"
+
       MailBuilder.build(
         From(server.from),
         To(user.email),
@@ -94,10 +99,14 @@ object Email:
         """.stripMargin)
       )
 
-  def sendInactive(user: DB.User, inactive: Int, remaining: Int)(using Sender) =
+  def sendInactive(user: DB.User, inactive: Int, remaining: Int)(using Sender, Config.Connect) =
     if EmailStatus.hasBeenChecked(user.emailStatus)
     then
       sendMail: server =>
+        def begin =
+          summon[Config.Connect].url match
+            case Some(u) => s"Your account on <a href=\"$u\">$u</a>"
+            case None => "Your account"
         MailBuilder.build(
           From(server.from),
           To(user.email),
@@ -106,7 +115,7 @@ object Email:
           //TextBody("Hello!\n\nThis is a mail."),
           HtmlBody(
             s"""Dear ${user.firstName} ${user.name},<br/><br/>
-               |your account as been inactive for the past $inactive days on to the OpenMOLE service.<br/>
+               |$begin as been inactive for the past $inactive days on to the OpenMOLE service.<br/>
                |If you don't login, your OpenMOLE instance will be automatically shutdown in $remaining days.<br/>
                |Note that yo
                |ur account will NOT be deleted and that your data will be preserved.<br/><br/>
