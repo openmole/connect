@@ -113,12 +113,12 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
               def emails = DB.admins.map(_.email)
               def message =
                 summon[ConnectServer.Config.Connect].url match
-                  case Some(url) => s"${r.size} users waiting for validation on <a href=$url>$url</a>:"
-                  case None => s"${r.size} users waiting for validation:"
+                  case Some(url) => s"${r.size} user(s) waiting for validation on <a href=$url>$url</a>:"
+                  case None => s"${r.size} user(s) waiting for validation:"
 
               Email.sendNotification(
                 emails,
-                s"${r.size} user waiting for validation",
+                s"${r.size} user(s) waiting for validation",
                 s"""$message<br/>
                    |${r.map(_.email).mkString("<br/>\n")}""".stripMargin)
 
@@ -129,7 +129,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
                 _ <- Async[IO].delay{ if res then sendNotification(DB.registerUsers) }
                 r <-
                   if res
-                  then Ok("Thank you, your email has been validated")
+                  then Ok("Thank you, your email has been validated. Now, you should wait for you account to be approuved.")
                   else NotFound("validation not found")
               yield r
             case None => BadRequest("Expected uuid and secret")
