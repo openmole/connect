@@ -119,8 +119,8 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
               Email.sendNotification(
                 emails,
                 s"${r.size} user waiting for validation",
-                s"""$message
-                   |${r.map(_.email).mkString("\n")}""".stripMargin)
+                s"""$message<br/>
+                   |${r.map(_.email).mkString("<br/>\n")}""".stripMargin)
 
           req.params.get("uuid") zip req.params.get("secret") match
             case Some((uuid, secret)) =>
