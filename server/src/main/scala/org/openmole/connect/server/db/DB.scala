@@ -96,7 +96,7 @@ object DB:
     test.close
 
     val dbContent = File(dbFile.pathAsString + ".mv.db")
-    dbContent.copyTo(File(dbContent.pathAsString + ".bck"), overwrite = true)
+    if dbContent.exists then dbContent.copyTo(File(dbContent.pathAsString + ".bck"), overwrite = true)
 
     open()
 
