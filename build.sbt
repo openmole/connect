@@ -33,7 +33,7 @@ val Resolvers = Seq(
 
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
-  scalaVersion := "3.7.3",
+  scalaVersion := "3.8.2",
   resolvers := Resolvers,
   scalacOptions ++= Seq("-Xmax-inlines:100")
 )
