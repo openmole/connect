@@ -86,7 +86,9 @@ object KubeService:
     storageSize: Int,
     tmpSize: Int = 51200,
     initialize: Boolean = false,
-    pull: Boolean = false)(using KubeCache) =
+    pull: Boolean = false,
+    limitCPU: Boolean = true,
+    limitMemory: Boolean = true)(using KubeCache) =
 
     import io.kubernetes.client.custom.*
 
@@ -122,14 +124,14 @@ object KubeService:
 
     val limits =
       if !initialize
-      then
-        Seq() ++
+      then Seq()
           //Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) ++
-          Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
+          //Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
       else
+
         Seq() ++
-          Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) ++
-          Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString))
+          (if limitMemory then Seq(memoryLimit).filter(_ > 0).map(m => "memory" -> Quantity(s"${m}Mi")) else Seq()) ++
+          (if limitCPU then Seq(cpuLimit).filter(_ > 0).map(c => "cpu" -> Quantity(c.toString)) else Seq())
 
     val resources = new V1ResourceRequirements()
       .requests(
@@ -259,7 +261,9 @@ object KubeService:
       k8sService.storageClassName,
       k8sService.storageSize,
       initialize = initialize.getOrElse(false),
-      pull = pull)
+      pull = pull,
+      limitCPU = k8sService.limitCPU,
+      limitMemory = k8sService.limitMemory)
 
     summon[KubeCache].ipCache.invalidate(uuid)
 
@@ -444,4 +448,4 @@ object KubeService:
     yield podInfo
 
 
-case class KubeService(storageClassName: Option[String], storageSize: Int)
+case class KubeService(storageClassName: Option[String], storageSize: Int, limitCPU: Boolean, limitMemory: Boolean)
