@@ -38,7 +38,7 @@ object ConnectServer:
   object Config:
     // Hours
     val resetPasswordExpire = 24
-    case class Kube(storageClassName: Option[String] = None, storageSize: Int, defaultMemory: Option[Int], defaultCPU: Option[Int], limitCPU: Boolean = true, limitMemory: Boolean = true)
+    case class Kube(storageClassName: Option[String] = None, storageSize: Int, defaultMemory: Option[Int], defaultCPU: Option[Int], limitCPU: Option[Boolean] = None, limitMemory: Option[Boolean] = None)
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
     case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
@@ -59,7 +59,7 @@ object ConnectServer:
 
 
   def apply(config: Config) =
-    val k8s = KubeService(config.kube.storageClassName, config.kube.storageSize, config.kube.limitCPU, config.kube.limitMemory)
+    val k8s = KubeService(config.kube.storageClassName, config.kube.storageSize, config.kube.limitCPU.getOrElse(true), config.kube.limitMemory.getOrElse(true))
     new ConnectServer(config, k8s)
 
 
