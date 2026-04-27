@@ -23,7 +23,7 @@ def laminarVersion = "0.14.2"
 
 def circeVersion = "0.14.15"
 def http4sVersion = "0.23.16"
-def tapirVersion = "1.11.50"
+def tapirVersion = "1.13.17"
 
 val Resolvers = Seq(
   Resolver.sonatypeRepo("snapshots"),
@@ -33,7 +33,7 @@ val Resolvers = Seq(
 
 lazy val defaultSettings = Seq(
   organization := "org.openmole",
-  scalaVersion := "3.8.2",
+  scalaVersion := "3.8.3",
   resolvers := Resolvers,
   scalacOptions ++= Seq("-Xmax-inlines:100")
 )
