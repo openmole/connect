@@ -101,7 +101,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
       HttpRoutes.of:
         case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password, admin = DB.userIsAdmin(user)))
+            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password, admin = ServerContent.containsUserCookie(req)))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok(ServerContent.connectionFunction(None))
@@ -365,6 +365,11 @@ object ServerContent:
         div(id := "appContainer", cls := "centerColumnFlex")
       )
     )
+
+  def containsUserCookie(req: Request[IO]) =
+    req.headers.get[org.http4s.headers.Cookie].map: c =>
+      c.values.exists(_.name == Authentication.authorizationCookieKey)
+    .getOrElse(false)
 
   def addJWTToken(uuid: DB.UUID, hashedPassword: DB.Password, admin: Boolean = false)(response: Response[IO])(using JWT.Secret) =
     val token = JWT.TokenData(uuid, hashedPassword)
