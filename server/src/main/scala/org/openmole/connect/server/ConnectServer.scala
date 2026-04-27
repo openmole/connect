@@ -101,7 +101,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
       HttpRoutes.of:
         case req@GET -> Root =>
           Authentication.authenticatedUser(req) match
-            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password, admin = ServerContent.containsUserCookie(req)))
+            case Some(user) => ServerContent.ok("user();").map(ServerContent.addJWTToken(user.uuid, user.password, admin = !ServerContent.containsUserCookie(req)))
             case None => ServerContent.redirect(s"/${Data.connectionRoute}")
 
         case req@GET -> Root / Data.connectionRoute => ServerContent.ok(ServerContent.connectionFunction(None))
