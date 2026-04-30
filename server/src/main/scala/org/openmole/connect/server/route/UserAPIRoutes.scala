@@ -13,10 +13,10 @@ import scala.concurrent.ExecutionContext
 
 class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeService, ExecutionContext):
   def user = DB.userFromUUID(uuid).getOrElse(throw RuntimeException(s"Not found user with uuid $uuid"))
-  def instanceStatus = KubeService.podInfo(uuid)
+  def instanceStatus = KubeService.podInfo(uuid, KubeService.namespace)
 
   def launch = KubeService.launch(user)
-  def stop = KubeService.stopOpenMOLEPod(uuid)
+  def stop = KubeService.stopOpenMOLEPod(uuid, KubeService.namespace)
 
   def changePassword(oldPassword: String, newPassword: String) =
     DB.updatePassword(uuid, newPassword, Some(oldPassword))
@@ -31,7 +31,7 @@ class UserAPIImpl(uuid: DB.UUID, openmole: ConnectServer.Config.OpenMOLE)(using 
 
   def setOMemory(memory: Int) = DB.updateOMMemory(uuid, math.min(memory, user.memory))
 
-  def usedSpace = KubeService.usedSpace(uuid)
+  def usedSpace = KubeService.usedSpace(uuid, KubeService.namespace)
 
   def setInstitution(i: String) = DB.updateInstitution(uuid, i)
 

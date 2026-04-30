@@ -47,10 +47,10 @@ object ScheduledTask:
       then
         tool.log(s"Automatic shutdown of user instance due to inactivity for ${u}")
         util.Try:
-          KubeService.stopOpenMOLEPod(u.uuid)
+          KubeService.stopOpenMOLEPod(u.uuid, KubeService.namespace)
       else tool.log(s"Keep instance user ${u} instance, shutdown in in $shutdownIn")
 
-      if remind.contains(days - onSince) && KubeService.podExists(u.uuid)
+      if remind.contains(days - onSince) && KubeService.podExists(u.uuid, KubeService.namespace)
       then
         tool.log(s"Send inactivity mail to ${u}")
         Email.sendInactive(u, onSince, days - onSince)

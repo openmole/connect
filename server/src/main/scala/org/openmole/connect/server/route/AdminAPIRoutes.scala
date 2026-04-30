@@ -17,11 +17,11 @@ class AdminAPIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeSe
   def registeringUsers: Seq[Data.RegisterUser] = DB.registerUsers.map(DB.registerUserToData)
   def promoteRegisterUser(uuid: String): Unit = DB.promoteRegistering(uuid).foreach(Email.sendValidated)
   def deleteRegisterUser(uuid: String): Unit = DB.deleteRegistering(uuid)
-  def usedSpace(uuid: String): Option[Storage] = KubeService.usedSpace(uuid)
-  def instance(uuid: String): Option[Data.PodInfo] = KubeService.podInfo(uuid)
+  def usedSpace(uuid: String): Option[Storage] = KubeService.usedSpace(uuid, KubeService.namespace)
+  def instance(uuid: String): Option[Data.PodInfo] = KubeService.podInfo(uuid, KubeService.namespace)
 
   def usersAndPodInfo: Seq[Data.UserAndPodInfo] =
-    val podList = KubeService.listPods.flatMap(p => p.userUUID.map(_ -> p)).toMap
+    val podList = KubeService.listPods(KubeService.namespace).flatMap(p => p.userUUID.map(_ -> p)).toMap
     users.map(u => Data.UserAndPodInfo(u, podList.get(u.uuid)))
 
   def changePassword(uuid: String, newPassword: String) = DB.updatePassword(uuid, newPassword)
@@ -29,7 +29,7 @@ class AdminAPIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeSe
   def setMemory(uuid: String, memory: Int) = DB.updateMemory(uuid, memory)
   def setOMMemory(uuid: String, memory: Int) = DB.updateOMMemory(uuid, memory)
   def setCPU(uuid: String, cpu: Double) = DB.updateCPU(uuid, cpu)
-  def setStorage(uuid: String, space: Int) = KubeService.updateOpenMOLEPersistentVolumeStorage(uuid, space)
+  def setStorage(uuid: String, space: Int) = KubeService.updateOpenMOLEPersistentVolumeStorage(uuid, KubeService.namespace, space)
   def setInstitution(uuid: String, institution: String) = DB.updateInstitution(uuid, institution)
   def setEmail(uuid: String, email: String) = DB.updateEmail(uuid, email)
   def setFirstName(uuid: String, firstName: String) = DB.updateFirstName(uuid, firstName)
@@ -39,13 +39,13 @@ class AdminAPIImpl()(using DB.Salt, KubeCache, UserCache, DockerHubCache, KubeSe
 
   def deleteUser(uuid: String) =
     DB.deleteUser(uuid)
-    KubeService.deleteOpenMOLE(uuid)
+    KubeService.deleteOpenMOLE(uuid, KubeService.namespace)
 
   def launch(uuid: String) =
     DB.userFromUUID(uuid).foreach(u => KubeService.launch(u))
 
-  def stop(uuid: String): Unit = KubeService.stopOpenMOLEPod(uuid)
-  def pvcSize(uuid: String) = KubeService.getPVCSize(uuid)
+  def stop(uuid: String): Unit = KubeService.stopOpenMOLEPod(uuid, KubeService.namespace)
+  def pvcSize(uuid: String) = KubeService.getPVCSize(uuid, KubeService.namespace)
 
 import sttp.tapir.server.interpreter.*
 import sttp.tapir.server.http4s.*

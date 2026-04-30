@@ -38,7 +38,7 @@ object ConnectServer:
   object Config:
     // Hours
     val resetPasswordExpire = 24
-    case class Kube(storageClassName: Option[String] = None, storageSize: Int, defaultMemory: Option[Int], defaultCPU: Option[Int], limitCPU: Option[Boolean] = None, limitMemory: Option[Boolean] = None)
+    case class Kube(storageClassName: Option[String] = None, namespace: String = "openmole", storageSize: Int, defaultMemory: Option[Int], defaultCPU: Option[Int], limitCPU: Option[Boolean] = None, limitMemory: Option[Boolean] = None)
     case class OpenMOLE(versionHistory: Option[Int], minimumVersion: Option[Int])
     case class SMTP(server: String, port: Int, user: String, password: String, from: String)
     case class Shutdown(days: Int, checkAt: Option[Int] = None, remind: Option[Seq[Int]] = None)
@@ -59,7 +59,7 @@ object ConnectServer:
 
 
   def apply(config: Config) =
-    val k8s = KubeService(config.kube.storageClassName, config.kube.storageSize, config.kube.limitCPU.getOrElse(true), config.kube.limitMemory.getOrElse(true))
+    val k8s = KubeService(config.kube.storageClassName, config.kube.namespace, config.kube.storageSize, config.kube.limitCPU.getOrElse(true), config.kube.limitMemory.getOrElse(true))
     new ConnectServer(config, k8s)
 
 
@@ -78,7 +78,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
   given authenticationCache: Authentication.UserCache = Authentication.UserCache()
   given kubeCache: KubeService.KubeCache = KubeService.KubeCache()
   given dockerHubCache: OpenMOLE.DockerHubCache = OpenMOLE.DockerHubCache()
-  given KubeService = k8s
+  given kube: KubeService = k8s
   given Email.Sender = Email.Sender(config.smtp)
   given DB.Default = DB.Default(memory = config.kube.defaultMemory, cpu = config.kube.defaultCPU)
   given ConnectServer.Config.Connect = config.service.getOrElse(ConnectServer.Config.Connect())
@@ -224,7 +224,7 @@ class ConnectServer(config: ConnectServer.Config, k8s: KubeService):
               r.withHeaders(org.http4s.headers.`Content-Disposition`("attachment", Map(CIString("filename") -> "users.csv")))
         case req if req.uri.path.startsWith(Root / Data.openMOLERoute) && (req.uri.path.segments.drop(1).nonEmpty || req.uri.path.endsWithSlash) =>
           ServerContent.authenticated(req, challenge = true): user =>
-            KubeService.podIP(user.uuid) match
+            KubeService.podIP(user.uuid, kube.namespace) match
               case Some(ip) =>
                 val openmoleURL = s"http://$ip:80"
                 val openmoleURI = java.net.URI(openmoleURL)
